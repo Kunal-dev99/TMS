@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+treasury.db
+treasury.db-wal
+treasury.db-shm
+.env
