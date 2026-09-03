@@ -33,10 +33,12 @@ client = TestClient(app)
 
 def test_the_catalogue_holds_every_documented_code_and_the_identity_ones():
     """Thirty-eight from document 2, plus three the documents cannot list
-    because they describe a system with no identity."""
-    from app.errors import DOCUMENTED_CODES, IDENTITY_CODES
+    because they describe a system with no identity, plus two for the
+    amendment gate, which document 2 has no code for because the documents do
+    not gate an amendment at all."""
+    from app.errors import DOCUMENTED_CODES, GATE_CODES, IDENTITY_CODES
 
-    assert len(ErrorCode) == DOCUMENTED_CODES + IDENTITY_CODES
+    assert len(ErrorCode) == DOCUMENTED_CODES + IDENTITY_CODES + GATE_CODES
     assert len(CATALOGUE) == len(ErrorCode)
 
 
@@ -327,3 +329,53 @@ def test_migrations_build_every_phase_one_table_from_empty(tmp_path):
 
     for model in PHASE_ONE_TABLES:
         assert model.__tablename__ in names
+
+
+def test_a_migrated_database_has_the_same_indexes_as_the_models(tmp_path):
+    """The table names matching is not enough.
+
+    Migration 0007 was generated empty, because autogenerate does not compare
+    index predicates. Every database built by `create_all` had the widened
+    `ux_accrual_day` predicate and every migrated database kept the narrow
+    one, so an amendment could be applied in the tests and raised a unique
+    violation in the running application. This compares the index DDL of a
+    migrated database against the models directly, which is the only way that
+    class of drift is visible.
+    """
+    import os
+    import sqlite3
+
+    from sqlalchemy import create_engine
+
+    from app.models import Base
+
+    migrated = tmp_path / "migrated.db"
+    result = subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=BACKEND,
+        env={**os.environ, "TREASURY_DATABASE_URL": f"sqlite:///{migrated}"},
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+
+    declared = tmp_path / "declared.db"
+    Base.metadata.create_all(create_engine(f"sqlite:///{declared}"))
+
+    def indexes(path):
+        return {
+            name: " ".join((sql or "").split())
+            for name, sql in sqlite3.connect(path).execute(
+                "select name, sql from sqlite_master where type='index'"
+            )
+            # SQLite names the implicit indexes behind UNIQUE constraints
+            # `sqlite_autoindex_*`, and numbers them by declaration order.
+            # They are not written by either side, so they are not drift.
+            if not name.startswith("sqlite_autoindex")
+        }
+
+    from_migrations, from_models = indexes(migrated), indexes(declared)
+    assert from_migrations == from_models, (
+        "the migrations and the models disagree about indexes: "
+        f"{set(from_migrations) ^ set(from_models) or 'same names, different DDL'}"
+    )

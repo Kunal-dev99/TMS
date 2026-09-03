@@ -327,6 +327,7 @@ export default function Surface() {
             onClose={() => setPanel({ kind: "none" })}
             book={state.book}
             capBp={state.policy.concentration_cap_bp}
+            deals={state.deals}
             onPick={(counterpartyId) =>
               setTicket((current) => ({ ...current, counterpartyId }))
             }

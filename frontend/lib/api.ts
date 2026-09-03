@@ -26,8 +26,11 @@ import type {
   CheckResult,
   AdvisoryCard,
   AdvisoryRunView,
+  AmendmentPreview,
+  CurrencyExposureView,
   DealDetail,
   ExposureView,
+  StatementLine,
   LimitVersion,
   PolicyConfig,
   QueueItem,
@@ -249,6 +252,111 @@ export function decideRecommendation(
 /** Accrual, then journals, then advisory. Returns 202. */
 export function runNightly(force = false) {
   return post("/jobs/nightly", { force });
+}
+
+
+// -- the deal lifecycle ----------------------------------------------------
+
+/**
+ * Raise an amendment. Records what is proposed and returns what applying it
+ * would change, without changing it.
+ *
+ * Two calls rather than one, because a reversal that reaches into a closed
+ * period is a conversation with the accountants and has to be visible before
+ * it happens.
+ */
+export function raiseAmendment(
+  dealId: string,
+  body: {
+    type: string;
+    effective_date: string;
+    reason: string;
+    new_principal_pence?: number | null;
+    new_rate_bp?: number | null;
+    new_maturity_date?: string | null;
+  },
+): Promise<{ amendment_id: string; preview: AmendmentPreview }> {
+  return post(`/deals/${dealId}/amendments`, {
+    new_principal_pence: null,
+    new_rate_bp: null,
+    new_maturity_date: null,
+    ...body,
+  });
+}
+
+export function applyAmendment(amendmentId: string) {
+  return post(`/amendments/${amendmentId}/apply`, {});
+}
+
+/** Three sources have to agree. Two of three is not enough. */
+export function settleDeal(dealId: string, statementLineId: string) {
+  return post<{
+    match_status: string;
+    break_detail: string | null;
+    closed_at: string | null;
+  }>(`/deals/${dealId}/settle`, { statement_line_id: statementLineId });
+}
+
+export function getStatements(): Promise<StatementLine[]> {
+  return request<StatementLine[]>("/statements");
+}
+
+export function recordStatementLine(body: {
+  account_name: string;
+  amount_pence: number;
+  value_date: string;
+  reference?: string | null;
+}) {
+  return post<{ statement_line_id: string }>("/statements", {
+    reference: null,
+    ...body,
+  });
+}
+
+// -- currency risk ---------------------------------------------------------
+
+/**
+ * Currency exposure. Minor units, with a currency on every figure.
+ *
+ * There is no call here that returns both exposures, because there is no
+ * endpoint that does. A forward increases counterparty exposure and reduces
+ * currency exposure, and the two are never netted.
+ */
+export function getCurrencyExposure(
+  currency = "EUR",
+  signal?: AbortSignal,
+): Promise<CurrencyExposureView> {
+  return request<CurrencyExposureView>(
+    `/exposure/currency?currency=${currency}`,
+    { signal },
+  );
+}
+
+export function recordCurrencyExposure(body: {
+  currency: string;
+  amount_minor: number;
+  direction: string;
+  expected_date: string;
+  source: string;
+  source_reference?: string | null;
+}) {
+  return post("/currency-exposures", { source_reference: null, ...body });
+}
+
+export function linkHedge(
+  exposureId: string,
+  dealId: string,
+  coveredAmountMinor: number,
+) {
+  return post(`/currency-exposures/${exposureId}/hedges`, {
+    deal_id: dealId,
+    covered_amount_minor: coveredAmountMinor,
+  });
+}
+
+/** Coverage is recomputed and the status can move backwards. */
+export function unlinkHedge(linkId: string, reason: string) {
+  return post(`/hedge-links/${linkId}/unlink`, { reason });
 }
 
 // -- the queue and breaches ------------------------------------------------

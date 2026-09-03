@@ -106,7 +106,7 @@ test.
 | 1 | The control loop. The demonstration | **Done. 23 endpoints, six panels, run sheet end to end** |
 | 1.5 | Identity. Users, roles, bearer token, segregation of duties | **Done. All three exit criteria pass** |
 | 2 | Accrual, journals, the nightly job, the advisory harness | **Done. Both exit criteria pass** |
-| 3 | Confirmation, matching, amendment, settlement, currency, hedging | Not started |
+| 3 | Confirmation, matching, amendment, settlement, currency, hedging | **Done, backend and interface. All four exit criteria pass** |
 | 4 | PostgreSQL, real tenancy, real adapters, deployment | Not started |
 
 ### Phase 0 exit criteria
@@ -251,8 +251,50 @@ Secrets come from the environment. `backend/.env` is gitignored and is the
 only place a key should be written. **Set `TREASURY_TOKEN_SECRET` anywhere
 that is not a laptop** — it falls back to a development constant.
 
+### Phase 3, lifecycle and currency
+
+Eight tables, twelve endpoints. Document 4 calls this the largest single
+block of work in the system, and schedules confirmation, matching, amendment
+and settlement together because they are not separable: an amendment produces
+reversing accruals, and settlement compares against a confirmation.
+
+- [x] A confirmation arriving out of order matches correctly
+- [x] An amendment into a prior period is refused with a distinct code
+- [x] A deal reaches closed only when three sources agree
+- [x] Coverage moves backwards without an error when an exposure date slips
+
+**Matching.** A confirmation is a first class table, not a column on the
+deal: fold it in and there is nothing to match against, so the control
+disappears. The comparison is field by field, so a mismatch says *the rate
+was keyed at 4.30 per cent and confirmed at 4.28 per cent*.
+
+**Amendment.** Raise and apply are two calls. Applying reverses what was
+recognised, moves the deal, reposts at the new terms and rebuilds the
+journals, in one transaction. The original rows survive: a correction is an
+entry, not an edit.
+
+**Settlement.** Three sources, and two of three is not enough. The break
+names which two agree and by how much the third differs. Closing returns the
+headroom to the book, which is why it is part of the control system rather
+than an accounting formality.
+
+**Currency.** Kept structurally apart from counterparty exposure: different
+tables, different units, no shared key, and no endpoint that returns both. A
+test asserts `hedge_service` never reads the counterparty side.
+
+**The interface.** No new surface. Confirmation, amendment and settlement
+are three sections of the deal panel, and currency is the second tab of the
+exposure panel, so the strip stays at five items.
+
+Driving those panels against a running server found three defects the suite
+had not: an Alembic migration generated empty because autogenerate does not
+compare index predicates, a settlement control built from the computed
+exposure rather than the stored accrual, and a forward's exchange rate
+rendered as a percentage. All three are fixed and each has a test.
+`docs/ASSUMPTIONS.md` section 46 has the detail.
+
 ```bash
 cd backend && python -m pytest tests/ -q
 ```
 
-Two hundred and fifteen tests.
+Two hundred and sixty two tests.

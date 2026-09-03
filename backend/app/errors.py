@@ -53,6 +53,8 @@ class ErrorCode(str, Enum):
     DEAL_NOT_AMENDABLE = "DEAL_NOT_AMENDABLE"
     AMENDMENT_ALREADY_APPLIED = "AMENDMENT_ALREADY_APPLIED"
     CLOSED_PERIOD_LOCKED = "CLOSED_PERIOD_LOCKED"
+    AMENDMENT_FAILS_CHECKS = "AMENDMENT_FAILS_CHECKS"
+    AMENDMENT_TYPE_INVALID = "AMENDMENT_TYPE_INVALID"
 
     # -- revision B, confirmations and settlement --------------------------
     UNKNOWN_MESSAGE_TYPE = "UNKNOWN_MESSAGE_TYPE"
@@ -155,6 +157,14 @@ CATALOGUE: dict[ErrorCode, tuple[int, str]] = {
         409,
         "Policy does not allow a closed period to be reopened.",
     ),
+    ErrorCode.AMENDMENT_FAILS_CHECKS: (
+        409,
+        "The amended terms do not pass the six checks.",
+    ),
+    ErrorCode.AMENDMENT_TYPE_INVALID: (
+        400,
+        "Those terms do not match the kind of amendment this is.",
+    ),
     ErrorCode.UNKNOWN_MESSAGE_TYPE: (
         400,
         "That is not a confirmation type this system reads.",
@@ -208,9 +218,21 @@ CATALOGUE: dict[ErrorCode, tuple[int, str]] = {
 DOCUMENTED_CODES = 38
 IDENTITY_CODES = 3
 
-assert len(CATALOGUE) == len(ErrorCode) == DOCUMENTED_CODES + IDENTITY_CODES, (
-    "The catalogue and the enumeration disagree."
-)
+#: Two more, for the amendment gate. Document 2 has no code for an amendment
+#: that fails the checks because the documents do not gate an amendment at
+#: all: `AmendmentService` moves the terms and reposts, and nothing re-tests
+#: the position. That is a hole rather than a decision -- an amendment can
+#: raise a principal past its limit, and the correction path in
+#: `QueueService` already re-runs the checks on exactly the reasoning that
+#: applies here. These two codes are the deviation, recorded rather than
+#: quietly absorbed.
+GATE_CODES = 2
+
+assert (
+    len(CATALOGUE)
+    == len(ErrorCode)
+    == DOCUMENTED_CODES + IDENTITY_CODES + GATE_CODES
+), "The catalogue and the enumeration disagree."
 
 
 class TreasuryError(Exception):

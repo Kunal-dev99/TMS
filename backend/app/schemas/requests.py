@@ -139,6 +139,13 @@ class MatchConfirmationRequest(BaseModel):
     deal_id: str
 
 
+class ApplyAmendmentRequest(BaseModel):
+    """An amendment is re-tested before it is applied, so it needs the same
+    override field a booking has."""
+
+    override_reason: str | None = None
+
+
 class SettleDealRequest(BaseModel):
     statement_line_id: str
 

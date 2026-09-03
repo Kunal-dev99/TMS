@@ -27,3 +27,17 @@ def minor(amount: int, currency: str) -> str:
 def per_cent(basis_points: int) -> str:
     """420 becomes 4.20 per cent."""
     return f"{basis_points / 100:.2f} per cent"
+
+
+def deal_rate(basis_points: int, instrument: str) -> str:
+    """The same column, read two ways.
+
+    `rate_bp` holds an interest rate for a deposit and an exchange rate for a
+    forward. One column, because a deal has one rate, but 11740 is 117.40 per
+    cent on a deposit and 1.1740 on a forward. Rendering a forward as a
+    percentage produces a figure that is wrong by two orders of magnitude and
+    looks like a rate, which is worse than looking broken.
+    """
+    if instrument == "FX_FORWARD":
+        return f"{basis_points / 10000:.4f}"
+    return per_cent(basis_points)

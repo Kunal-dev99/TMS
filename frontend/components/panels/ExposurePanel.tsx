@@ -4,10 +4,16 @@ import { useEffect, useState } from "react";
 import { BarChart3 } from "lucide-react";
 
 import { EmptyState, PanelShell } from "@/components/PanelShell";
+import { CurrencyTab } from "@/components/panels/CurrencyTab";
 import { ExposureDial } from "@/components/panels/ExposureDial";
 import { getExposure } from "@/lib/api";
 import { perCent, sterling } from "@/lib/format";
-import type { BookRow, ExposureView, UtilisationRow } from "@/lib/types";
+import type {
+  BookRow,
+  DealSummary,
+  ExposureView,
+  UtilisationRow,
+} from "@/lib/types";
 
 /**
  * Exposure. Two tabs, and they can never be open at once.
@@ -27,12 +33,14 @@ export function ExposurePanel({
   onClose,
   book,
   capBp,
+  deals,
   onPick,
 }: {
   open: boolean;
   onClose: () => void;
   book: BookRow[];
   capBp: number;
+  deals: DealSummary[];
   onPick: (counterpartyId: string) => void;
 }) {
   const [tab, setTab] = useState<"counterparty" | "currency">("counterparty");
@@ -132,23 +140,7 @@ export function ExposurePanel({
           </div>
         )
       ) : (
-        <div className="space-y-4">
-          <div className="rounded-lg border border-warning/40 bg-warning/10 p-4">
-            <p className="text-xs font-medium text-warning">
-              Counterparty exposure and currency exposure are separate figures
-              moving in opposite directions. They are never netted.
-            </p>
-            <p className="mt-1.5 text-[10px] text-muted-foreground">
-              A forward increases the first and reduces the second. There is no
-              endpoint that returns both, and no query joins them.
-            </p>
-          </div>
-          <EmptyState>
-            No currency obligations recorded. The register arrives in phase
-            three, and this tab stays visible until it does because its absence
-            would hide the distinction it exists to make.
-          </EmptyState>
-        </div>
+        <CurrencyTab deals={deals} />
       )}
     </PanelShell>
   );

@@ -18,28 +18,47 @@ import type { QueueItem } from "@/lib/types";
  * by agreeing what was actually traded. They share one strip entry, which is
  * what keeps the navigation budget at five.
  *
- * The two mismatch resolutions are not offered here, because the
- * confirmation cause arrives in phase three and an option that always
- * refuses is worse than an option that is not there.
+ * Each cause offers only its own resolutions. Applying a mismatch
+ * resolution to a limit failure is a defect rather than a preference, and
+ * the server refuses it either way, so offering it would only be a button
+ * that always fails.
  */
-const RESOLUTIONS: { value: string; label: string; hint: string }[] = [
-  {
-    value: "RESIZED",
-    label: "Resized",
-    hint: "The client resubmits a smaller deal. This one is cancelled.",
-  },
-  {
-    value: "REROUTED",
-    label: "Rerouted",
-    hint: "The client books with a different counterparty.",
-  },
-  {
-    value: "OVERRIDDEN",
-    label: "Override",
-    hint: "Needs a reason. Only under a warning policy.",
-  },
-  { value: "CANCELLED", label: "Cancelled", hint: "The deal does not happen." },
-];
+const RESOLUTIONS: Record<
+  string,
+  { value: string; label: string; hint: string }[]
+> = {
+  LIMIT_FAILURE: [
+    {
+      value: "RESIZED",
+      label: "Resized",
+      hint: "The client resubmits a smaller deal. This one is cancelled.",
+    },
+    {
+      value: "REROUTED",
+      label: "Rerouted",
+      hint: "The client books with a different counterparty.",
+    },
+    {
+      value: "OVERRIDDEN",
+      label: "Override",
+      hint: "Needs a reason. Only under a warning policy.",
+    },
+    { value: "CANCELLED", label: "Cancelled", hint: "The deal does not happen." },
+  ],
+  CONFIRMATION_MISMATCH: [
+    {
+      value: "CORRECTED",
+      label: "Correct the deal",
+      hint: "The deal takes the confirmed terms and the six checks rerun, because a corrected rate changes the accrual and can change the measured exposure.",
+    },
+    {
+      value: "CHALLENGED",
+      label: "Challenge the bank",
+      hint: "The deal is unchanged, the confirmation is disputed, and the item stays open.",
+    },
+    { value: "CANCELLED", label: "Cancelled", hint: "The deal does not happen." },
+  ],
+};
 
 export function QueuePanel({
   open,
@@ -116,6 +135,38 @@ export function QueuePanel({
 
               <p className="mt-2 text-xs text-muted-foreground">{item.detail}</p>
 
+              {/* Field by field, so the reader sees what disagreed rather
+                  than that something did. */}
+              {item.differences.length > 0 ? (
+                <table className="mt-3 w-full text-[10.5px]">
+                  <thead>
+                    <tr className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                      <th className="pb-1 text-left font-medium">Field</th>
+                      <th className="pb-1 text-right font-medium">Keyed</th>
+                      <th className="pb-1 text-right font-medium">Confirmed</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {item.differences.map((difference) => (
+                      <tr
+                        key={difference.field_name}
+                        className="border-t border-border/40"
+                      >
+                        <td className="py-1">
+                          {difference.field_name.replace(/_/g, " ").replace(" pence", "").replace(" bp", "")}
+                        </td>
+                        <td className="num py-1 text-right">
+                          {difference.keyed_value}
+                        </td>
+                        <td className="num py-1 text-right text-warning">
+                          {difference.confirmed_value}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : null}
+
               {item.cause === "LIMIT_FAILURE" &&
               enforcement === "WARN_WITH_OVERRIDE" ? (
                 <Input
@@ -127,11 +178,13 @@ export function QueuePanel({
               ) : null}
 
               <div className="mt-3 flex flex-wrap gap-2">
-                {RESOLUTIONS.filter(
-                  (option) =>
-                    option.value !== "OVERRIDDEN" ||
-                    enforcement === "WARN_WITH_OVERRIDE",
-                ).map((option) => (
+                {(RESOLUTIONS[item.cause] ?? [])
+                  .filter(
+                    (option) =>
+                      option.value !== "OVERRIDDEN" ||
+                      enforcement === "WARN_WITH_OVERRIDE",
+                  )
+                  .map((option) => (
                   <Button
                     key={option.value}
                     type="button"
@@ -140,11 +193,11 @@ export function QueuePanel({
                     className="h-7 text-xs"
                     title={option.hint}
                     disabled={busy === item.id}
-                    onClick={() => resolve(item.id, option.value)}
-                  >
-                    {option.label}
-                  </Button>
-                ))}
+                      onClick={() => resolve(item.id, option.value)}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
               </div>
             </article>
           ))}

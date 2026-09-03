@@ -659,3 +659,152 @@ Two variables matter and both have unsafe defaults for convenience:
 a developer with one in their environment does not have a suite whose result
 depends on somebody else's endpoint being up. The tests that care about model
 behaviour inject a ranker instead.
+
+---
+
+# Phase 3 decisions
+
+## 38. The accrual day index had to change for a correction to be possible
+
+Document 1 gives `ux_accrual_day` as unique on `(deal_id, accrual_date)`
+where `reversal_of is null`. That admits one original per day and nothing
+else.
+
+An accountant corrects by reversing and reposting, not by editing. Reposting
+a reversed day writes a second row with `reversal_of` null for that date, and
+the index refuses it. As specified, the index makes the amendment path
+impossible.
+
+**Decision.** The predicate is now `reversal_of IS NULL AND amendment_id IS
+NULL`. The nightly job is inside the index and stays idempotent; rows an
+amendment produced are outside it. `amendment_id` is set on the reposted row
+as well as on the reversal, so both name the amendment an auditor would ask
+about.
+
+This is a deviation from document 1 and the first thing to raise with
+whoever wrote it.
+
+## 39. A period is closed when a journal in it has been posted
+
+Nothing formally closes a period. Posting is the closest signal there is:
+once Oracle has the entry, taking it back is a reversal rather than a
+recalculation.
+
+`AmendmentService._may_reopen_closed_periods` returns False and is a single
+method for a reason. Document 5 lists prior period corrections as a decision
+needed at the start of this phase, to be settled with the customer's
+accountants. **It is built as a refusal**, because refusing something that
+should have been allowed is a conversation and allowing something that should
+have been refused is a restatement.
+
+## 40. Settlement with no confirmation is PENDING, not a break and not a close
+
+Three sources have to agree, and two of three is not enough. That rule is
+usually stated for the case where all three exist and one differs.
+
+The case where the confirmation has not arrived needed its own answer.
+Closing on the record and the statement alone is exactly the shortcut the
+control exists to prevent, and calling it a break would be wrong, because
+nothing disagrees. It is `PENDING`, and the message says the two agree and it
+is waiting on the third.
+
+`TOLERANCE_PENCE` is zero. These are integer pence and a penny of
+disagreement is a disagreement. A tolerance here would be a policy decision
+hidden in a constant.
+
+## 41. Matching is deliberately narrow
+
+`_find_deal` matches on counterparty and instrument, then prefers an exact
+principal and value date, then the same value date alone. A confirmation that
+cannot be resolved waits rather than being attached to the nearest thing.
+
+**A wrong match is worse than no match**: it closes the control while looking
+like it worked, and nothing on screen would say so.
+
+Matching is retried when a deal is keyed, which is what makes the out of
+order case work.
+
+## 42. The seed carries two confirmations and no mismatch
+
+Two of the four positions are confirmed and two are not, which is the mix
+screen 6 of document 3 shows.
+
+No mismatch is seeded. The queue opens empty and a demonstration creates the
+mismatch by ingesting a confirmation with a different rate. Watching one
+appear is a stronger argument than finding one pre-baked.
+
+## 43. Maturity is a nightly transition
+
+The nightly job moves deals past their maturity date to `MATURED`. Matured
+means due; closed means three sources agreed.
+
+They are two states rather than one because **until a deal closes the
+counterparty still holds the headroom**, and the next deal may be blocked for
+no reason. That is why closing is part of the control system rather than an
+accounting formality.
+
+## 44. Still open, from document 5 section 12
+
+Three decisions this phase was supposed to settle with the customer, and what
+is built while they are open:
+
+| Decision | Built as | Why |
+|---|---|---|
+| Prior period corrections | A distinct refusal, `CLOSED_PERIOD_LOCKED`, naming the periods | Surfaced rather than decided |
+| Keyed then matched, or created from the confirmation | Keyed then matched. `capture_source` supports both | The confirmation feed is the last thing to arrive |
+| Confirmation coverage per counterparty | Every counterparty assumed to send one | **Needs the customer. Manual handling is a different design** |
+
+Creating a deal from a confirmation is not built. The column and the matching
+path exist for it, and it is a small addition once the customer says which
+counterparties send machine readable confirmations.
+
+## 45. The phase 3 frontend adds no surface
+
+Confirmation, amendment and settlement are three sections of the deal panel,
+not three panels. The strip stays at five items and the navigation budget is
+unchanged: one surface, one click depth, one panel at a time.
+
+The currency tab is the second half of the exposure panel rather than a sixth
+strip item, for the same reason. The two exposures sit behind one control
+because they are both exposure, and the tab boundary is what keeps them from
+being read as one figure.
+
+## 46. Three defects the phase 3 frontend surfaced
+
+Driving the panels against a running server found three things the tests did
+not. All three are fixed, and each now has a test.
+
+**Migration 0007 was generated empty.** Alembic autogenerate does not compare
+index predicates, so the widened `ux_accrual_day` predicate reached the
+models and never reached a migrated database. Every database built by
+`create_all` was correct and every migrated one kept the narrow predicate, so
+applying an amendment raised a unique violation in the running application
+while the whole suite passed. The migration is now written by hand, and
+`test_a_migrated_database_has_the_same_indexes_as_the_models` compares index
+DDL rather than table names.
+
+**Settlement compared two different figures.** The panel's "record a matching
+line" control built the line from `measured_pence`, the computed exposure,
+while the settlement service expects the stored accrual. They agree until an
+amendment splits them: days before the effective date keep the old rate, so a
+mid-life correction leaves the two legitimately apart. The control reported a
+break that nothing had caused. It now uses the stored accrual, which is the
+basis settlement actually uses.
+
+**A forward's rate was rendered as a percentage.** `rate_bp` holds an interest
+rate for a deposit and an exchange rate for a forward. The blotter already
+knew this; the match difference renderer did not, so a forward keyed at 1.1740
+was reported as `117.40 per cent` — wrong by two orders of magnitude, and
+wrong in a way that still looks like a rate. `deal_rate(basis_points,
+instrument)` is now the single renderer, and `COMPARED` passes the instrument.
+
+The pattern in all three is the same: a figure that is correct in one place
+and read in another under a different assumption. That is what driving the
+interface finds and what testing a service in isolation does not.
+
+## 47. There is no button for the nightly job
+
+It is a scheduled job, so the interface offers no way to run it. A
+demonstration runs it over the API. Adding a button would put a control in
+the interface that does not exist in production, which is a worse lie than
+the inconvenience.

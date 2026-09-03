@@ -1,7 +1,7 @@
 """Deals. Group 2 of document 2.
 
-Six endpoints in phase one. Amendments, apply and settle belong to this
-group and arrive in phase three.
+Nine endpoints. The six of phase one, and the three the deal lifecycle
+added in phase three: raising an amendment, applying it, and settling.
 
 The two that matter are next to each other on purpose. `/deals/check`
 persists nothing and runs on every pause in typing. `/deals` re-runs the same
@@ -20,7 +20,9 @@ from app.repo import counterparties as cp_repo
 from app.repo import deals as deal_repo
 from app.schemas import requests as rq
 from app.schemas.models import CheckResult, DealDetail, DealSummary
+from app.services.amendment_service import AmendmentService
 from app.services.deal_service import DealService
+from app.services.settlement_service import SettlementService
 from app.services.state_service import StateService
 
 router = APIRouter(tags=["Deals"])
@@ -125,6 +127,117 @@ def instruct_deal(
         "amount_pence": instruction.amount_pence,
         "value_date": instruction.value_date,
     }
+
+
+@router.post("/deals/{deal_id}/amendments", status_code=201)
+def raise_amendment(
+    deal_id: str, body: rq.RaiseAmendmentRequest, ctx: Ctx, caller: Caller
+) -> dict:
+    """Raise an amendment.
+
+    Records what is proposed and returns what applying it would change,
+    without changing it. Raising and applying are two calls on purpose: a
+    reversal that reaches into a closed period is a conversation with the
+    accountants, and it has to be visible before it happens.
+    """
+    amendment, preview = _amendments(ctx).raise_amendment(
+        deal_id=deal_id,
+        type=body.type,
+        effective_date=body.effective_date,
+        reason=body.reason,
+        raised_by=caller,
+        new_principal_pence=body.new_principal_pence,
+        new_rate_bp=body.new_rate_bp,
+        new_maturity_date=body.new_maturity_date,
+    )
+    ctx.session.commit()
+    return {
+        "amendment_id": amendment.id,
+        "preview": {
+            "accruals_affected": preview.accruals_affected,
+            "amount_to_reverse_pence": preview.amount_to_reverse_pence,
+            "periods_affected": preview.periods_affected,
+            "any_period_closed": preview.any_period_closed,
+        },
+    }
+
+
+@router.post("/amendments/{amendment_id}/apply")
+def apply_amendment(
+    amendment_id: str,
+    ctx: Ctx,
+    caller: Caller,
+    body: rq.ApplyAmendmentRequest | None = None,
+) -> dict:
+    """Re-test, then recalculate, reverse, repost and update. One transaction.
+
+    A partial reversal leaves the ledger disagreeing with the deal, which is
+    worse than no amendment at all, so nothing commits until all of it has
+    worked.
+
+    A refusal is the exception, and deliberately so: the check run and the
+    queue item are committed before the error is raised, because they are the
+    evidence that the amendment was tested and what it was tested against.
+    Nothing was reversed on that path, so there is no half finished write to
+    protect.
+    """
+    service = _amendments(ctx)
+    applied = service.apply(
+        amendment_id,
+        applied_by=caller,
+        override_reason=body.override_reason if body else None,
+    )
+
+    if applied.refused:
+        ctx.session.commit()
+        raise TreasuryError(
+            ErrorCode.AMENDMENT_FAILS_CHECKS,
+            f"The amended terms do not pass the six checks. {applied.refusal_detail}",
+        )
+
+    from app.models import Amendment
+
+    amendment = ctx.session.get(Amendment, amendment_id)
+    summary = _summary(_state(ctx), amendment.deal_id)
+    ctx.session.commit()
+    return {
+        "reversed_pence": applied.reversed_pence,
+        "reposted_pence": applied.reposted_pence,
+        "periods_reopened": applied.periods_reopened,
+        "deal": summary.model_dump(),
+    }
+
+
+@router.post("/deals/{deal_id}/settle")
+def settle_deal(
+    deal_id: str, body: rq.SettleDealRequest, ctx: Ctx, caller: Caller
+) -> dict:
+    """Record the three way match and close.
+
+    Two of three agreeing is not enough. If the record and the confirmation
+    agree but the statement differs, the money did not arrive as promised and
+    this returns a break rather than closing.
+    """
+    service = SettlementService(ctx.session, ctx.tenant_id, ctx.as_of_date)
+    outcome = service.settle(deal_id, body.statement_line_id, caller)
+    ctx.session.commit()
+    return {
+        "settlement_id": outcome.settlement.id,
+        "deal_id": deal_id,
+        "match_status": outcome.settlement.match_status,
+        "break_detail": outcome.break_detail,
+        "closed_at": outcome.settlement.closed_at,
+        "expected_pence": (
+            outcome.settlement.expected_principal_pence
+            + outcome.settlement.expected_interest_pence
+        ),
+        "confirmed_pence": outcome.settlement.confirmed_amount_pence,
+        "statement_pence": outcome.settlement.statement_amount_pence,
+    }
+
+
+def _amendments(ctx: Ctx) -> AmendmentService:
+    return AmendmentService(ctx.session, ctx.tenant_id, ctx.as_of_date, ctx.policy)
 
 
 # -- helpers ---------------------------------------------------------------

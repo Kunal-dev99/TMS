@@ -112,6 +112,7 @@ class StateService:
         accruals = AccrualService(
             self.session, self.tenant_id, self.as_of_date
         ).daily_by_deal()
+        mismatched, amended = self._flagged_deals()
 
         summaries = []
         for deal in deal_repo.all_for_tenant(self.session, self.tenant_id):
@@ -136,7 +137,7 @@ class StateService:
                     measured_pence=measure.amount_pence,
                     measurement_basis=measure.basis,
                     stage=self.stage(deal, accruals.get(deal.id)),
-                    flag="breach" if deal.id in flagged else None,
+                    flag=self._flag_for(deal.id, flagged, mismatched, amended),
                     approved_by=deal.approved_by,
                     required_approver=deal.required_approver,
                     accrual_today_pence=accruals.get(deal.id, (None, 0))[0],
@@ -145,14 +146,56 @@ class StateService:
             )
         return summaries
 
+    def _flagged_deals(self) -> tuple[set[str], set[str]]:
+        """Which deals carry a mismatch, and which have been amended.
+
+        One pass each rather than a query per row, because the blotter is
+        read on every write.
+        """
+        from app.models import Amendment, Confirmation
+
+        mismatched = {
+            row.deal_id
+            for row in self.session.query(Confirmation)
+            .filter(Confirmation.tenant_id == self.tenant_id)
+            .filter(Confirmation.match_status.in_(("MISMATCHED", "DISPUTED")))
+            .all()
+            if row.deal_id
+        }
+        amended = {
+            row.deal_id
+            for row in self.session.query(Amendment)
+            .filter(Amendment.tenant_id == self.tenant_id)
+            .filter(Amendment.status == "APPLIED")
+            .all()
+        }
+        return mismatched, amended
+
+    @staticmethod
+    def _flag_for(
+        deal_id: str, flagged: set, mismatched: set, amended: set
+    ) -> str | None:
+        """A pill only when something needs attention.
+
+        No pill on a healthy row, so a flag always means something. Where
+        two apply, the more serious one shows: a breach is the position
+        being outside policy, a mismatch is a disagreement about what was
+        traded, and an amendment is a fact about the past.
+        """
+        if deal_id in flagged:
+            return "breach"
+        if deal_id in mismatched:
+            return "mismatch"
+        if deal_id in amended:
+            return "amended"
+        return None
+
     def stage(self, deal, accrual: tuple[int | None, int] | None = None) -> str:
         """The lifecycle label. Computed, never stored.
 
-        Phase two added the accruing label, which carries the daily figure.
-        A deal that accrued today says so; one that has not yet, or does not
-        accrue at all, falls back to the countdown. The confirmation labels
-        arrive in phase three, and this method is the only thing that changes
-        when they do.
+        Five dots and a label on screen. The order matters: a deal that has
+        not been confirmed says so, because the gap between capture and
+        confirmation is the window the whole matching control exists for.
         """
         if deal.status == "BLOCKED":
             return "blocked"
@@ -160,10 +203,20 @@ class StateService:
             return "awaiting approval"
         if deal.status == "CLOSED":
             return "closed"
+
+        confirmation = self._confirmation_status(deal.id)
+        if confirmation == "MISMATCHED":
+            return "confirmation mismatch"
+        if confirmation == "DISPUTED":
+            return "disputed with the bank"
+
         if deal.status == "MATURED":
-            return "matured"
+            return "matured, awaiting settlement"
         if not deal.maturity_date:
             return "open ended"
+
+        if confirmation is None:
+            return "awaiting confirmation"
 
         days = (
             date.fromisoformat(deal.maturity_date) - date.fromisoformat(self.as_of_date)
@@ -174,9 +227,30 @@ class StateService:
             return f"accruing {sterling(accrual[0])} a day"
         return f"matures in {days} days"
 
+    def _confirmation_status(self, deal_id: str) -> str | None:
+        from app.models import Confirmation
+
+        row = (
+            self.session.query(Confirmation)
+            .filter(Confirmation.deal_id == deal_id)
+            .first()
+        )
+        return row.match_status if row else None
+
     # -- the panels --------------------------------------------------------
 
     def queue(self) -> list[QueueItem]:
+        """One queue, two causes.
+
+        A mismatch carries its differences, because the panel says the rate
+        was keyed at 4.30 and confirmed at 4.28 rather than reporting that
+        something differs. A limit failure has none: nothing disagreed, the
+        deal was refused.
+        """
+        from app.schemas.models import MatchDifference
+        from app.services.match_service import MatchService
+
+        matching = MatchService(self.session, self.tenant_id, self.as_of_date)
         names = {
             cp.id: cp.name for cp in cp_repo.list_all(self.session, self.tenant_id)
         }
@@ -193,7 +267,18 @@ class StateService:
                 status=item.status,
                 resolution=item.resolution,
                 raised_at=item.raised_at,
-                differences=[],
+                differences=[
+                    MatchDifference(
+                        field_name=difference.field_name,
+                        keyed_value=difference.keyed_value,
+                        confirmed_value=difference.confirmed_value,
+                    )
+                    for difference in (
+                        matching.differences_for(item.confirmation_id)
+                        if item.confirmation_id
+                        else []
+                    )
+                ],
             )
             for item in evidence_repo.open_queue_items(self.session, self.tenant_id)
         ]
@@ -353,7 +438,7 @@ class StateService:
             timeline=self._timeline(deal, breaches),
             run=run,
             limit=limit,
-            confirmation=None,
+            confirmation=self._confirmation_summary(deal_id),
             accruals=[
                 AccrualRow(
                     id=row.id,
@@ -375,10 +460,83 @@ class StateService:
                     self.session, self.tenant_id, self.as_of_date
                 ).summary_for_deal(deal_id)
             ],
-            settlement=None,
-            amendments=[],
+            settlement=self._settlement_view(deal_id),
+            amendments=self._amendment_views(deal_id),
             breaches=breaches,
         )
+
+    def _confirmation_summary(self, deal_id: str):
+        from app.services.match_service import MatchService
+        from app.schemas.models import ConfirmationSummary, MatchDifference
+
+        service = MatchService(self.session, self.tenant_id, self.as_of_date)
+        confirmation = service.for_deal(deal_id)
+        if confirmation is None:
+            return None
+        return ConfirmationSummary(
+            id=confirmation.id,
+            deal_id=confirmation.deal_id,
+            counterparty_id=confirmation.counterparty_id,
+            message_type=confirmation.message_type,
+            reference=confirmation.reference,
+            received_at=confirmation.received_at,
+            match_status=confirmation.match_status,
+            differences=[
+                MatchDifference(
+                    field_name=difference.field_name,
+                    keyed_value=difference.keyed_value,
+                    confirmed_value=difference.confirmed_value,
+                )
+                for difference in service.differences_for(confirmation.id)
+            ],
+        )
+
+    def _settlement_view(self, deal_id: str):
+        from app.schemas.models import SettlementView
+        from app.services.settlement_service import SettlementService
+
+        settlement = SettlementService(
+            self.session, self.tenant_id, self.as_of_date
+        ).for_deal(deal_id)
+        if settlement is None:
+            return None
+        return SettlementView(
+            id=settlement.id,
+            expected_principal_pence=settlement.expected_principal_pence,
+            expected_interest_pence=settlement.expected_interest_pence,
+            confirmed_amount_pence=settlement.confirmed_amount_pence,
+            statement_amount_pence=settlement.statement_amount_pence,
+            match_status=settlement.match_status,
+            break_detail=settlement.break_detail,
+            closed_at=settlement.closed_at,
+        )
+
+    def _amendment_views(self, deal_id: str):
+        from app.models import Amendment
+        from app.schemas.models import AmendmentView
+
+        rows = (
+            self.session.query(Amendment)
+            .filter(Amendment.deal_id == deal_id)
+            .order_by(Amendment.raised_at)
+            .all()
+        )
+        return [
+            AmendmentView(
+                id=row.id,
+                type=row.type,
+                effective_date=row.effective_date,
+                new_principal_pence=row.new_principal_pence,
+                new_rate_bp=row.new_rate_bp,
+                new_maturity_date=row.new_maturity_date,
+                reason=row.reason,
+                status=row.status,
+                raised_by=row.raised_by,
+                raised_at=row.raised_at,
+                applied_at=row.applied_at,
+            )
+            for row in rows
+        ]
 
     def _timeline(self, deal, breaches: list[BreachView]) -> list[TimelineEvent]:
         """Model 2 in one view.
@@ -459,6 +617,58 @@ class StateService:
             )
         )
 
+        confirmation = self._confirmation_summary(deal.id)
+        events.append(
+            TimelineEvent(
+                key="confirmed",
+                title=(
+                    "Confirmation received"
+                    if confirmation
+                    else "Awaiting confirmation"
+                ),
+                detail=(
+                    f"{confirmation.message_type} {confirmation.reference}. "
+                    + (
+                        "Matched, and every field agreed."
+                        if confirmation.match_status == "MATCHED"
+                        else f"{len(confirmation.differences)} field(s) disagree."
+                        if confirmation.match_status == "MISMATCHED"
+                        else "Disputed with the bank."
+                        if confirmation.match_status == "DISPUTED"
+                        else "Waiting for a deal to match to."
+                    )
+                    if confirmation
+                    else "It arrives on its own route, which is the only reason "
+                    "matching is a control."
+                ),
+                occurred_at=confirmation.received_at[:10] if confirmation else None,
+                source="OUTSIDE",
+                state=(
+                    "DONE"
+                    if confirmation and confirmation.match_status == "MATCHED"
+                    else "WARN"
+                    if confirmation
+                    else "FUTURE"
+                ),
+            )
+        )
+
+        for amendment in self._amendment_views(deal.id):
+            events.append(
+                TimelineEvent(
+                    key=f"amendment_{amendment.id}",
+                    title=f"Amendment {amendment.status.lower()}",
+                    detail=(
+                        f"{amendment.type.replace('_', ' ').lower()} from "
+                        f"{amendment.effective_date}. {amendment.reason} "
+                        "Everything recognised after this date was recalculated."
+                    ),
+                    occurred_at=(amendment.applied_at or amendment.raised_at)[:10],
+                    source="PLATFORM",
+                    state="WARN",
+                )
+            )
+
         for breach in breaches:
             events.append(
                 TimelineEvent(
@@ -482,6 +692,29 @@ class StateService:
                     state="DONE" if deal.status in ("MATURED", "CLOSED") else "FUTURE",
                 )
             )
+
+        settlement = self._settlement_view(deal.id)
+        events.append(
+            TimelineEvent(
+                key="three_way",
+                title="Three way match",
+                detail=(
+                    "The deal record, the confirmation and the statement."
+                    if settlement is None
+                    else settlement.break_detail
+                    or "All three agree."
+                ),
+                occurred_at=None if settlement is None else deal.maturity_date,
+                source="PLATFORM",
+                state=(
+                    "FUTURE"
+                    if settlement is None
+                    else "DONE"
+                    if settlement.match_status == "AGREED"
+                    else "WARN"
+                ),
+            )
+        )
 
         events.append(
             TimelineEvent(

@@ -183,11 +183,25 @@ class DealService:
         if recommendation_id and not blocked:
             self._link_recommendation(recommendation_id, deal)
 
+        if not blocked:
+            # A confirmation can arrive before the deal is keyed. Without
+            # this, one that beat the deal would sit unmatched for ever and
+            # somebody would have to notice.
+            self._match_waiting_confirmation(deal)
+
         self.session.flush()
         result.check_run_id = check_run_id
         if overriding:
             result.outcome = "OVERRIDDEN"
         return Booking(deal=deal, result=result, queue_item_id=queue_item_id)
+
+    def _match_waiting_confirmation(self, deal: Deal) -> None:
+        """The out of order case. Document 5 makes it an exit criterion."""
+        from app.services.match_service import MatchService
+
+        MatchService(
+            self.session, self.tenant_id, self.as_of_date
+        ).rematch_unmatched_for(deal)
 
     def _link_recommendation(self, recommendation_id: str, deal: Deal) -> None:
         """The dashed edge, and the only place it is written.

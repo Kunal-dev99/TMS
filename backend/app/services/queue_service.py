@@ -5,9 +5,10 @@ the deal. A confirmation mismatch happens after it exists and is resolved by
 agreeing what was actually traded. They share one strip entry, which is what
 keeps the navigation budget at five.
 
-Two of the six resolutions belong to a cause that arrives in phase three.
-They are here because the enumeration is part of the contract, and an
-unreachable code is either dead or a rule that is not being enforced.
+All six resolutions are reachable since phase three. Two of them belong to
+the confirmation cause and are refused against a limit failure, because
+applying a mismatch resolution to a limit failure is a defect rather than a
+preference.
 """
 
 from sqlalchemy.orm import Session
@@ -32,11 +33,16 @@ RESOLUTIONS = {
 
 class QueueService:
     def __init__(
-        self, session: Session, tenant_id: str, policy: PolicyVersion
+        self,
+        session: Session,
+        tenant_id: str,
+        policy: PolicyVersion,
+        as_of_date: str | None = None,
     ) -> None:
         self.session = session
         self.tenant_id = tenant_id
         self.policy = policy
+        self.as_of_date = as_of_date or ""
 
     def open_items(self) -> list[ExceptionItem]:
         return evidence_repo.open_queue_items(self.session, self.tenant_id)
@@ -111,5 +117,97 @@ class QueueService:
             if not outstanding:
                 deal.status = "PROPOSED"
 
-        # CORRECTED and CHALLENGED belong to the confirmation cause, which
-        # arrives in phase three with MatchService.
+        if resolution == "CORRECTED":
+            self._correct_to_confirmation(item, deal)
+
+        if resolution == "CHALLENGED":
+            self._challenge(item)
+
+    def _correct_to_confirmation(self, item: ExceptionItem, deal) -> None:
+        """The deal takes the confirmed terms, and the checks rerun.
+
+        A corrected rate changes the accrual and can change the measured
+        exposure, so this is not a data fix: it is a new decision about a
+        position, and it has to pass the gate like any other.
+
+        The check run is written even when it passes, because the question
+        afterwards is what the terms were tested against, and a correction
+        with no evidence is a correction somebody has to take on trust.
+        """
+        import json
+
+        from app.ids import new_id, now
+        from app.models import CheckRun, Confirmation
+        from app.services.check_engine import CheckEngine
+
+        if item.confirmation_id is None:
+            return
+        confirmation = self.session.get(Confirmation, item.confirmation_id)
+        if confirmation is None:
+            return
+
+        deal.principal_pence = confirmation.principal_pence
+        deal.rate_bp = confirmation.rate_bp
+        deal.value_date = confirmation.value_date
+        if confirmation.maturity_date:
+            deal.maturity_date = confirmation.maturity_date
+        self.session.flush()
+
+        evaluation = CheckEngine(
+            self.session, self.tenant_id, self.as_of_date, self.policy
+        ).run(
+            deal.counterparty_id,
+            deal.instrument,
+            deal.principal_pence,
+            deal.tenor_months,
+            deal.rate_bp,
+            exclude_deal_id=deal.id,
+        )
+        result = evaluation.result
+
+        run_id = new_id("run")
+        self.session.add(
+            CheckRun(
+                id=run_id,
+                tenant_id=self.tenant_id,
+                counterparty_id=deal.counterparty_id,
+                deal_id=deal.id,
+                purpose="CORRECTION",
+                as_of_date=self.as_of_date,
+                limit_id=result.limit_id,
+                policy_version_id=self.policy.id,
+                outcome=result.outcome,
+                failed_count=result.failed_count,
+                measured_pence=result.measured_pence,
+                measurement_basis=result.measurement_basis,
+                required_approver=result.required_approver,
+                inputs_json=json.dumps(evaluation.inputs),
+                results_json=json.dumps([c.model_dump() for c in result.checks]),
+                created_by=item.resolved_by or "unknown",
+                created_by_user_id=item.resolved_by_user_id,
+                created_at=now(),
+            )
+        )
+        deal.check_run_id = run_id
+
+        confirmation.match_status = "MATCHED"
+        confirmation.matched_at = now()
+        self.session.flush()
+
+    def _challenge(self, item: ExceptionItem) -> None:
+        """The deal is unchanged and the confirmation is disputed.
+
+        Somebody is talking to the bank, so the item stays open. Closing it
+        would say the disagreement was settled when only the conversation had
+        started.
+        """
+        from app.models import Confirmation
+
+        if item.confirmation_id is not None:
+            confirmation = self.session.get(Confirmation, item.confirmation_id)
+            if confirmation is not None:
+                confirmation.match_status = "DISPUTED"
+
+        item.status = "OPEN"
+        item.resolved_at = None
+        self.session.flush()

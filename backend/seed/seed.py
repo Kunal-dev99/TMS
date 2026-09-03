@@ -25,6 +25,7 @@ from app.db import SessionLocal
 from app.ids import new_id
 from app.models import (
     AppUser,
+    Confirmation,
     Counterparty,
     CurrencyCoverTarget,
     ForecastLine,
@@ -206,6 +207,33 @@ def load(session: Session) -> None:
                 limit_id_at_booking=deal["limit_id_at_booking"],
                 policy_version_id=s.POLICY_VERSION["id"],
                 check_run_id=None,
+            )
+        )
+
+    session.flush()
+
+    # Phase 3. The confirmations that have already arrived. Both agree with
+    # what was keyed, so both are matched and neither raises a queue item.
+    deals_by_id = {deal["id"]: deal for deal in s.DEALS}
+    for confirmation in s.CONFIRMATIONS:
+        deal = deals_by_id[confirmation["deal_id"]]
+        session.add(
+            Confirmation(
+                id=confirmation["id"],
+                tenant_id=s.TENANT_ID,
+                deal_id=deal["id"],
+                counterparty_id=confirmation["counterparty_id"],
+                message_type=confirmation["message_type"],
+                reference=confirmation["reference"],
+                instrument=deal["instrument"],
+                principal_pence=deal["principal_pence"],
+                rate_bp=deal["rate_bp"],
+                value_date=deal["value_date"],
+                maturity_date=deal["maturity_date"],
+                received_at=NOW,
+                match_status="MATCHED",
+                matched_at=NOW,
+                raw_payload=None,
             )
         )
 

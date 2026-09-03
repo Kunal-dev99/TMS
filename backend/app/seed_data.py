@@ -367,6 +367,36 @@ USERS = [
 ]
 
 # --------------------------------------------------------------------------
+# Confirmations. Phase 3.
+# --------------------------------------------------------------------------
+#
+# Two of the four positions have been confirmed and two have not, which is
+# the mix screen 6 of document 3 shows: a blotter where some rows are
+# accruing and some are still waiting on the bank.
+#
+# None of them disagrees. A mismatch is not seeded on purpose: the queue
+# opens empty, and a demonstration creates the mismatch by ingesting a
+# confirmation with a different rate. Finding one pre-baked is a weaker
+# argument than watching one appear.
+
+CONFIRMATIONS = [
+    {
+        "id": "cnf_nts_001",
+        "deal_id": "dl_nts_001",
+        "counterparty_id": "cp_nts",
+        "message_type": "MT320",
+        "reference": "NTS-2026-88213",
+    },
+    {
+        "id": "cnf_cal_001",
+        "deal_id": "dl_cal_001",
+        "counterparty_id": "cp_caledonia",
+        "message_type": "MT320",
+        "reference": "CAL-2026-41077",
+    },
+]
+
+# --------------------------------------------------------------------------
 # The investment policy. Phase 2.
 # --------------------------------------------------------------------------
 #

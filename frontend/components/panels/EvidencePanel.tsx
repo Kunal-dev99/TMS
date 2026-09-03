@@ -5,6 +5,11 @@ import { CheckCircle2, Circle, FileText, PenLine, XCircle } from "lucide-react";
 
 import { EmptyState, PanelShell } from "@/components/PanelShell";
 import { Button } from "@/components/ui/button";
+import {
+  AmendmentSection,
+  ConfirmationSection,
+  SettlementSection,
+} from "@/components/panels/DealLifecycle";
 import { approveDeal, getDeal } from "@/lib/api";
 import { approverLabel, perCent, shortDate, sterling } from "@/lib/format";
 import type { DealDetail } from "@/lib/types";
@@ -243,6 +248,75 @@ export function EvidencePanel({
             </section>
           )}
 
+          <ConfirmationSection detail={detail} />
+
+          <AmendmentSection
+            detail={detail}
+            onChanged={() => {
+              reload();
+              onSigned?.();
+            }}
+          />
+
+          <SettlementSection
+            detail={detail}
+            onChanged={() => {
+              reload();
+              onSigned?.();
+            }}
+          />
+
+          {detail.accruals.length > 0 ? (
+            <section>
+              <h3 className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                Recognised, per day
+              </h3>
+              <p className="mb-2 text-[10px] text-muted-foreground">
+                Stored rather than recomputed, because what was recognised on
+                a day is a fact and a later recalculation would quietly
+                rewrite it.
+              </p>
+              <div className="flex items-baseline justify-between rounded border border-border bg-surface-2/30 p-2.5 text-xs">
+                <span className="text-muted-foreground">
+                  {detail.accruals.filter((row) => !row.reversal_of).length}{" "}
+                  days
+                  {detail.accruals.some((row) => row.reversal_of)
+                    ? `, ${detail.accruals.filter((row) => row.reversal_of).length} reversed`
+                    : ""}
+                </span>
+                <span className="num font-medium">
+                  {sterling(
+                    detail.accruals.reduce(
+                      (total, row) => total + row.amount_pence,
+                      0,
+                    ),
+                  )}
+                </span>
+              </div>
+              {detail.journals.length > 0 ? (
+                <ul className="mt-2 space-y-1">
+                  {detail.journals.map((journal) => (
+                    <li
+                      key={`${journal.period}-${journal.status}`}
+                      className="flex items-baseline justify-between text-[10px]"
+                    >
+                      <span className="text-muted-foreground">
+                        {journal.period}, {journal.count} entries,{" "}
+                        {journal.status.toLowerCase()}
+                        {journal.oracle_reference
+                          ? ` · ${journal.oracle_reference}`
+                          : ""}
+                      </span>
+                      <span className="num">
+                        {sterling(journal.amount_pence)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </section>
+          ) : null}
+
           {detail.breaches.length > 0 ? (
             <section>
               <h3 className="mb-2 text-[10px] font-medium uppercase tracking-wider text-destructive">
@@ -259,9 +333,10 @@ export function EvidencePanel({
           <section className="flex items-start gap-2 rounded-lg border border-border bg-surface-2/30 p-3">
             <Circle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <p className="text-[10px] text-muted-foreground">
-              Accruals, journals, the confirmation and the settlement arrive in
-              phases two and three. This panel grows as they do; it does not
-              move.
+              The whole of the deal lifecycle, in one view. Execution and
+              confirmation are labelled outside, payment and journals as
+              Oracle, so the boundary is visible without a separate
+              integration screen.
             </p>
           </section>
         </div>

@@ -16,8 +16,53 @@ from app.api.deps import Caller, Ctx
 from app.repo import oracle as oracle_repo
 from app.schemas import requests as rq
 from app.services.nightly_job import NightlyJob
+from app.services.settlement_service import SettlementService
 
 router = APIRouter(tags=["Jobs and the Oracle boundary"])
+
+@router.post("/statements", status_code=201)
+def ingest_statement(
+    body: rq.StatementLineRequest, ctx: Ctx, caller: Caller
+) -> dict:
+    """Ingest a bank statement line. The third source of the settlement match.
+
+    Prior day rather than intraday. A stated boundary rather than a defect:
+    nothing here pretends to know what happened this morning.
+    """
+    line = SettlementService(
+        ctx.session, ctx.tenant_id, ctx.as_of_date
+    ).ingest_statement_line(
+        account_name=body.account_name,
+        amount_pence=body.amount_pence,
+        value_date=body.value_date,
+        reference=body.reference,
+    )
+    ctx.session.commit()
+    return {
+        "statement_line_id": line.id,
+        "account_name": line.account_name,
+        "amount_pence": line.amount_pence,
+        "value_date": line.value_date,
+        "reference": line.reference,
+    }
+
+
+@router.get("/statements")
+def list_statements(ctx: Ctx, caller: Caller) -> list[dict]:
+    return [
+        {
+            "id": line.id,
+            "account_name": line.account_name,
+            "amount_pence": line.amount_pence,
+            "value_date": line.value_date,
+            "reference": line.reference,
+            "received_at": line.received_at,
+        }
+        for line in SettlementService(
+            ctx.session, ctx.tenant_id, ctx.as_of_date
+        ).statement_lines()
+    ]
+
 
 
 @router.post("/jobs/nightly", status_code=202)

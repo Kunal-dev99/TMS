@@ -189,6 +189,7 @@ export interface QueueItem {
   status: "OPEN" | "RESOLVED";
   resolution: string | null;
   raised_at: string;
+  differences: MatchDifference[];
 }
 
 export interface BreachView {
@@ -251,16 +252,24 @@ export interface TimelineEvent {
  * declared now because the panel is built against the contract rather than
  * against what happens to exist.
  */
+export interface JournalSummary {
+  period: string;
+  status: "BUILT" | "POSTED" | "FAILED";
+  count: number;
+  amount_pence: number;
+  oracle_reference: string | null;
+}
+
 export interface DealDetail {
   deal: DealSummary;
   timeline: TimelineEvent[];
   run: CheckResult | null;
   limit: LimitVersion | null;
-  confirmation: unknown | null;
-  accruals: unknown[];
-  journals: unknown[];
-  settlement: unknown | null;
-  amendments: unknown[];
+  confirmation: ConfirmationSummary | null;
+  accruals: AccrualRow[];
+  journals: JournalSummary[];
+  settlement: SettlementView | null;
+  amendments: AmendmentView[];
   breaches: BreachView[];
 }
 
@@ -294,4 +303,112 @@ export interface AdvisoryRunView {
   model_name: string | null;
   started_at: string;
   finished_at: string | null;
+}
+
+export interface AmendmentPreview {
+  accruals_affected: number;
+  amount_to_reverse_pence: number;
+  periods_affected: string[];
+  any_period_closed: boolean;
+}
+
+export interface AmendmentView {
+  id: string;
+  type: string;
+  effective_date: string;
+  new_principal_pence: number | null;
+  new_rate_bp: number | null;
+  new_maturity_date: string | null;
+  reason: string;
+  status: "RAISED" | "APPLIED" | "REJECTED";
+  raised_by: string;
+  raised_at: string;
+  applied_at: string | null;
+}
+
+export interface MatchDifference {
+  field_name: string;
+  keyed_value: string;
+  confirmed_value: string;
+}
+
+export interface ConfirmationSummary {
+  id: string;
+  deal_id: string | null;
+  counterparty_id: string | null;
+  message_type: string;
+  reference: string;
+  received_at: string;
+  match_status: "UNMATCHED" | "MATCHED" | "MISMATCHED" | "DISPUTED";
+  differences: MatchDifference[];
+}
+
+export interface SettlementView {
+  id: string;
+  expected_principal_pence: number;
+  expected_interest_pence: number;
+  confirmed_amount_pence: number | null;
+  statement_amount_pence: number | null;
+  match_status: "PENDING" | "AGREED" | "BREAK";
+  break_detail: string | null;
+  closed_at: string | null;
+}
+
+export interface AccrualRow {
+  id: string;
+  accrual_date: string;
+  day_count: number;
+  rate_bp: number;
+  amount_pence: number;
+  cumulative_pence: number;
+  reversal_of: string | null;
+  amendment_id: string | null;
+}
+
+export interface StatementLine {
+  id: string;
+  account_name: string;
+  amount_pence: number;
+  value_date: string;
+  reference: string | null;
+  received_at: string;
+}
+
+export interface HedgeLinkView {
+  id: string;
+  deal_id: string;
+  covered_amount_minor: number;
+  currency: string;
+  linked_at: string;
+  unlinked_at: string | null;
+  unlink_reason: string | null;
+}
+
+export interface CurrencyBucket {
+  bucket: string;
+  net_minor: number;
+  covered_minor: number;
+  target_cover_bp: number;
+  covered_bp: number;
+}
+
+export interface CurrencyExposureRow {
+  id: string;
+  currency: string;
+  amount_minor: number;
+  direction: "PAYABLE" | "RECEIVABLE";
+  expected_date: string;
+  source: string;
+  source_reference: string | null;
+  status: "IDENTIFIED" | "PARTIALLY_COVERED" | "COVERED" | "SETTLED";
+  hedges: HedgeLinkView[];
+}
+
+/** Never netted against counterparty exposure. The warning ships with it. */
+export interface CurrencyExposureView {
+  as_of_date: string;
+  currency: string;
+  buckets: CurrencyBucket[];
+  exposures: CurrencyExposureRow[];
+  warning: string;
 }

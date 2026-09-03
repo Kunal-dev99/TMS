@@ -26,6 +26,7 @@ from app.models import PolicyVersion
 from app.services.accrual_service import AccrualService
 from app.services.advisory_service import AdvisoryService
 from app.services.journal_service import JournalService
+from app.services.settlement_service import SettlementService
 
 
 @dataclass
@@ -75,7 +76,17 @@ class NightlyJob:
         result.journals_built = journals.build_from_accruals()
         result.steps.append(f"Built {result.journals_built} journal entries.")
 
-        # 3. Advisory, last, against positions that are now up to date.
+        # 3. Anything past its maturity date is due. Matured means due;
+        #    closed means three sources agreed. Until it closes the
+        #    counterparty still holds the headroom, which is why these are
+        #    two states rather than one.
+        matured = SettlementService(
+            self.session, self.tenant_id, target
+        ).mature_due_deals()
+        if matured:
+            result.steps.append(f"{matured} position(s) reached maturity.")
+
+        # 4. Advisory, last, against positions that are now up to date.
         advisory = AdvisoryService(
             self.session, self.tenant_id, target, self.policy
         )

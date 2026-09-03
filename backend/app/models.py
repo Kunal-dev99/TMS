@@ -391,7 +391,7 @@ class CheckRun(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "purpose in ('CHECK','BOOKING','RETEST','CORRECTION',"
+            "purpose in ('CHECK','BOOKING','RETEST','CORRECTION','AMENDMENT',"
             "'ADVISORY_CANDIDATE','ADVISORY_VALIDATION')",
             name="ck_check_run_purpose",
         ),
@@ -649,18 +649,30 @@ class Accrual(Base):
     # read of the blotter, and the blotter is read on every write.
     cumulative_pence: Mapped[int] = mapped_column(Integer, nullable=False)
     reversal_of: Mapped[str | None] = mapped_column(String(40))
+    #: What caused this row, when it was not the nightly job. Set on a
+    #: reversal and on the corrected row that replaces it, so both name the
+    #: amendment an auditor would ask about.
     amendment_id: Mapped[str | None] = mapped_column(String(40))
     created_at: Mapped[str] = mapped_column(String(30), nullable=False)
 
     __table_args__ = (
-        # One original accrual per deal per day. Partial, so a reversal can
-        # share a date with the row it reverses.
+        # One nightly accrual per deal per day. This is what makes the job
+        # idempotent: running it twice for one date writes once.
+        #
+        # Document 1 writes the predicate as `reversal_of is null` alone.
+        # That admits one original per day and nothing else, which makes a
+        # correction impossible: reversing a day and reposting it at the new
+        # terms writes a second original for that date, and an accountant
+        # reverses and reposts rather than editing. The predicate therefore
+        # also excludes rows an amendment produced, so the amendment path is
+        # outside the index while the nightly path is inside it.
+        # See docs/ASSUMPTIONS.md.
         Index(
             "ux_accrual_day",
             "deal_id",
             "accrual_date",
             unique=True,
-            sqlite_where=text("reversal_of IS NULL"),
+            sqlite_where=text("reversal_of IS NULL AND amendment_id IS NULL"),
         ),
         Index("ix_accrual_date", "tenant_id", "accrual_date"),
     )
@@ -958,9 +970,341 @@ class ValidationResult(Base):
     )
 
 
+# --------------------------------------------------------------------------
+# Confirmation and matching. Phase 3.
+# --------------------------------------------------------------------------
+#
+# A confirmation is a first class table rather than a column on the deal, and
+# that is the whole reason matching is a control. The two records arrive by
+# different routes: one is what we think we traded, the other is what the
+# counterparty thinks. Fold the confirmation into the deal and there is
+# nothing to match against, so the control disappears.
+
+
+class Confirmation(Base):
+    """The counterparty's own record of what was agreed.
+
+    Without it you only have your own word for what was traded.
+    """
+
+    __tablename__ = "confirmation"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    # Null until matched. A confirmation can arrive before the deal is keyed,
+    # or for a deal that was never keyed at all, and both cases are the point.
+    deal_id: Mapped[str | None] = mapped_column(String(40), ForeignKey("deal.id"))
+    counterparty_id: Mapped[str | None] = mapped_column(
+        String(40), ForeignKey("counterparty.id")
+    )
+    message_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    reference: Mapped[str] = mapped_column(String(60), nullable=False)
+    instrument: Mapped[str] = mapped_column(String(16), nullable=False)
+    # The confirmed terms, held separately from the keyed terms so the two can
+    # be compared rather than merged.
+    principal_pence: Mapped[int] = mapped_column(Integer, nullable=False)
+    rate_bp: Mapped[int] = mapped_column(Integer, nullable=False)
+    value_date: Mapped[str] = mapped_column(String(10), nullable=False)
+    maturity_date: Mapped[str | None] = mapped_column(String(10))
+    received_at: Mapped[str] = mapped_column(String(30), nullable=False)
+    match_status: Mapped[str] = mapped_column(String(12), nullable=False)
+    matched_at: Mapped[str | None] = mapped_column(String(30))
+    # The original message, kept whole. Never parsed twice.
+    raw_payload: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (
+        CheckConstraint(
+            "message_type in ('MT300','MT320','MT535','MT536','BROKER_NOTE','DOCUMENT')",
+            name="ck_confirmation_message_type",
+        ),
+        CheckConstraint(
+            "match_status in ('UNMATCHED','MATCHED','MISMATCHED','DISPUTED')",
+            name="ck_confirmation_match_status",
+        ),
+        # Deduplicated by counterparty and reference. A repeat returns the
+        # existing confirmation rather than creating a second one.
+        UniqueConstraint(
+            "tenant_id", "counterparty_id", "reference", name="ux_confirmation_reference"
+        ),
+        # The matching queue: confirmations looking for a deal.
+        Index(
+            "ix_confirmation_unmatched",
+            "tenant_id",
+            "match_status",
+            sqlite_where=text("deal_id IS NULL"),
+        ),
+    )
+
+
+class MatchDifference(Base):
+    """What disagreed, field by field.
+
+    One row per field, so the interface can say the rate was keyed at 4.30
+    and confirmed at 4.28 rather than reporting that something differs.
+    """
+
+    __tablename__ = "match_difference"
+
+    id: Mapped[str] = _id()
+    confirmation_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("confirmation.id"), nullable=False, index=True
+    )
+    field_name: Mapped[str] = mapped_column(String(30), nullable=False)
+    # Both as text, because the fields have different types and this table
+    # exists to be displayed rather than computed on.
+    keyed_value: Mapped[str] = mapped_column(String(60), nullable=False)
+    confirmed_value: Mapped[str] = mapped_column(String(60), nullable=False)
+
+
+# --------------------------------------------------------------------------
+# Amendment and settlement. Phase 3.
+# --------------------------------------------------------------------------
+
+
+class Amendment(Base):
+    """A break, roll, partial drawdown or correction.
+
+    The second and last time a person touches a deal.
+
+    Recalculating is the easy half. Knowing what was already recognised is
+    the hard half, and it is only possible because accrual is stored per day
+    rather than computed on read.
+    """
+
+    __tablename__ = "amendment"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    deal_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("deal.id"), nullable=False, index=True
+    )
+    type: Mapped[str] = mapped_column(String(20), nullable=False)
+    # Everything recognised on or after this date has to be recalculated.
+    effective_date: Mapped[str] = mapped_column(String(10), nullable=False)
+    # Only the terms that changed. A null means unchanged.
+    new_principal_pence: Mapped[int | None] = mapped_column(Integer)
+    new_rate_bp: Mapped[int | None] = mapped_column(Integer)
+    new_maturity_date: Mapped[str | None] = mapped_column(String(10))
+    # Required, because an amendment that reverses posted journals needs an
+    # explanation.
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    raised_by: Mapped[str] = mapped_column(String(120), nullable=False)
+    raised_by_user_id: Mapped[str | None] = mapped_column(
+        String(40), ForeignKey("app_user.id", name="fk_amendment_raised_by")
+    )
+    raised_at: Mapped[str] = mapped_column(String(30), nullable=False)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="RAISED")
+    applied_at: Mapped[str | None] = mapped_column(String(30))
+
+    __table_args__ = (
+        CheckConstraint(
+            "type in ('BREAK','ROLL','PARTIAL_DRAWDOWN','CORRECTION')",
+            name="ck_amendment_type",
+        ),
+        CheckConstraint(
+            "status in ('RAISED','APPLIED','REJECTED')", name="ck_amendment_status"
+        ),
+    )
+
+
+class BankStatementLine(Base):
+    """The third source. Supplied by Oracle, prior day rather than intraday.
+
+    A stated boundary rather than a defect.
+    """
+
+    __tablename__ = "bank_statement_line"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    account_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    # Signed. Negative on a payment out.
+    amount_pence: Mapped[int] = mapped_column(Integer, nullable=False)
+    value_date: Mapped[str] = mapped_column(String(10), nullable=False)
+    # What the bank quoted. Usually, but not always, the deal reference.
+    reference: Mapped[str | None] = mapped_column(String(60))
+    received_at: Mapped[str] = mapped_column(String(30), nullable=False)
+
+    __table_args__ = (Index("ix_statement_line", "tenant_id", "value_date"),)
+
+
+class Settlement(Base):
+    """Maturity and close. Where three sources have to agree.
+
+    Two of three agreeing is not enough. If the deal record and the
+    confirmation agree but the statement differs, the money did not arrive as
+    promised, and that is a break rather than a close.
+    """
+
+    __tablename__ = "settlement"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    deal_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("deal.id"), nullable=False
+    )
+    # What the deal record says should arrive.
+    expected_principal_pence: Mapped[int] = mapped_column(Integer, nullable=False)
+    expected_interest_pence: Mapped[int] = mapped_column(Integer, nullable=False)
+    # What the counterparty's confirmation says.
+    confirmed_amount_pence: Mapped[int | None] = mapped_column(Integer)
+    # What the bank statement shows.
+    statement_amount_pence: Mapped[int | None] = mapped_column(Integer)
+    statement_line_id: Mapped[str | None] = mapped_column(
+        String(40), ForeignKey("bank_statement_line.id")
+    )
+    match_status: Mapped[str] = mapped_column(String(12), nullable=False)
+    # Which two of the three agree, and by how much the third differs.
+    break_detail: Mapped[str | None] = mapped_column(Text)
+    settled_by: Mapped[str | None] = mapped_column(String(120))
+    settled_by_user_id: Mapped[str | None] = mapped_column(
+        String(40), ForeignKey("app_user.id", name="fk_settlement_settled_by")
+    )
+    # When the deal was closed and the headroom released.
+    closed_at: Mapped[str | None] = mapped_column(String(30))
+
+    __table_args__ = (
+        CheckConstraint(
+            "match_status in ('PENDING','AGREED','BREAK')", name="ck_settlement_status"
+        ),
+        # One settlement per deal.
+        UniqueConstraint("deal_id", name="ux_settlement_deal"),
+    )
+
+
+# --------------------------------------------------------------------------
+# Currency risk. Phase 3.
+# --------------------------------------------------------------------------
+#
+# Two different things are called exposure, and this is the single most
+# likely modelling mistake in the whole system. The defence is structural
+# rather than documentary:
+#
+#   They never share a table. Counterparty exposure has no table at all, it
+#   is computed from deal rows. Currency exposure has its own.
+#   They never share a unit. One is pence; this is minor units with an
+#   explicit currency on every figure.
+#   They never share a name. No column is called exposure without a
+#   qualifier.
+#   No query joins them. currency_exposure deliberately has no
+#   counterparty_id, because an obligation to a supplier is not an
+#   obligation to a bank.
+
+
+class CurrencyExposure(Base):
+    """A future obligation in another currency.
+
+    It exists before any hedge and often outlives several of them.
+    """
+
+    __tablename__ = "currency_exposure"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    # Always present. There is no default currency on this table.
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    # Minor units of that currency. Not pence, and the suffix says so.
+    amount_minor: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Inflows offset outflows, and hedging the gross is buying cover you do
+    # not need.
+    direction: Mapped[str] = mapped_column(String(12), nullable=False)
+    expected_date: Mapped[str] = mapped_column(String(10), nullable=False)
+    source: Mapped[str] = mapped_column(String(20), nullable=False)
+    source_reference: Mapped[str | None] = mapped_column(String(60))
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="IDENTIFIED")
+    created_by: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_by_user_id: Mapped[str | None] = mapped_column(
+        String(40), ForeignKey("app_user.id", name="fk_currency_exposure_created_by")
+    )
+    created_at: Mapped[str] = mapped_column(String(30), nullable=False)
+    settled_at: Mapped[str | None] = mapped_column(String(30))
+
+    __table_args__ = (
+        CheckConstraint(
+            "direction in ('PAYABLE','RECEIVABLE')", name="ck_currency_direction"
+        ),
+        CheckConstraint(
+            "source in ('CONTRACT','PURCHASE_ORDER','INVOICE','FORECAST')",
+            name="ck_currency_source",
+        ),
+        CheckConstraint(
+            "status in ('IDENTIFIED','PARTIALLY_COVERED','COVERED','SETTLED')",
+            name="ck_currency_status",
+        ),
+        Index("ix_currency_exposure_window", "tenant_id", "currency", "expected_date"),
+    )
+
+
+class HedgeLink(Base):
+    """What covers what.
+
+    The step that makes it hedging rather than owning forwards. Without the
+    link you own forwards and cannot say anything is covered.
+
+    One forward can cover several exposures and one exposure can take several
+    forwards, so the amount lives on the link rather than on either end.
+    """
+
+    __tablename__ = "hedge_link"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    currency_exposure_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("currency_exposure.id"), nullable=False
+    )
+    # A foreign key to the FX forward, which is an ordinary deal row. This is
+    # why there is no separate hedge table.
+    deal_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("deal.id"), nullable=False
+    )
+    covered_amount_minor: Mapped[int] = mapped_column(Integer, nullable=False)
+    linked_by: Mapped[str] = mapped_column(String(120), nullable=False)
+    linked_at: Mapped[str] = mapped_column(String(30), nullable=False)
+    # Null while the link holds.
+    unlinked_at: Mapped[str | None] = mapped_column(String(30))
+    unlink_reason: Mapped[str | None] = mapped_column(String(24))
+    unlinked_by: Mapped[str | None] = mapped_column(String(120))
+
+    __table_args__ = (
+        CheckConstraint(
+            "unlink_reason is null or unlink_reason in "
+            "('ROLLED','CLOSED_EARLY','EXPOSURE_CANCELLED','REALLOCATED')",
+            name="ck_hedge_unlink_reason",
+        ),
+        # Live coverage for one exposure.
+        Index(
+            "ix_hedge_live",
+            "currency_exposure_id",
+            sqlite_where=text("unlinked_at IS NULL"),
+        ),
+    )
+
+
+class FxRate(Base):
+    """Rates used to value a forward and to convert an obligation."""
+
+    __tablename__ = "fx_rate"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    # For example GBPEUR. Always in one direction, so nothing has to guess
+    # which way to divide.
+    pair: Mapped[str] = mapped_column(String(6), nullable=False)
+    # Scaled by one hundred million. Basis points are too coarse for a rate,
+    # and eight decimal places is the market convention.
+    rate_e8: Mapped[int] = mapped_column(Integer, nullable=False)
+    as_of: Mapped[str] = mapped_column(String(10), nullable=False)
+    source: Mapped[str] = mapped_column(String(40), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "pair", "as_of", name="ux_fx_rate_day"),
+    )
+
+
 #: Every table the running system has. Named for the phase that introduced
-#: the first of them; identity added two in phase 1.5, and accounting and the
-#: advisory layer added ten in phase 2.
+#: the first of them; identity added two in phase 1.5, accounting and the
+#: advisory layer added ten in phase 2, and the deal lifecycle and currency
+#: risk added eight in phase 3.
 PHASE_ONE_TABLES = [
     Tenant,
     AppUser,
@@ -989,4 +1333,12 @@ PHASE_ONE_TABLES = [
     Candidate,
     Recommendation,
     ValidationResult,
+    Confirmation,
+    MatchDifference,
+    Amendment,
+    BankStatementLine,
+    Settlement,
+    CurrencyExposure,
+    HedgeLink,
+    FxRate,
 ]

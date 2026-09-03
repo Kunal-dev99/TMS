@@ -29,7 +29,7 @@ def get_queue(ctx: Ctx, caller: Caller) -> list[QueueItem]:
 def resolve_queue_item(
     item_id: str, body: rq.ResolveQueueItemRequest, ctx: Ctx, caller: Caller
 ) -> dict:
-    service = QueueService(ctx.session, ctx.tenant_id, ctx.policy)
+    service = QueueService(ctx.session, ctx.tenant_id, ctx.policy, ctx.as_of_date)
     item = service.resolve(
         item_id=item_id,
         resolution=body.resolution,
