@@ -1301,6 +1301,30 @@ class FxRate(Base):
     )
 
 
+class NewsItem(Base):
+    """A news item about a counterparty, from any source.
+
+    The prototype seeds a small set for each counterparty so the credit-
+    signal scanner has something to read. In production this would be a
+    feed from a real news provider (Bloomberg, Reuters, LexisNexis) with
+    an ingest job hitting this table nightly. The service that reads it
+    does not need to know which feed produced the row.
+    """
+
+    __tablename__ = "news_item"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    counterparty_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("counterparty.id"), nullable=False, index=True
+    )
+    source: Mapped[str] = mapped_column(String(60), nullable=False)
+    headline: Mapped[str] = mapped_column(String(240), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    published_at: Mapped[str] = mapped_column(String(10), nullable=False)
+    ingested_at: Mapped[str] = mapped_column(String(30), nullable=False)
+
+
 #: Every table the running system has. Named for the phase that introduced
 #: the first of them; identity added two in phase 1.5, accounting and the
 #: advisory layer added ten in phase 2, and the deal lifecycle and currency
@@ -1341,4 +1365,5 @@ PHASE_ONE_TABLES = [
     CurrencyExposure,
     HedgeLink,
     FxRate,
+    NewsItem,
 ]

@@ -36,6 +36,7 @@ from app.models import (
     CpLimit,
     Deal,
     OracleBalance,
+    NewsItem,
     PolicyVersion,
     RatingBand,
     SystemClock,
@@ -301,6 +302,24 @@ def load(session: Session) -> None:
                 balance_pence=balance["balance_pence"],
                 as_of_date=balance["as_of_date"],
                 received_at=NOW,
+            )
+        )
+
+
+    # News items — one prototype substitute for a live newswire, so the
+    # credit-signal scanner has something to read on open. Assumption 48
+    # covers why this is seeded rather than fed live.
+    for item in getattr(s, "NEWS_ITEMS", []):
+        session.add(
+            NewsItem(
+                id=item["id"],
+                tenant_id=s.TENANT_ID,
+                counterparty_id=item["counterparty_id"],
+                source=item["source"],
+                headline=item["headline"],
+                body=item["body"],
+                published_at=item["published_at"],
+                ingested_at=NOW,
             )
         )
 

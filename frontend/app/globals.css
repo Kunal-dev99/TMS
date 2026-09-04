@@ -3,109 +3,129 @@
 @tailwind utilities;
 
 /* ----------------------------------------------------------------------
- * Redwood Professional design tokens
+ * Redwood theme
  *
- * Light is the default theme (matches Oracle Fusion / Workday / Stripe).
- * Dark mode is enabled by adding `class="dark"` on <html>.
- * The pre-hydration script in <head> sets this from localStorage before
- * paint, so there's no FOUC.
+ * A warm palette anchored on brick red -- Oracle Redwood in spirit, not
+ * the earlier navy-with-red-accent. Both modes share the same hue family
+ * so switching between them reads as the same identity, not two apps.
+ *
+ * Light is the default. Dark mode is enabled by adding `class="dark"` on
+ * <html>. The pre-hydration script in <head> sets this from localStorage
+ * before paint, so there's no FOUC.
+ *
+ * Hues in HSL:
+ *   Redwood       hue  8 (brick red, ranging cool at the top to warm)
+ *   Sand          hue 34 (warm canvas)
+ *   Bronze warn   hue 30
+ *   Forest ok     hue 124
+ *
+ * The two modes never contradict each other -- a red-family primary in
+ * light stays a red-family primary in dark, just lighter and less
+ * saturated to keep contrast without vibrating on a dark surface.
  * ---------------------------------------------------------------------- */
 
 @layer base {
   :root {
-    /* Surface elevations (0 = canvas, 3 = topmost) */
-    --surface-0: 60 11% 98%;          /* #FAFAF7 — warm off-white canvas */
-    --surface-1: 0 0% 100%;           /* #FFFFFF — cards, sidebar */
-    --surface-2: 39 17% 94%;          /* #F3F1EC — hover/secondary */
-    --surface-3: 39 16% 89%;          /* #EAE7DF — pressed/raised */
+    /* Warm surface elevations (0 = canvas, 3 = topmost). The whole
+       family is warm off-white -> stone, so a card on canvas reads as
+       a single family, not black-on-grey. */
+    --surface-0: 36 33% 97%;          /* #FAF6EF -- warm cream canvas */
+    --surface-1: 40 40% 99%;          /* #FEFBF6 -- cards, popovers */
+    --surface-2: 34 25% 93%;          /* #EFE9DE -- hover, secondary */
+    --surface-3: 32 20% 88%;          /* #E3DBCB -- pressed, raised */
 
     --background: var(--surface-0);
-    --foreground: 0 0% 10%;           /* #1A1A1A — ink */
+    --foreground: 12 20% 14%;         /* #2C221F -- warm ink */
 
     --card: var(--surface-1);
     --card-foreground: var(--foreground);
     --popover: var(--surface-1);
     --popover-foreground: var(--foreground);
 
-    /* Action colors — navy primary, Oracle red as restrained accent */
-    --primary: 213 59% 26%;           /* #1B3A6B — deep navy */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 39 17% 94%;          /* same as surface-2 */
+    /* Action colors -- Redwood brick primary, warm accent. */
+    --primary: 8 68% 38%;             /* #A5321F -- deep brick red */
+    --primary-foreground: 40 40% 99%;
+    --secondary: 34 25% 93%;
     --secondary-foreground: var(--foreground);
-    --accent: 8 60% 49%;              /* #C74634 — Oracle red, used sparingly */
-    --accent-foreground: 0 0% 100%;
+    --accent: 14 74% 52%;             /* #DD5C2A -- warm terracotta */
+    --accent-foreground: 40 40% 99%;
 
-    /* Semantic */
-    --info: 213 59% 36%;
-    --info-foreground: 0 0% 100%;
-    --success: 124 46% 33%;           /* #2E7D32 — forest green */
-    --success-foreground: 0 0% 100%;
-    --warning: 36 100% 35%;           /* #B26A00 — amber-bronze */
-    --warning-foreground: 0 0% 100%;
-    --danger: 8 60% 49%;
-    --danger-foreground: 0 0% 100%;
-    --destructive: 8 60% 49%;         /* Oracle red */
-    --destructive-foreground: 0 0% 100%;
+    /* Semantic. Warning is a bronze so it does not fight the brick
+       primary; success is a forest green that still reads warm. */
+    --info: 200 45% 40%;
+    --info-foreground: 40 40% 99%;
+    --success: 130 32% 30%;           /* #366B41 -- forest */
+    --success-foreground: 40 40% 99%;
+    --warning: 30 78% 40%;            /* #B76719 -- burnt amber */
+    --warning-foreground: 40 40% 99%;
+    --danger: 8 68% 38%;
+    --danger-foreground: 40 40% 99%;
+    --destructive: 8 68% 38%;         /* same brick as primary */
+    --destructive-foreground: 40 40% 99%;
 
-    /* Neutrals */
+    /* Neutrals sit on the warm axis so borders never look grey against
+       cream surfaces. */
     --muted: var(--surface-2);
-    --muted-foreground: 0 0% 42%;     /* #6B6B6B */
-    --border: 41 13% 83%;             /* #D9D6CE */
-    --input: 41 13% 83%;
-    --ring: 213 59% 36%;              /* navy at slightly higher lightness for visibility */
+    --muted-foreground: 20 8% 40%;    /* #6E6560 -- warm graphite */
+    --border: 32 15% 82%;             /* #D7CFC3 -- sand */
+    --input: 32 15% 82%;
+    --ring: 8 68% 44%;                /* brick at higher lightness for focus */
 
-    /* Radius — tighter than default, more enterprise */
-    --radius: 0.375rem;               /* 6px */
+    /* Radius -- tight, enterprise-serious */
+    --radius: 0.375rem;
 
-    /* Shadow tokens (used by tailwind boxShadow scale) */
-    --shadow-color: 213 30% 15%;
-    --shadow-strength-sm: 0.04;
-    --shadow-strength-md: 0.08;
-    --shadow-strength-lg: 0.12;
+    --shadow-color: 12 30% 15%;
+    --shadow-strength-sm: 0.05;
+    --shadow-strength-md: 0.09;
+    --shadow-strength-lg: 0.14;
   }
 
   .dark {
-    --surface-0: 220 12% 9%;          /* #15171A */
-    --surface-1: 220 9% 12%;          /* #1B1E22 */
-    --surface-2: 220 8% 16%;          /* #23272D */
-    --surface-3: 220 8% 19%;          /* #2C3036 */
+    /* Warm charcoal surfaces -- not a cold neutral grey. The same hue
+       axis as light mode, dropped to low lightness. */
+    --surface-0: 20 8% 8%;            /* #16130F -- warm charcoal canvas */
+    --surface-1: 22 7% 11%;           /* #1D1A17 -- cards */
+    --surface-2: 22 6% 15%;           /* #26221E -- hover, secondary */
+    --surface-3: 22 6% 19%;           /* #302B27 -- pressed */
 
     --background: var(--surface-0);
-    --foreground: 40 16% 91%;         /* #ECEAE4 */
+    --foreground: 34 30% 92%;         /* #EEE8DA -- warm cream ink */
 
     --card: var(--surface-1);
     --card-foreground: var(--foreground);
     --popover: var(--surface-2);
     --popover-foreground: var(--foreground);
 
-    --primary: 213 41% 55%;           /* #5B83BD — lighter navy for dark surfaces */
-    --primary-foreground: 220 12% 9%;
+    /* Brick lifted to a coral-brick that reads on charcoal without
+       vibrating. Kept in the same hue family as light. */
+    --primary: 10 72% 60%;            /* #E37256 -- lifted brick */
+    --primary-foreground: 20 8% 8%;
     --secondary: var(--surface-2);
     --secondary-foreground: var(--foreground);
-    --accent: 8 70% 62%;              /* #E5675A — softer Oracle red */
-    --accent-foreground: 220 12% 9%;
+    --accent: 18 78% 62%;             /* #EE855A -- warm coral */
+    --accent-foreground: 20 8% 8%;
 
-    --info: 213 41% 60%;
-    --info-foreground: 220 12% 9%;
-    --success: 124 38% 62%;           /* #7CC082 */
-    --success-foreground: 220 12% 9%;
-    --warning: 32 70% 60%;            /* #E2A04D */
-    --warning-foreground: 220 12% 9%;
-    --danger: 8 70% 62%;
-    --danger-foreground: 220 12% 9%;
-    --destructive: 8 70% 62%;
-    --destructive-foreground: 220 12% 9%;
+    --info: 200 55% 65%;
+    --info-foreground: 20 8% 8%;
+    --success: 130 38% 62%;           /* #7CBC85 -- sage */
+    --success-foreground: 20 8% 8%;
+    --warning: 30 78% 62%;            /* #E5A15E -- warm amber */
+    --warning-foreground: 20 8% 8%;
+    --danger: 10 72% 60%;
+    --danger-foreground: 20 8% 8%;
+    --destructive: 10 72% 60%;
+    --destructive-foreground: 20 8% 8%;
 
     --muted: var(--surface-2);
-    --muted-foreground: 220 5% 60%;   /* #9A9A95-ish */
-    --border: 220 7% 23%;             /* #34383E */
-    --input: 220 7% 23%;
-    --ring: 213 41% 60%;
+    --muted-foreground: 30 10% 66%;   /* #ADA69A -- warm mid grey */
+    --border: 22 8% 24%;              /* #3E3833 -- warm stone */
+    --input: 22 8% 24%;
+    --ring: 10 72% 66%;
 
-    --shadow-color: 0 0% 0%;
-    --shadow-strength-sm: 0.3;
-    --shadow-strength-md: 0.4;
-    --shadow-strength-lg: 0.5;
+    --shadow-color: 12 40% 4%;
+    --shadow-strength-sm: 0.35;
+    --shadow-strength-md: 0.5;
+    --shadow-strength-lg: 0.6;
   }
 }
 
@@ -119,6 +139,21 @@
   html.dark {
     color-scheme: dark;
   }
+  /* Native <select> dropdown items. Chrome/Edge draw these with OS
+     defaults regardless of the app's theme, which lands them in an
+     unreadable dark-on-dark under Redwood dark mode. Forcing the
+     app's popover colours here makes every dropdown legible without
+     having to rewrite every native select into a shadcn Select. */
+  option {
+    background-color: hsl(var(--popover));
+    color: hsl(var(--popover-foreground));
+  }
+  option:disabled {
+    color: hsl(var(--muted-foreground));
+  }
+  /* Firefox highlights the focused option with `-moz-appearance`; the
+     hover state on Chromium uses the accent colour, and both land on
+     our warm accent naturally through --accent. */
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1, "cv11" 1;

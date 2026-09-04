@@ -13,7 +13,7 @@ import {
   recordStatementLine,
   settleDeal,
 } from "@/lib/api";
-import { perCent, shortDate, sterling } from "@/lib/format";
+import { dealRate, perCent, shortDate, sterling } from "@/lib/format";
 import type { AmendmentPreview, DealDetail, StatementLine } from "@/lib/types";
 
 /**
@@ -111,11 +111,37 @@ export function ConfirmationSection({ detail }: { detail: DealDetail }) {
 // Amendments
 // --------------------------------------------------------------------------
 
+//: What each kind of amendment moves, and so which fields the form offers.
+//:
+//: The type is the word that ends up in the audit trail, so the server
+//: refuses terms that do not match it: a partial drawdown that grows is not a
+//: drawdown, and a roll that does not extend is not a roll. Offering a field
+//: the type cannot use produces a form that can only be filled in wrongly.
 const TYPES = [
-  { value: "CORRECTION", label: "Correction" },
-  { value: "ROLL", label: "Roll" },
-  { value: "PARTIAL_DRAWDOWN", label: "Partial drawdown" },
-  { value: "BREAK", label: "Break" },
+  {
+    value: "CORRECTION",
+    label: "Correction",
+    fields: ["principal", "rate", "maturity"],
+    hint: "Undoes a keying error. Any term may move in any direction.",
+  },
+  {
+    value: "ROLL",
+    label: "Roll",
+    fields: ["maturity", "rate"],
+    hint: "Extends the deal. The new maturity has to be later than the current one.",
+  },
+  {
+    value: "PARTIAL_DRAWDOWN",
+    label: "Partial drawdown",
+    fields: ["principal"],
+    hint: "The client draws less than committed. The new principal has to be smaller.",
+  },
+  {
+    value: "BREAK",
+    label: "Break",
+    fields: [],
+    hint: "Ends the deal on the effective date. It carries no new terms.",
+  },
 ];
 
 export function AmendmentSection({
@@ -129,6 +155,8 @@ export function AmendmentSection({
   const [type, setType] = useState("CORRECTION");
   const [effective, setEffective] = useState("");
   const [rate, setRate] = useState("");
+  const [principal, setPrincipal] = useState("");
+  const [maturity, setMaturity] = useState("");
   const [reason, setReason] = useState("");
   const [preview, setPreview] = useState<AmendmentPreview | null>(null);
   const [amendmentId, setAmendmentId] = useState<string | null>(null);
@@ -138,6 +166,9 @@ export function AmendmentSection({
   const amendable =
     detail.deal.status === "ACTIVE" || detail.deal.status === "MATURED";
 
+  const chosen = TYPES.find((option) => option.value === type) ?? TYPES[0];
+  const shows = (field: string) => chosen.fields.includes(field);
+
   const raise = async () => {
     setBusy(true);
     setError(null);
@@ -146,7 +177,14 @@ export function AmendmentSection({
         type,
         effective_date: effective,
         reason: reason.trim(),
-        new_rate_bp: rate.trim() ? Math.round(Number(rate) * 100) : null,
+        new_rate_bp:
+          shows("rate") && rate.trim() ? Math.round(Number(rate) * 100) : null,
+        new_principal_pence:
+          shows("principal") && principal.trim()
+            ? Math.round(Number(principal) * 100)
+            : null,
+        new_maturity_date:
+          shows("maturity") && maturity.trim() ? maturity.trim() : null,
       });
       setAmendmentId(raised.amendment_id);
       setPreview(raised.preview);
@@ -259,15 +297,53 @@ export function AmendmentSection({
             </div>
           </div>
 
-          <div className="space-y-1">
-            <Label className="text-[10px]">New rate (%), if it changed</Label>
-            <Input
-              className="num h-8 text-xs"
-              value={rate}
-              onChange={(event) => setRate(event.target.value)}
-              placeholder={perCent(detail.deal.rate_bp)}
-            />
-          </div>
+          <p className="text-[10px] text-muted-foreground">{chosen.hint}</p>
+
+          {shows("principal") ? (
+            <div className="space-y-1">
+              <Label className="text-[10px]">
+                New principal (£)
+                {type === "PARTIAL_DRAWDOWN" ? "" : ", if it changed"}
+              </Label>
+              <Input
+                className="num h-8 text-xs"
+                value={principal}
+                onChange={(event) => setPrincipal(event.target.value)}
+                placeholder={String(detail.deal.principal_pence / 100)}
+              />
+            </div>
+          ) : null}
+
+          {shows("rate") ? (
+            <div className="space-y-1">
+                <Label className="text-[10px]">
+                {detail.deal.instrument === "FX_FORWARD"
+                  ? "New forward rate, if it changed"
+                  : "New rate (%), if it changed"}
+              </Label>
+              <Input
+                className="num h-8 text-xs"
+                value={rate}
+                onChange={(event) => setRate(event.target.value)}
+                placeholder={dealRate(detail.deal.rate_bp, detail.deal.instrument)}
+              />
+            </div>
+          ) : null}
+
+          {shows("maturity") ? (
+            <div className="space-y-1">
+              <Label className="text-[10px]">
+                New maturity date
+                {type === "ROLL" ? "" : ", if it changed"}
+              </Label>
+              <input
+                type="date"
+                className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 text-xs"
+                value={maturity}
+                onChange={(event) => setMaturity(event.target.value)}
+              />
+            </div>
+          ) : null}
 
           <div className="space-y-1">
             <Label className="text-[10px]">Reason</Label>
@@ -299,6 +375,9 @@ export function AmendmentSection({
               </p>
               <p className="mt-1 text-muted-foreground">
                 Periods touched: {preview.periods_affected.join(", ") || "none"}.
+                {" "}The amended terms are re-tested against the six checks
+                before anything is reversed, because an amendment is a new
+                decision about a position rather than a data fix.
                 {preview.any_period_closed
                   ? " One of them has posted journals in it, so applying will be refused: whether a closed period can be reopened is an accounting policy decision rather than a technical one."
                   : ""}
@@ -325,7 +404,7 @@ export function AmendmentSection({
                 disabled={busy}
                 onClick={apply}
               >
-                Apply. Reverse and repost.
+                Apply. Re-test, reverse and repost.
               </Button>
             )}
           </div>

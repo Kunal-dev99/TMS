@@ -38,13 +38,24 @@ export function PanelShell({
   const panel = useRef<HTMLDivElement>(null);
   const opener = useRef<Element | null>(null);
 
+  // Hold the current onClose in a ref so this effect can call the latest
+  // version without listing it as a dependency. Parents typically supply an
+  // inline arrow (onClose={() => setPanel(...)}) which is a fresh function
+  // reference on every render. If that were a dep here, every keystroke
+  // inside the panel would re-run this effect and steal focus from the
+  // input the user is typing into.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (!open) return;
     opener.current = document.activeElement;
     panel.current?.focus();
 
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") onCloseRef.current();
     };
     document.addEventListener("keydown", onKey);
     return () => {
@@ -53,7 +64,7 @@ export function PanelShell({
       // continues from where the user was rather than from the top.
       if (opener.current instanceof HTMLElement) opener.current.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

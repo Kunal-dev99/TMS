@@ -19,6 +19,9 @@ import { EvidencePanel } from "@/components/panels/EvidencePanel";
 import { ExposurePanel } from "@/components/panels/ExposurePanel";
 import { OnboardingPanel } from "@/components/panels/OnboardingPanel";
 import { QueuePanel } from "@/components/panels/QueuePanel";
+import { ConfirmationParseModal } from "@/components/panels/ConfirmationParseModal";
+import { CreditSignalsPanel } from "@/components/panels/CreditSignalsPanel";
+import { PlannerModal } from "@/components/panels/PlannerModal";
 import { RatingsPanel } from "@/components/panels/RatingsPanel";
 import { Button } from "@/components/ui/button";
 import {
@@ -74,6 +77,9 @@ export default function Surface() {
   const [state, setState] = useState<StateResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>({ kind: "none" });
+  const [plannerOpen, setPlannerOpen] = useState(false);
+  const [parseOpen, setParseOpen] = useState(false);
+  const [signalsOpen, setSignalsOpen] = useState(false);
 
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [breaches, setBreaches] = useState<BreachView[]>([]);
@@ -204,6 +210,7 @@ export default function Surface() {
           setUser(null);
           setState(null);
         }}
+        onParseConfirmation={() => setParseOpen(true)}
       />
 
       {state === null ? (
@@ -244,6 +251,44 @@ export default function Surface() {
           </section>
 
           <section className="min-w-0 space-y-5 overflow-y-auto border-l border-border px-6 py-5">
+            {/* AI actions on today's book — the two features that read
+                the whole book rather than one deal. Grouped visually so
+                a reader sees both at once. */}
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {state.uninvested_cash_pence > 0 ? (
+                <button
+                  type="button"
+                  className="group flex flex-col items-start rounded-lg border border-primary/40 bg-primary/[.06] p-3 text-left transition hover:bg-primary/10"
+                  onClick={() => setPlannerOpen(true)}
+                >
+                  <span className="text-[9px] font-medium uppercase tracking-wider text-primary">
+                    ✨ Deploy the idle cash
+                  </span>
+                  <p className="mt-0.5 text-[11px] text-foreground">
+                    Four ways to place £
+                    {(state.uninvested_cash_pence / 100).toLocaleString(
+                      "en-GB",
+                      { maximumFractionDigits: 0 },
+                    )}
+                    , ranked.
+                  </p>
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="group flex flex-col items-start rounded-lg border border-primary/40 bg-primary/[.06] p-3 text-left transition hover:bg-primary/10"
+                onClick={() => setSignalsOpen(true)}
+              >
+                <span className="text-[9px] font-medium uppercase tracking-wider text-primary">
+                  ✨ Scan credit signals
+                </span>
+                <p className="mt-0.5 text-[11px] text-foreground">
+                  What&apos;s in the news about every counterparty on your
+                  book.
+                </p>
+              </button>
+            </div>
+
             {/* Above the ticket fields, inside the ticket column. An input
                 to the work rather than an interruption of it. */}
             {state.advisory ? (
@@ -402,6 +447,38 @@ export default function Surface() {
           )}
         </>
       ) : null}
+
+      <ConfirmationParseModal
+        open={parseOpen}
+        onClose={() => setParseOpen(false)}
+        book={state?.book ?? []}
+        onIngested={() => {
+          load();
+        }}
+      />
+
+      <CreditSignalsPanel
+        open={signalsOpen}
+        onClose={() => setSignalsOpen(false)}
+      />
+
+      <PlannerModal
+        open={plannerOpen}
+        onClose={() => setPlannerOpen(false)}
+        onPick={(a) => {
+          setTicket({
+            counterpartyId: a.counterparty_id,
+            instrument: "DEPOSIT",
+            principal: String(Math.round(a.principal_pence / 100)),
+            tenor: String(a.tenor_months),
+            rate: (a.rate_bp / 100).toFixed(2),
+          });
+          setPlannerOpen(false);
+          setToast(
+            "Loaded. Runs the same six checks as anything typed by hand.",
+          );
+        }}
+      />
     </div>
   );
 }

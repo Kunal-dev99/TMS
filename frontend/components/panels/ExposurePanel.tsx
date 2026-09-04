@@ -5,6 +5,7 @@ import { BarChart3 } from "lucide-react";
 
 import { EmptyState, PanelShell } from "@/components/PanelShell";
 import { CurrencyTab } from "@/components/panels/CurrencyTab";
+import { WhatIfCap } from "@/components/panels/WhatIfCap";
 import { ExposureDial } from "@/components/panels/ExposureDial";
 import { getExposure } from "@/lib/api";
 import { perCent, sterling } from "@/lib/format";
@@ -62,7 +63,7 @@ export function ExposurePanel({
       onClose={onClose}
       icon={BarChart3}
       title="Exposure"
-      description="Recomputed on every call, never stored"
+      description="Every counterparty's share of the book, and how close each is to its limit"
     >
       <div className="mb-5 flex gap-1 rounded-lg bg-surface-2/60 p-1">
         {(["counterparty", "currency"] as const).map((key) => (
@@ -137,6 +138,8 @@ export function ExposurePanel({
                 <Utilisation title="By maturity bucket" rows={view.by_maturity_bucket} />
               </>
             )}
+
+            <WhatIfCap currentCapBp={capBp} />
           </div>
         )
       ) : (

@@ -458,6 +458,133 @@ FORECAST_LINES = [
 ]
 
 # --------------------------------------------------------------------------
+# News. Seeded so the credit-signal scanner has something to read on open.
+#
+# A mix per counterparty: at least one item worth reading (a rating watch, a
+# results miss, sector contagion) and at least one that is deliberately not
+# material (a routine dividend, a management appointment). The scanner has
+# to tell them apart; leaving both in tests the classifier as well as the
+# prose.
+# --------------------------------------------------------------------------
+
+NEWS_ITEMS = [
+    # Caledonia Trust Bank — quiet, one small positive
+    {
+        "id": "nw_cal_001",
+        "counterparty_id": "cp_caledonia",
+        "source": "S&P Global Ratings",
+        "headline": "S&P affirms Caledonia Trust Bank at AA-, outlook stable",
+        "body": "S&P Global Ratings today affirmed the AA- long-term "
+                 "issuer credit rating on Caledonia Trust Bank, citing a "
+                 "solid capital position and steady net interest margin.",
+        "published_at": days_ago(3),
+    },
+    {
+        "id": "nw_cal_002",
+        "counterparty_id": "cp_caledonia",
+        "source": "Reuters",
+        "headline": "Caledonia Q3 profit up 4% year-on-year",
+        "body": "Caledonia Trust Bank posted a Q3 profit of GBP 412 "
+                 "million, up 4% on the prior year, on a modest expansion "
+                 "of the loan book and stable cost of risk.",
+        "published_at": days_ago(9),
+    },
+
+    # Harbour and Vale Bank — a real signal
+    {
+        "id": "nw_har_001",
+        "counterparty_id": "cp_harbour",
+        "source": "Moody's Investors Service",
+        "headline": "Moody's places Harbour and Vale Bank on review for downgrade",
+        "body": "Moody's has placed the Baa1 issuer rating of Harbour and "
+                 "Vale Bank on review for downgrade, citing declining net "
+                 "interest margin and rising loan loss provisions in the "
+                 "consumer lending book. A rating decision is expected "
+                 "within 90 days.",
+        "published_at": days_ago(1),
+    },
+    {
+        "id": "nw_har_002",
+        "counterparty_id": "cp_harbour",
+        "source": "Financial Times",
+        "headline": "Harbour Bank to cut 400 jobs from retail arm",
+        "body": "Harbour and Vale Bank has announced plans to eliminate "
+                 "about 400 positions from its retail banking arm as part "
+                 "of a cost-reduction programme in response to margin "
+                 "pressure.",
+        "published_at": days_ago(4),
+    },
+
+    # Meridian Bank plc — mixed
+    {
+        "id": "nw_mer_001",
+        "counterparty_id": "cp_meridian",
+        "source": "Fitch Ratings",
+        "headline": "Fitch upgrades outlook on Meridian Bank to positive",
+        "body": "Fitch Ratings has revised the outlook on Meridian Bank's "
+                 "A rating to positive from stable, citing an improving "
+                 "capital position and disciplined risk management.",
+        "published_at": days_ago(6),
+    },
+    {
+        "id": "nw_mer_002",
+        "counterparty_id": "cp_meridian",
+        "source": "Bloomberg",
+        "headline": "Meridian appoints new head of treasury operations",
+        "body": "Meridian Bank plc today confirmed the appointment of "
+                 "Sarah Novak as head of treasury operations, effective 1 "
+                 "October. Ms Novak joins from a regional peer.",
+        "published_at": days_ago(11),
+    },
+
+    # Northern Bank plc — sector contagion signal
+    {
+        "id": "nw_nbk_001",
+        "counterparty_id": "cp_northern",
+        "source": "Wall Street Journal",
+        "headline": "Regional bank stress test flags concentration risk at three lenders",
+        "body": "A stress test published today by the FCA identified "
+                 "elevated commercial real estate concentration risk at "
+                 "three regional lenders, including Northern Bank plc. "
+                 "None of the three failed the test, but the FCA has "
+                 "asked for additional reporting.",
+        "published_at": days_ago(2),
+    },
+    {
+        "id": "nw_nbk_002",
+        "counterparty_id": "cp_northern",
+        "source": "Reuters",
+        "headline": "Northern Bank declares interim dividend of 8p",
+        "body": "Northern Bank plc has declared an interim dividend of "
+                 "8p per share, in line with prior guidance.",
+        "published_at": days_ago(14),
+    },
+
+    # Northern Treasury Services Ltd — quiet
+    {
+        "id": "nw_nts_001",
+        "counterparty_id": "cp_nts",
+        "source": "Bloomberg",
+        "headline": "NTS parent Northern Group announces GBP 200m buyback",
+        "body": "Northern Group has announced a GBP 200 million share "
+                 "buyback programme to run over the next twelve months, "
+                 "citing surplus capital and strong cash generation.",
+        "published_at": days_ago(5),
+    },
+    {
+        "id": "nw_nts_002",
+        "counterparty_id": "cp_nts",
+        "source": "Financial Times",
+        "headline": "NTS wins mandate on GBP 1.2bn syndicated loan",
+        "body": "Northern Treasury Services Ltd has been appointed a "
+                 "co-manager on a GBP 1.2 billion syndicated loan to a "
+                 "FTSE 250 utility, alongside three other lenders.",
+        "published_at": days_ago(8),
+    },
+]
+
+
+# --------------------------------------------------------------------------
 # Figures the seed is asserted against
 # --------------------------------------------------------------------------
 # Not stored. Written here so a test can state what the book is meant to look

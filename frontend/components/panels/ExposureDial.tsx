@@ -4,6 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  TipNote,
+  TipRow,
+  TipTitle,
+  useFloatingTooltip,
+} from "@/components/common/FloatingTooltip";
 import { perCent, sterling } from "@/lib/format";
 import type { BookRow, ExposureView } from "@/lib/types";
 
@@ -101,6 +107,29 @@ function pressure(utilisationBp: number | null): "quiet" | "warm" | "full" {
   if (utilisationBp >= 10000) return "full";
   if (utilisationBp >= 8500) return "warm";
   return "quiet";
+}
+
+/**
+ * Distance from the concentration cap, put in words.
+ *
+ * A wedge is a proportion. A treasurer's question is whether the proportion
+ * is fine, worth watching, or over the line, and answering it from the arc
+ * alone means measuring an angle against a small red band. The word does the
+ * measurement so the reader does not have to.
+ *
+ * Thresholds match `pressure`: quiet below 85 per cent of the cap, watching
+ * between 85 and 100, near the cap when a hair from it, over when past it.
+ */
+function capPosture(
+  shareBp: number,
+  capBp: number,
+): { label: string; tone: "quiet" | "warm" | "full" } {
+  if (capBp <= 0) return { label: "—", tone: "quiet" };
+  const ratio = shareBp / capBp;
+  if (ratio >= 1) return { label: "Over the cap", tone: "full" };
+  if (ratio >= 0.97) return { label: "At the cap", tone: "full" };
+  if (ratio >= 0.85) return { label: "Watching", tone: "warm" };
+  return { label: "Comfortable", tone: "quiet" };
 }
 
 const FILL: Record<string, string> = {
@@ -213,6 +242,70 @@ export function ExposureDial({
   const ring = groupKey ? subsections : groups;
   const selected = ring[Math.min(focused, Math.max(0, ring.length - 1))];
 
+  // Floating tooltip for the wedges. One tooltip per host; each wedge
+  // supplies its own content when the pointer enters.
+  const tip = useFloatingTooltip();
+
+  const wedgeTooltip = (wedge: Wedge, kind: "group" | "member") => {
+    if (wedge.cash) {
+      return (
+        <>
+          <TipTitle>Uninvested cash</TipTitle>
+          <TipRow label="Sitting" value={sterling(wedge.amountPence)} />
+          <TipRow label="Share of book" value={perCent(wedge.shareBp)} />
+          <TipNote>
+            Counted in the concentration figure, because a percentage of
+            only the invested part measures the wrong denominator.
+          </TipNote>
+        </>
+      );
+    }
+    const posture = capPosture(wedge.shareBp, capBp);
+    const utilisationTone: "muted" | "warn" | "danger" | "success" =
+      wedge.utilisationBp === null
+        ? "muted"
+        : wedge.utilisationBp >= 10000
+          ? "danger"
+          : wedge.utilisationBp >= 8500
+            ? "warn"
+            : "success";
+    return (
+      <>
+        <TipTitle>{wedge.label}</TipTitle>
+        <TipRow label={kind === "group" ? "Group used" : "Used"}
+                value={sterling(wedge.amountPence)} />
+        {wedge.limitPence !== null ? (
+          <TipRow label="Limit" value={sterling(wedge.limitPence)} />
+        ) : null}
+        {wedge.utilisationBp !== null ? (
+          <TipRow
+            label="Utilisation"
+            value={perCent(wedge.utilisationBp)}
+            tone={utilisationTone}
+          />
+        ) : null}
+        <TipRow label="Share of book" value={perCent(wedge.shareBp)} />
+        <TipRow
+          label={`Cap ${perCent(capBp)}`}
+          value={posture.label}
+          tone={
+            posture.tone === "full"
+              ? "danger"
+              : posture.tone === "warm"
+                ? "warn"
+                : "success"
+          }
+        />
+        <TipNote>
+          {kind === "group"
+            ? "Click to drill into the members. Enter to lock the selection."
+            : "Click to load this counterparty into the ticket."}
+        </TipNote>
+      </>
+    );
+  };
+
+
   /** Rotate so the focused section sits under the pointer at the top. */
   const rotation = selected ? -((selected.start + selected.end) / 2) : 0;
 
@@ -268,12 +361,17 @@ export function ExposureDial({
           --dial-quiet: color-mix(in srgb, hsl(var(--primary)) 78%, transparent);
           --dial-warm: color-mix(in srgb, hsl(var(--warning)) 82%, transparent);
           --dial-full: color-mix(in srgb, hsl(var(--destructive)) 82%, transparent);
+          --dial-quiet-ink: hsl(var(--muted-foreground));
+          --dial-warm-ink: hsl(var(--warning));
+          --dial-full-ink: hsl(var(--destructive));
         }
       `}</style>
 
-      <div className="flex flex-col items-center">
+      <div ref={tip.hostRef} className="relative flex flex-col items-center">
         <svg
           ref={disc}
+          onPointerMove={tip.move}
+          onPointerLeave={tip.hide}
           width={SIZE}
           height={SIZE}
           viewBox={`0 0 ${SIZE} ${SIZE}`}
@@ -332,6 +430,8 @@ export function ExposureDial({
                       : `${wedge.label}, ${sterling(wedge.amountPence)}, ${perCent(wedge.shareBp)} of the portfolio`
                   }
                   aria-hidden={groupKey ? true : undefined}
+                  onPointerEnter={(e) => tip.show(e, wedgeTooltip(wedge, "group"))}
+                  onPointerLeave={tip.hide}
                   style={{
                     cursor: tooThin ? "default" : "pointer",
                     transition: reducedMotion ? "none" : "opacity 200ms",
@@ -375,6 +475,8 @@ export function ExposureDial({
                       role="option"
                       aria-selected={isSelected}
                       aria-label={`${wedge.label}, ${sterling(wedge.amountPence)}, ${perCent(wedge.shareBp)} of the portfolio`}
+                      onPointerEnter={(e) => tip.show(e, wedgeTooltip(wedge, "member"))}
+                      onPointerLeave={tip.hide}
                       style={{
                         cursor: "pointer",
                         transition: reducedMotion ? "none" : "opacity 200ms",
@@ -405,18 +507,72 @@ export function ExposureDial({
               <p className="num mt-0.5 text-sm font-semibold leading-none">
                 {sterling(selected ? selected.amountPence : total)}
               </p>
+              {/* The share, and what to think of it. The word is the whole
+                  point of adding it: a wedge is a proportion, and this is
+                  the treasurer's read of the proportion. */}
               <p className="mt-1 text-[9px] leading-tight text-muted-foreground">
-                {selected
-                  ? `${perCent(selected.shareBp)} of the book`
-                  : `cap ${perCent(capBp)}`}
+                {selected && !selected.cash
+                  ? `${perCent(selected.shareBp)} of ${perCent(capBp)} cap`
+                  : selected
+                    ? "cash in the operating account"
+                    : `cap ${perCent(capBp)}`}
               </p>
+              {selected && !selected.cash ? (
+                <p
+                  className="mt-1 text-[9px] font-semibold uppercase leading-tight tracking-wider"
+                  style={{
+                    color: `var(--dial-${capPosture(selected.shareBp, capBp).tone}-ink)`,
+                  }}
+                >
+                  {capPosture(selected.shareBp, capBp).label}
+                </p>
+              ) : null}
             </div>
           </foreignObject>
         </svg>
 
-        <p className="mt-2 text-[10px] text-muted-foreground">
-          Arrow keys turn the dial. Enter opens a section. Backspace steps back.
-        </p>
+        {tip.render()}
+
+        {/* Legend, and the keyboard hint tucked into it.
+            The dial reads on two dimensions at once and nothing said so:
+            the arc size is share of the portfolio, the colour is distance
+            from the wedge's own limit. Naming both is the difference
+            between the dial being decoration and being read.
+
+            The keyboard line the panel used to carry was longer than the
+            legend and was covering for the legend not being there. */}
+        <div className="mt-3 flex w-full max-w-[280px] flex-col gap-1.5 text-[10px] text-muted-foreground">
+          <div className="flex items-center justify-between gap-2">
+            <span className="uppercase tracking-wider">Arc size</span>
+            <span>share of the portfolio</span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="uppercase tracking-wider">Colour</span>
+            <span className="flex items-center gap-2">
+              <span
+                className="inline-block h-2 w-2 rounded-sm"
+                style={{ background: "var(--dial-quiet)" }}
+                aria-hidden
+              />
+              inside its limit
+              <span
+                className="inline-block h-2 w-2 rounded-sm"
+                style={{ background: "var(--dial-warm)" }}
+                aria-hidden
+              />
+              near it
+              <span
+                className="inline-block h-2 w-2 rounded-sm"
+                style={{ background: "var(--dial-full)" }}
+                aria-hidden
+              />
+              past it
+            </span>
+          </div>
+          <p className="mt-1 text-[9px] italic opacity-70">
+            Arrow keys turn the dial · Enter opens · Backspace steps back
+          </p>
+        </div>
       </div>
 
       {/* Where the selection is stated in words. A wedge is a proportion; the
@@ -462,10 +618,42 @@ export function ExposureDial({
             ) : null}
 
             {!selected.cash ? (
-              <p className="text-[10px] text-muted-foreground">
-                {perCent(selected.shareBp)} of the portfolio, against a
-                concentration cap of {perCent(capBp)}.
-              </p>
+              <>
+                <p className="text-[10px] text-muted-foreground">
+                  {perCent(selected.shareBp)} of the portfolio, against a
+                  concentration cap of {perCent(capBp)}.
+                </p>
+                {/* The treasurer's question, in the treasurer's units.
+                    Saying "44 per cent against a 50 per cent cap" is
+                    arithmetic the reader has to do; saying how much more
+                    the group could hold before the cap is the answer. */}
+                {capBp > selected.shareBp ? (
+                  <p className="text-[10px] text-muted-foreground">
+                    Room for{" "}
+                    <span className="num font-medium text-foreground">
+                      {sterling(
+                        Math.max(
+                          0,
+                          Math.round(
+                            (total * (capBp - selected.shareBp)) / 10000,
+                          ),
+                        ),
+                      )}
+                    </span>{" "}
+                    more in this group before the cap.
+                  </p>
+                ) : (
+                  <p className="text-[10px] font-medium text-destructive">
+                    Over the concentration cap by{" "}
+                    {sterling(
+                      Math.round(
+                        (total * (selected.shareBp - capBp)) / 10000,
+                      ),
+                    )}
+                    .
+                  </p>
+                )}
+              </>
             ) : null}
 
             <div className="pt-1">

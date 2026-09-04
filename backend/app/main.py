@@ -29,6 +29,8 @@ from app.api import (
     currency,
     deals,
     jobs,
+    planner,
+    scenarios,
     state,
 )
 from app.errors import TreasuryError
@@ -81,6 +83,8 @@ for router in (
     advisory.router,
     currency.router,
     jobs.router,
+    scenarios.router,
+    planner.router,
     admin.router,
 ):
     app.include_router(router, prefix="/api/v1")

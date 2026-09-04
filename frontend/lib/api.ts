@@ -449,3 +449,148 @@ export function setCounterpartyLimit(
 export function activateCounterparty(counterpartyId: string) {
   return post(`/counterparties/${counterpartyId}/activate`, {});
 }
+
+// -- What-if scenarios ---------------------------------------------------
+//
+// The deterministic core produces every figure; the AI writes the paragraph
+// that reads them. All three endpoints are read-only from the book's point
+// of view: rating change runs inside a savepoint that is rolled back, and
+// the other two never touch the database at all.
+
+export type ScenarioResult = {
+  scenario: "RATING_CHANGE" | "NOT_ROLLED" | "CAP_CHANGE";
+  inputs: Record<string, unknown>;
+  before: Record<string, unknown>;
+  after: Record<string, unknown>;
+  changes: string[];
+  narrative: string;
+};
+
+export function whatIfRatingChange(body: {
+  counterparty_id: string;
+  new_rating: string;
+  new_status?: string;
+}): Promise<ScenarioResult> {
+  return post("/what-if/rating-change", body) as Promise<ScenarioResult>;
+}
+
+export function whatIfNotRolled(deal_id: string): Promise<ScenarioResult> {
+  return post("/what-if/not-rolled", { deal_id }) as Promise<ScenarioResult>;
+}
+
+export function whatIfCapChange(new_cap_bp: number): Promise<ScenarioResult> {
+  return post("/what-if/cap-change", { new_cap_bp }) as Promise<ScenarioResult>;
+}
+
+// -- Cash Deployment Planner --------------------------------------------
+
+export type PlannerAllocation = {
+  counterparty_id: string;
+  counterparty_name: string;
+  counterparty_rating: string;
+  group_name: string;
+  principal_pence: number;
+  tenor_months: number;
+  rate_bp: number;
+  expected_annual_interest_pence: number;
+  resulting_utilisation_bp: number;
+  resulting_group_utilisation_bp: number;
+};
+
+export type PlannerCandidate = {
+  kind: "MAX_YIELD" | "DIVERSIFIED" | "PRESERVE_HEADROOM" | "CONSERVATIVE";
+  label: string;
+  tagline: string;
+  allocations: PlannerAllocation[];
+  weighted_rate_bp: number;
+  expected_annual_interest_pence: number;
+  concentration_change_bp: number;
+  deployed_pence: number;
+  undeployed_pence: number;
+};
+
+export type DeploymentPlan = {
+  idle_cash_pence: number;
+  portfolio_total_pence: number;
+  concentration_cap_bp: number;
+  candidates: PlannerCandidate[];
+  recommendation_kind: string;
+  recommendation_reason: string;
+  per_candidate_labels: Record<string, string>;
+};
+
+export function deployCash(): Promise<DeploymentPlan> {
+  return post("/planner/deploy-cash", {}) as Promise<DeploymentPlan>;
+}
+
+// -- Confirmation parser (AI) -----------------------------------------------
+
+export type ParsedConfirmation = {
+  message_type: string | null;
+  reference: string | null;
+  counterparty_id: string | null;
+  counterparty_name: string | null;
+  instrument: string | null;
+  principal_pence: number | null;
+  rate_bp: number | null;
+  value_date: string | null;
+  maturity_date: string | null;
+  raw_payload: string;
+  warnings: string[];
+  fields_extracted: string[];
+  fields_missing: string[];
+};
+
+export function parseConfirmation(raw_text: string): Promise<ParsedConfirmation> {
+  return post("/confirmations/parse", { raw_text }) as Promise<ParsedConfirmation>;
+}
+
+export type ConfirmationIngestResult = {
+  confirmation_id: string;
+  match_status: "MATCHED" | "MISMATCHED" | "UNMATCHED";
+  deal_id: string | null;
+  differences: { field_name: string; keyed_value: string; confirmed_value: string }[];
+  queue_item_id: string | null;
+};
+
+export function ingestConfirmation(body: {
+  message_type: string;
+  reference: string;
+  counterparty_id?: string | null;
+  instrument: string;
+  principal_pence: number;
+  rate_bp: number;
+  value_date: string;
+  maturity_date?: string | null;
+  raw_payload?: string | null;
+}): Promise<ConfirmationIngestResult> {
+  return post("/confirmations", body) as Promise<ConfirmationIngestResult>;
+}
+
+// -- Credit-signal scanner (AI) ---------------------------------------------
+
+export type NewsSummary = {
+  id: string;
+  source: string;
+  headline: string;
+  published_at: string;
+  materiality: "MATERIAL" | "WATCH" | "IMMATERIAL";
+  reasoning: string;
+};
+
+export type CreditSignal = {
+  counterparty_id: string;
+  counterparty_name: string;
+  rating: string;
+  severity: "MATERIAL" | "WATCH" | "QUIET";
+  used_pence: number;
+  limit_pence: number;
+  utilisation_bp: number;
+  summary: string;
+  suggested_action: "PUT_ON_WATCH" | "REDUCE" | "ROLL_OFF" | "MONITOR" | "IGNORE";
+  items: NewsSummary[];
+};
+
+export function scanCreditSignals(): Promise<{ signals: CreditSignal[] }> {
+  return post("/credit-signals/scan", {}) as Promise<{ signals: CreditSignal[] }>;
+}

@@ -6,7 +6,19 @@ import { SlidersHorizontal } from "lucide-react";
 import { PanelShell } from "@/components/PanelShell";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { applyRatingAction, setClock, setEnforcement } from "@/lib/api";
+import {
+  applyRatingAction,
+  setClock,
+  setEnforcement,
+  whatIfRatingChange,
+  type ScenarioResult,
+} from "@/lib/api";
+import { ScenarioResultCard } from "@/components/panels/ScenarioResult";
+import {
+  RATING_CHANGE_STEPS,
+  ThinkingTrace,
+} from "@/components/panels/ThinkingTrace";
+import { Sparkles } from "lucide-react";
 import { sterling } from "@/lib/format";
 import type { BookRow, RatingBandView, StateResponse } from "@/lib/types";
 
@@ -39,6 +51,12 @@ export function RatingsPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<string | null>(null);
+  const [scenario, setScenario] = useState<ScenarioResult | null>(null);
+  const [scenarioBusy, setScenarioBusy] = useState(false);
+  // Held until the thinking trace has shown every step. The result is
+  // already in memory; the trace controls the reveal.
+  const [scenarioPending, setScenarioPending] = useState<ScenarioResult | null>(null);
+  const [networkDone, setNetworkDone] = useState(false);
 
   const selected: BookRow | undefined = state.book.find(
     (row) => row.counterparty_id === counterpartyId,
@@ -143,14 +161,64 @@ export function RatingsPanel({
             </p>
           ) : null}
 
-          <Button
-            type="button"
-            className="w-full"
-            disabled={busy || !counterpartyId || !rating}
-            onClick={apply}
-          >
-            Apply, and re-test the book
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {/* Preview first, then act. The gate a treasurer wants before
+                changing anything: a paragraph and a list of what would
+                move. Deterministic figures; the paragraph is the model's
+                reading of them. */}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-1.5 sm:w-auto"
+              disabled={
+                scenarioBusy || busy || !counterpartyId || !rating
+              }
+              onClick={async () => {
+                setScenarioBusy(true);
+                setScenario(null);
+                setScenarioPending(null);
+                setNetworkDone(false);
+                try {
+                  const result = await whatIfRatingChange({
+                    counterparty_id: counterpartyId,
+                    new_rating: rating,
+                  });
+                  setScenarioPending(result);
+                  setNetworkDone(true);
+                } catch (cause: unknown) {
+                  setError(
+                    cause instanceof Error
+                      ? cause.message
+                      : "That was refused.",
+                  );
+                  setScenarioBusy(false);
+                }
+              }}
+            >
+              <Sparkles className="h-3 w-3" aria-hidden />
+              {scenarioBusy ? "Thinking..." : "What would this do?"}
+            </Button>
+            <Button
+              type="button"
+              className="w-full sm:flex-1"
+              disabled={busy || !counterpartyId || !rating}
+              onClick={apply}
+            >
+              Apply, and re-test the book
+            </Button>
+          </div>
+
+          {scenarioBusy ? (
+            <ThinkingTrace
+              steps={RATING_CHANGE_STEPS}
+              finished={networkDone}
+              onFinished={() => {
+                if (scenarioPending) setScenario(scenarioPending);
+                setScenarioBusy(false);
+              }}
+            />
+          ) : null}
+          {scenario ? <ScenarioResultCard result={scenario} /> : null}
         </section>
 
         <section className="space-y-3 border-t border-border pt-5">

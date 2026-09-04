@@ -13,6 +13,12 @@ import {
   recordCurrencyExposure,
   unlinkHedge,
 } from "@/lib/api";
+import {
+  TipNote,
+  TipRow,
+  TipTitle,
+  useFloatingTooltip,
+} from "@/components/common/FloatingTooltip";
 import { minorUnits, perCent, shortDate } from "@/lib/format";
 import type { CurrencyExposureView, DealSummary } from "@/lib/types";
 
@@ -54,6 +60,7 @@ export function CurrencyTab({
 }) {
   const [view, setView] = useState<CurrencyExposureView | null>(null);
   const [busy, setBusy] = useState(false);
+  const tip = useFloatingTooltip();
   const [error, setError] = useState<string | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [linkingTo, setLinkingTo] = useState<string | null>(null);
@@ -118,7 +125,7 @@ export function CurrencyTab({
             <h3 className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
               Net obligation by time bucket, against the cover target
             </h3>
-            <div className="space-y-2.5">
+            <div ref={tip.hostRef} className="relative space-y-2.5">
               {view.buckets.map((bucket) => (
                 <div key={bucket.bucket}>
                   <div className="flex items-baseline justify-between gap-3 text-xs">
@@ -128,7 +135,63 @@ export function CurrencyTab({
                       {minorUnits(bucket.net_minor, view.currency)}
                     </span>
                   </div>
-                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-2">
+                  <div
+                    className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-2"
+                    onPointerMove={tip.move}
+                    onPointerLeave={tip.hide}
+                    onPointerEnter={(e) => {
+                      const shortfall = Math.max(
+                        0,
+                        Math.round(
+                          (bucket.net_minor * bucket.target_cover_bp) / 10000,
+                        ) - bucket.covered_minor,
+                      );
+                      const bucketLabel = bucket.bucket
+                        .replace(/_/g, " ")
+                        .toLowerCase();
+                      tip.show(
+                        e,
+                        <>
+                          <TipTitle>{bucketLabel}</TipTitle>
+                          <TipRow
+                            label="Owed"
+                            value={minorUnits(bucket.net_minor, view.currency)}
+                          />
+                          <TipRow
+                            label="Covered"
+                            value={minorUnits(bucket.covered_minor, view.currency)}
+                          />
+                          <TipRow
+                            label="Cover"
+                            value={perCent(bucket.covered_bp)}
+                            tone={
+                              bucket.covered_bp >= bucket.target_cover_bp
+                                ? "success"
+                                : "warn"
+                            }
+                          />
+                          <TipRow
+                            label="Target"
+                            value={perCent(bucket.target_cover_bp)}
+                          />
+                          {shortfall > 0 ? (
+                            <TipRow
+                              label="Short"
+                              value={minorUnits(shortfall, view.currency)}
+                              tone="warn"
+                            />
+                          ) : null}
+                          <TipNote>
+                            {bucket.net_minor <= 0
+                              ? "Nothing owed in this bucket."
+                              : bucket.covered_bp >= bucket.target_cover_bp
+                                ? "Target met."
+                                : "Below the cover target."}
+                          </TipNote>
+                        </>,
+                      );
+                    }}
+                  >
                     <div
                       className={`h-full rounded-full ${
                         bucket.net_minor <= 0
@@ -157,6 +220,7 @@ export function CurrencyTab({
                   </p>
                 </div>
               ))}
+              {tip.render()}
             </div>
           </section>
 

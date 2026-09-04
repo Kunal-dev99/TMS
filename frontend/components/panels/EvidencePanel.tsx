@@ -10,6 +10,7 @@ import {
   ConfirmationSection,
   SettlementSection,
 } from "@/components/panels/DealLifecycle";
+import { WhatIfNotRolled } from "@/components/panels/WhatIfNotRolled";
 import { approveDeal, getDeal } from "@/lib/api";
 import { approverLabel, perCent, shortDate, sterling } from "@/lib/format";
 import type { DealDetail } from "@/lib/types";
@@ -265,6 +266,12 @@ export function EvidencePanel({
               onSigned?.();
             }}
           />
+
+          {/* Only offered for a live deal with a maturity. Nothing to model
+              on a break, a closed deal, or a demand instrument. */}
+          {detail.deal.status === "ACTIVE" && detail.deal.maturity_date ? (
+            <WhatIfNotRolled detail={detail} />
+          ) : null}
 
           {detail.accruals.length > 0 ? (
             <section>

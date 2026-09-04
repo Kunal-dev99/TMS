@@ -5,7 +5,9 @@ import { shortDate } from "@/lib/format";
 import { Header as RedwoodHeader } from "@/components/layout/header";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { resetBook, signOut } from "@/lib/api";
+import { resetBook, runNightly, signOut } from "@/lib/api";
+import { useState } from "react";
+import { Check, FileText, Loader2, Play, RotateCcw } from "lucide-react";
 import type { SignedInUser } from "@/lib/session";
 
 /**
@@ -17,12 +19,75 @@ export function Header({
   user,
   onReset,
   onSignedOut,
+  onParseConfirmation,
 }: {
   state: StateResponse | null;
   user?: SignedInUser | null;
   onReset?: () => void;
   onSignedOut?: () => void;
+  onParseConfirmation?: () => void;
 }) {
+  const [nightlyBusy, setNightlyBusy] = useState(false);
+  const [nightlyResult, setNightlyResult] = useState<string | null>(null);
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
+
+  const doReset = async () => {
+    // Idempotent: nothing bad happens if double-clicked, but the button
+    // is disabled during the call and shows the running state so the
+    // reader is not left wondering whether the click landed.
+    if (resetBusy) return;
+    setResetBusy(true);
+    setResetDone(false);
+    try {
+      await resetBook();
+      onReset?.();
+      setResetDone(true);
+      // Fade the tick out after a moment so the button returns to its
+      // idle appearance rather than staying green forever.
+      window.setTimeout(() => setResetDone(false), 1200);
+    } finally {
+      setResetBusy(false);
+    }
+  };
+
+  const runTheNight = async () => {
+    setNightlyBusy(true);
+    setNightlyResult(null);
+    try {
+      // Runs the same endpoint the scheduler will call. In production the
+      // scheduler is the only caller and there is no button, because the
+      // job runs on its own. Here it lives beside Reset so a demonstration
+      // does not need a terminal, and both controls sit under the
+      // "Prototype" badge that says so.
+      const outcome = (await runNightly()) as {
+        accrual_rows_written?: number;
+        journals_built?: number;
+        advisory_outcome?: string;
+      };
+      const rows = outcome.accrual_rows_written ?? 0;
+      const journals = outcome.journals_built ?? 0;
+      const advisory =
+        outcome.advisory_outcome === "MODEL_ACCEPTED"
+          ? " · advisory ran"
+          : outcome.advisory_outcome === "MODEL_REJECTED_FALLBACK"
+            ? " · advisory fell back"
+            : outcome.advisory_outcome === "RULE_ONLY"
+              ? " · advisory off"
+              : "";
+      setNightlyResult(
+        `${rows} accruals, ${journals} journals${advisory}`,
+      );
+      onReset?.();
+    } catch (cause: unknown) {
+      setNightlyResult(
+        cause instanceof Error ? cause.message : "That was refused.",
+      );
+    } finally {
+      setNightlyBusy(false);
+    }
+  };
+
   return (
     <RedwoodHeader
       title="Treasury Register"
@@ -55,14 +120,78 @@ export function Header({
           {/* Drop every row and reload the seed. The one place in the
               system where anything is deleted: nothing a user does inside
               the system deletes anything. */}
+          {/* A demonstration control, in the same row as Reset and behind
+              the Prototype badge, because it is one. In production the
+              nightly job runs on a schedule and there is no button. Here
+              a treasurer needs to see accruals and journals appear
+              without switching to a terminal, and the readout to the
+              right of it says what happened so the audience knows the
+              click did something. */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              disabled={nightlyBusy}
+              onClick={runTheNight}
+              className="h-7 gap-1.5 px-2.5 text-xs text-muted-foreground"
+              title="Runs the same endpoint the scheduler will call in production."
+            >
+              <Play className="h-3 w-3" />
+              {nightlyBusy ? "Running..." : "Run the nightly job"}
+            </Button>
+            {nightlyResult ? (
+              <span className="text-[10px] text-muted-foreground">
+                {nightlyResult}
+              </span>
+            ) : null}
+          </div>
+
+          {/* The AI parser. Any format arrives, the model reads it,
+              the person reviews, the six checks gate the ingest. */}
+          {onParseConfirmation ? (
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              className="h-7 gap-1.5 px-2.5 text-xs text-muted-foreground"
+              onClick={onParseConfirmation}
+              title="Paste an email, SWIFT message or PDF text. AI extracts the fields."
+            >
+              <FileText className="h-3 w-3" />
+              Paste a confirmation
+            </Button>
+          ) : null}
+
           <Button
             variant="outline"
             size="sm"
             type="button"
-            onClick={() => resetBook().then(() => onReset?.())}
-            className="h-7 text-xs px-2.5 text-muted-foreground"
+            disabled={resetBusy}
+            onClick={doReset}
+            className={`h-7 gap-1.5 px-2.5 text-xs ${
+              resetDone
+                ? "border-success/50 text-success"
+                : "text-muted-foreground"
+            }`}
+            title="Restore the seeded book. About one second."
           >
-            Reset
+            {resetBusy ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Resetting…
+              </>
+            ) : resetDone ? (
+              <>
+                <Check className="h-3 w-3" />
+                Reset
+              </>
+            ) : (
+              <>
+                <RotateCcw className="h-3 w-3" />
+                Reset
+              </>
+            )}
           </Button>
 
           {/* Who is acting. Every write is recorded against this person,

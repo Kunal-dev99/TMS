@@ -676,9 +676,11 @@ def test_reset_puts_the_book_back(client):
     _record(client, "cp_northern", 10_000_000 * P, 6)
     assert client.get("/api/v1/queue").json() != []
 
-    assert client.post("/api/v1/admin/reset").json() == {"reset": True}
-
-    body = client.get("/api/v1/state").json()
+    # The reset endpoint now returns the fresh state directly, which
+    # cuts a round trip out of the demo Reset flow. The assertion is
+    # the same but reads it from the reset response rather than a
+    # follow-up state call.
+    body = client.post("/api/v1/admin/reset").json()
     assert body["queue_counts"]["total"] == 0
     assert len(body["deals"]) == 4
 
