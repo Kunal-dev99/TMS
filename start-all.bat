@@ -33,21 +33,15 @@ echo  API      %MODE% on http://127.0.0.1:%API_PORT%
 echo  Surface  http://localhost:%PORT%
 echo.
 
-rem -- is anything already holding the ports? --------------------------------
-netstat -ano | findstr /r /c:":%API_PORT% .*LISTENING" >nul 2>&1
-if not errorlevel 1 (
-    echo  Port %API_PORT% is already in use. Close whatever is holding it,
-    echo  or run:  start-all.bat %MODE% %PORT%   with a free API port.
-    echo.
-)
-netstat -ano | findstr /r /c:":%PORT% .*LISTENING" >nul 2>&1
-if not errorlevel 1 (
-    echo  Port %PORT% is already in use. Pass another one:
-    echo      start-all.bat %MODE% 3100
-    echo.
-    pause
-    exit /b 1
-)
+rem -- free the ports we need ------------------------------------------------
+rem  A previous run may have left something holding the ports (a hung
+rem  uvicorn, a zombie next-dev, VS Code's terminal that got detached). Kill
+rem  whatever is listening on the two ports before we try to bind them. This
+rem  is a demo/dev script -- if it turns out something the user cared about
+rem  was on 8000 or 3000, they'll notice and move it. The alternative is
+rem  a start script that fails silently every time.
+call :free_port %API_PORT% API
+call :free_port %PORT% surface
 
 rem -- the API ----------------------------------------------------------------
 echo  Starting the API.
@@ -104,4 +98,32 @@ rem  redirected. That happens whenever this file is called from another
 rem  script rather than double clicked, and the failure is silent.
 :wait
 ping -n 2 127.0.0.1 >nul
+goto :eof
+
+
+rem  Kill whatever is LISTENING on a port. Silent if the port is already
+rem  free. Two arguments: the port number, and a label used in the message.
+rem
+rem  netstat -ano prints one line per socket ending with the PID; we take
+rem  the last token. `sort /unique` because a listener may show up twice on
+rem  IPv4 and IPv6.
+:free_port
+setlocal enabledelayedexpansion
+set "PORT_TO_FREE=%~1"
+set "LABEL=%~2"
+set "FOUND="
+for /f "tokens=5" %%p in (
+    'netstat -ano ^| findstr /r /c:":%PORT_TO_FREE% .*LISTENING"'
+) do (
+    if not "%%p"=="0" (
+        if not "!FOUND!"=="%%p" (
+            set "FOUND=%%p"
+            echo  Port %PORT_TO_FREE% ^(%LABEL%^) was held by PID %%p. Killing it.
+            taskkill /F /PID %%p >nul 2>&1
+        )
+    )
+)
+rem  Give Windows a moment to release the socket before the caller binds.
+if defined FOUND ping -n 2 127.0.0.1 >nul
+endlocal
 goto :eof
