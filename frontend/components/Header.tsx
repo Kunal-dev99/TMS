@@ -97,7 +97,7 @@ export function Header({
       logoSrc="/fusion-logo.png"
       logoAlt="Fusion Practices"
       actions={
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-2 [&_button]:whitespace-nowrap">
           <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border status-testing">
             Prototype
           </span>
@@ -144,7 +144,10 @@ export function Header({
               {nightlyBusy ? "Running..." : "Run the nightly job"}
             </Button>
             {nightlyResult ? (
-              <span className="text-[10px] text-muted-foreground">
+              <span
+                className="hidden xl:inline whitespace-nowrap text-[10px] text-muted-foreground max-w-[220px] truncate"
+                title={nightlyResult}
+              >
                 {nightlyResult}
               </span>
             ) : null}
