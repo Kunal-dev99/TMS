@@ -1,15 +1,15 @@
 "use client";
 
-import { BarChart3, Layers, AlertTriangle, Sparkles, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, BarChart3, Cog, Layers, SlidersHorizontal, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * The strip. Five entries, capped.
+ * The strip. Six entries, capped.
  *
- * Adding a sixth means merging two. This is why the exception queue and
- * confirmation mismatches share one entry rather than having one each, and
- * why the advisory entry replaced Sent to Oracle when that moved onto the
- * deal timeline where it belongs.
+ * Adding a seventh means merging two. Ratings & Policy stays as-is
+ * (rating bands, cap, tenor caps) — Control gathers the LOV / config
+ * screens the treasurer edits before the day (investment principles,
+ * accounting-event catalogue, future settings).
  */
 const ITEMS = [
   { key: "Exposure", label: "Exposure", icon: BarChart3 },
@@ -17,6 +17,7 @@ const ITEMS = [
   { key: "Breaches", label: "Breaches", icon: AlertTriangle },
   { key: "Advisory", label: "Advisory", icon: Sparkles },
   { key: "Ratings and policy", label: "Ratings & Policy", icon: SlidersHorizontal },
+  { key: "Control", label: "Control", icon: Cog },
 ] as const;
 
 export function Strip({
@@ -36,6 +37,7 @@ export function Strip({
     Breaches: breachCount,
     Advisory: advisoryCount,
     "Ratings and policy": null,
+    Control: null,
   };
 
   return (

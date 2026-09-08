@@ -24,6 +24,7 @@ import { CreditSignalsPanel } from "@/components/panels/CreditSignalsPanel";
 import { PlannerModal } from "@/components/panels/PlannerModal";
 import { PlannerSettingsPanel } from "@/components/panels/PlannerSettingsPanel";
 import { AccountingEventsPanel } from "@/components/panels/AccountingEventsPanel";
+import { ControlPanel } from "@/components/panels/ControlPanel";
 import { RatingsPanel } from "@/components/panels/RatingsPanel";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,6 +54,7 @@ type Panel =
   | { kind: "breaches" }
   | { kind: "advisory"; runId: string | null }
   | { kind: "ratings" }
+  | { kind: "control" }
   | { kind: "onboarding" }
   | { kind: "evidence"; dealId: string };
 
@@ -368,6 +370,7 @@ export default function Surface() {
               runId: state?.advisory?.run_id ?? state?.advisory_run_id ?? null,
             });
           if (item === "Ratings and policy") setPanel({ kind: "ratings" });
+          if (item === "Control") setPanel({ kind: "control" });
         }}
       />
 
@@ -413,6 +416,12 @@ export default function Surface() {
               // because the result is the reason they pressed it.
               if (breachesRaised > 0) setPanel({ kind: "breaches" });
             }}
+          />
+          <ControlPanel
+            open={panel.kind === "control"}
+            onClose={() => setPanel({ kind: "none" })}
+            onOpenPrinciples={() => setPlannerSettingsOpen(true)}
+            onOpenAccountingEvents={() => setAccountingEventsOpen(true)}
           />
           <OnboardingPanel
             open={panel.kind === "onboarding"}
