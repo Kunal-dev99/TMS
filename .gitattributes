@@ -1,0 +1,4 @@
+# Shell scripts must stay LF on every platform, or Linux hosts (Railway,
+# Render, Cloud Run, etc.) will refuse to execute them.
+*.sh          text eol=lf
+bootstrap.sh  text eol=lf
