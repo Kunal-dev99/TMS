@@ -9,7 +9,8 @@
  * has the group in question. Nothing else in the frontend knows which is
  * answering, which is the whole point of the shapes being identical.
  */
-const apiOrigin = process.env.TREASURY_API_ORIGIN ?? "http://127.0.0.1:8001";
+const raw = process.env.TREASURY_API_ORIGIN ?? "http://127.0.0.1:8001";
+const apiOrigin = /^https?:\/\//i.test(raw) ? raw : `http://${raw}`;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {

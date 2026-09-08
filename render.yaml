@@ -1,0 +1,60 @@
+# Render Blueprint for Treasury Register.
+#
+# Two services in one project:
+#   - tms-backend  (FastAPI, SQLite on a persistent disk at /data)
+#   - tms-frontend (Next.js, calls the backend over Render's private network)
+#
+# The Starter plan is required for both services: the free plan sleeps
+# after 15 minutes idle and does NOT support persistent disks (SQLite
+# would evaporate on each restart). Starter is $7/service/month plus
+# $0.25/GB/month for the disk.
+
+services:
+  # ------------------------------------------------------------------
+  # Backend — FastAPI + SQLite
+  # ------------------------------------------------------------------
+  - type: web
+    name: tms-backend
+    runtime: python
+    plan: starter
+    region: oregon
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash scripts/bootstrap.sh
+    healthCheckPath: /health
+    autoDeploy: true
+    disk:
+      name: tms-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13"
+      - key: TREASURY_DATABASE_URL
+        value: sqlite:////data/treasury.db
+      - key: TREASURY_MODEL_NAME
+        value: openai/gpt-oss-120b
+      - key: TREASURY_MODEL_API_KEY
+        sync: false          # set in the Render dashboard, not the repo
+
+  # ------------------------------------------------------------------
+  # Frontend — Next.js
+  # ------------------------------------------------------------------
+  - type: web
+    name: tms-frontend
+    runtime: node
+    plan: starter
+    region: oregon
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start -- -p $PORT
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: TREASURY_API_ORIGIN
+        fromService:
+          type: web
+          name: tms-backend
+          property: hostport   # e.g. tms-backend:10000 on the private net
