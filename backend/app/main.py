@@ -29,6 +29,7 @@ from app.api import (
     currency,
     deals,
     jobs,
+    performance,
     planner,
     scenarios,
     state,
@@ -85,6 +86,7 @@ for router in (
     jobs.router,
     scenarios.router,
     planner.router,
+    performance.router,
     admin.router,
 ):
     app.include_router(router, prefix="/api/v1")

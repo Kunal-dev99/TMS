@@ -225,6 +225,43 @@ export function getExposure(signal?: AbortSignal): Promise<ExposureView> {
   return request<ExposureView>("/exposure/counterparty", { signal });
 }
 
+// -- Performance ---------------------------------------------------------
+
+export type PerformanceByCounterparty = {
+  counterparty_id: string;
+  name: string;
+  rating: string;
+  band: string;
+  interest_pence: number;
+  deal_count: number;
+  share_bp: number;
+};
+
+export type PerformanceByBand = {
+  band: string;
+  interest_pence: number;
+  share_bp: number;
+};
+
+export type PerformanceByMonth = {
+  month: string;
+  interest_pence: number;
+  cumulative_pence: number;
+};
+
+export type PerformanceView = {
+  total_interest_pence: number;
+  weighted_rate_bp: number;
+  days_recognised: number;
+  by_counterparty: PerformanceByCounterparty[];
+  by_band: PerformanceByBand[];
+  by_month: PerformanceByMonth[];
+};
+
+export function getPerformance(signal?: AbortSignal): Promise<PerformanceView> {
+  return request<PerformanceView>("/performance", { signal });
+}
+
 // -- the advisory layer ----------------------------------------------------
 
 /** Null is a valid answer, not a 404. */
