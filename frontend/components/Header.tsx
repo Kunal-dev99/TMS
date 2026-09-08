@@ -6,7 +6,7 @@ import { Header as RedwoodHeader } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { resetBook, runNightly, signOut } from "@/lib/api";
 import { useState } from "react";
-import { Check, FileText, Landmark, Loader2, Play, RotateCcw, Settings2 } from "lucide-react";
+import { Check, FileText, Loader2, Play, RotateCcw } from "lucide-react";
 import type { SignedInUser } from "@/lib/session";
 
 /**
@@ -19,16 +19,12 @@ export function Header({
   onReset,
   onSignedOut,
   onParseConfirmation,
-  onOpenPlannerSettings,
-  onOpenAccountingEvents,
 }: {
   state: StateResponse | null;
   user?: SignedInUser | null;
   onReset?: () => void;
   onSignedOut?: () => void;
   onParseConfirmation?: () => void;
-  onOpenPlannerSettings?: () => void;
-  onOpenAccountingEvents?: () => void;
 }) {
   const [nightlyBusy, setNightlyBusy] = useState(false);
   const [nightlyResult, setNightlyResult] = useState<string | null>(null);
@@ -200,40 +196,11 @@ export function Header({
             )}
           </Button>
 
-          {/* Investment principles — Anil's Sep-8 "everything
-              config-driven" ask. Sliders for risk floor, tenor cap,
-              concentration, and an allocation-bucket table. The
-              planner reads these on every run. */}
-          {onOpenPlannerSettings ? (
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              onClick={onOpenPlannerSettings}
-              className="h-7 w-7 p-0 text-muted-foreground"
-              title="Investment principles — buckets, risk floor, concentration"
-              aria-label="Investment principles"
-            >
-              <Settings2 className="h-3.5 w-3.5" />
-            </Button>
-          ) : null}
-
-          {/* Anil's "everything config-driven" catalogue: which
-              lifecycle stages fire an accounting event, and where
-              they post. */}
-          {onOpenAccountingEvents ? (
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              onClick={onOpenAccountingEvents}
-              className="h-7 w-7 p-0 text-muted-foreground"
-              title="Accounting events — configurable triggers into Oracle GL"
-              aria-label="Accounting events"
-            >
-              <Landmark className="h-3.5 w-3.5" />
-            </Button>
-          ) : null}
+          {/* Investment principles and Accounting events used to live
+              here as gear + landmark icons. Since the Control section
+              in the bottom strip groups every LOV / config screen,
+              those shortcuts have been retired to reduce header
+              clutter. Props remain so a future flow can re-add them. */}
 
           {/* Who is acting. Every write is recorded against this person,
               and a deal they proposed cannot be signed by them. */}

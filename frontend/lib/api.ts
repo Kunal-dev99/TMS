@@ -249,6 +249,22 @@ export type PerformanceByMonth = {
   cumulative_pence: number;
 };
 
+export type PerformanceInsight = {
+  kind: "positive" | "neutral" | "watch";
+  title: string;
+  body: string;
+};
+
+export type PerformanceLens = "yield" | "diversification" | "safety";
+
+export type PerformanceProjection = {
+  based_on_month: string;
+  monthly_run_rate_pence: number;
+  three_month_pence: number;
+  six_month_pence: number;
+  twelve_month_pence: number;
+};
+
 export type PerformanceView = {
   total_interest_pence: number;
   weighted_rate_bp: number;
@@ -256,6 +272,11 @@ export type PerformanceView = {
   by_counterparty: PerformanceByCounterparty[];
   by_band: PerformanceByBand[];
   by_month: PerformanceByMonth[];
+  /** Default lens ("yield") for backwards compatibility. */
+  insights: PerformanceInsight[];
+  /** Insights broken out per lens; UI toggles between them. */
+  insights_by_lens: Record<PerformanceLens, PerformanceInsight[]>;
+  projection: PerformanceProjection | null;
 };
 
 export function getPerformance(signal?: AbortSignal): Promise<PerformanceView> {

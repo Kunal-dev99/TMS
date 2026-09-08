@@ -5,7 +5,6 @@ import { BarChart3 } from "lucide-react";
 
 import { EmptyState, PanelShell } from "@/components/PanelShell";
 import { CurrencyTab } from "@/components/panels/CurrencyTab";
-import { PerformanceTab } from "@/components/panels/PerformanceTab";
 import { WhatIfCap } from "@/components/panels/WhatIfCap";
 import { ExposureDial } from "@/components/panels/ExposureDial";
 import { getExposure } from "@/lib/api";
@@ -45,9 +44,7 @@ export function ExposurePanel({
   deals: DealSummary[];
   onPick: (counterpartyId: string) => void;
 }) {
-  const [tab, setTab] = useState<"counterparty" | "currency" | "performance">(
-    "counterparty",
-  );
+  const [tab, setTab] = useState<"counterparty" | "currency">("counterparty");
   const [shape, setShape] = useState<"dial" | "table">("dial");
   const [view, setView] = useState<ExposureView | null>(null);
 
@@ -69,7 +66,7 @@ export function ExposurePanel({
       description="Every counterparty's share of the book, and how close each is to its limit"
     >
       <div className="mb-5 flex gap-1 rounded-lg bg-surface-2/60 p-1">
-        {(["counterparty", "currency", "performance"] as const).map((key) => (
+        {(["counterparty", "currency"] as const).map((key) => (
           <button
             key={key}
             type="button"
@@ -80,11 +77,7 @@ export function ExposurePanel({
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {key === "counterparty"
-              ? "Counterparty"
-              : key === "currency"
-                ? "Currency"
-                : "Performance"}
+            {key === "counterparty" ? "Counterparty exposure" : "Currency exposure"}
           </button>
         ))}
       </div>
@@ -149,10 +142,8 @@ export function ExposurePanel({
             <WhatIfCap currentCapBp={capBp} />
           </div>
         )
-      ) : tab === "currency" ? (
-        <CurrencyTab deals={deals} />
       ) : (
-        <PerformanceTab open={open && tab === "performance"} />
+        <CurrencyTab deals={deals} />
       )}
     </PanelShell>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, BarChart3, Cog, Layers, SlidersHorizontal, Sparkles } from "lucide-react";
+import { AlertTriangle, BarChart3, Cog, Layers, SlidersHorizontal, Sparkles, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
  */
 const ITEMS = [
   { key: "Exposure", label: "Exposure", icon: BarChart3 },
+  { key: "Performance", label: "Performance", icon: TrendingUp },
   { key: "Queue", label: "Queue", icon: Layers },
   { key: "Breaches", label: "Breaches", icon: AlertTriangle },
   { key: "Advisory", label: "Advisory", icon: Sparkles },
@@ -33,6 +34,7 @@ export function Strip({
 }) {
   const counts: Record<string, number | null> = {
     Exposure: null,
+    Performance: null,
     Queue: queueCount,
     Breaches: breachCount,
     Advisory: advisoryCount,

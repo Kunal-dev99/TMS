@@ -25,6 +25,7 @@ import { PlannerModal } from "@/components/panels/PlannerModal";
 import { PlannerSettingsPanel } from "@/components/panels/PlannerSettingsPanel";
 import { AccountingEventsPanel } from "@/components/panels/AccountingEventsPanel";
 import { ControlPanel } from "@/components/panels/ControlPanel";
+import { PerformancePanel } from "@/components/panels/PerformancePanel";
 import { RatingsPanel } from "@/components/panels/RatingsPanel";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,6 +56,7 @@ type Panel =
   | { kind: "advisory"; runId: string | null }
   | { kind: "ratings" }
   | { kind: "control" }
+  | { kind: "performance" }
   | { kind: "onboarding" }
   | { kind: "evidence"; dealId: string };
 
@@ -217,8 +219,6 @@ export default function Surface() {
           setState(null);
         }}
         onParseConfirmation={() => setParseOpen(true)}
-        onOpenPlannerSettings={() => setPlannerSettingsOpen(true)}
-        onOpenAccountingEvents={() => setAccountingEventsOpen(true)}
       />
 
       {state === null ? (
@@ -371,6 +371,7 @@ export default function Surface() {
             });
           if (item === "Ratings and policy") setPanel({ kind: "ratings" });
           if (item === "Control") setPanel({ kind: "control" });
+          if (item === "Performance") setPanel({ kind: "performance" });
         }}
       />
 
@@ -422,6 +423,10 @@ export default function Surface() {
             onClose={() => setPanel({ kind: "none" })}
             onOpenPrinciples={() => setPlannerSettingsOpen(true)}
             onOpenAccountingEvents={() => setAccountingEventsOpen(true)}
+          />
+          <PerformancePanel
+            open={panel.kind === "performance"}
+            onClose={() => setPanel({ kind: "none" })}
           />
           <OnboardingPanel
             open={panel.kind === "onboarding"}

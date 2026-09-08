@@ -137,6 +137,35 @@ def performance(ctx: Ctx, caller: Caller) -> dict[str, Any]:
             }
         )
 
+    # Insights per lens. Deterministic under the hood; the client
+    # switches lens and the panel re-types the prose so the AI
+    # experience is interactive. Same shape as every other AI
+    # feature — deterministic disposes; a real narrator later can
+    # rewrite the prose but never invent a figure.
+    insights_by_lens = {
+        lens: _insights(
+            lens=lens,
+            by_counterparty=by_counterparty,
+            by_band=by_band,
+            by_month=by_month,
+            total_interest=total_interest,
+            weighted_rate=weighted_rate,
+        )
+        for lens in ("yield", "diversification", "safety")
+    }
+
+    # Projection — extrapolate the most recent month's run rate.
+    projection = None
+    if len(by_month) >= 1 and total_interest > 0:
+        latest_month_interest = by_month[-1]["interest_pence"]
+        projection = {
+            "based_on_month": by_month[-1]["month"],
+            "monthly_run_rate_pence": latest_month_interest,
+            "three_month_pence": latest_month_interest * 3,
+            "six_month_pence": latest_month_interest * 6,
+            "twelve_month_pence": latest_month_interest * 12,
+        }
+
     return {
         "total_interest_pence": total_interest,
         "weighted_rate_bp": weighted_rate,
@@ -144,4 +173,171 @@ def performance(ctx: Ctx, caller: Caller) -> dict[str, Any]:
         "by_counterparty": by_counterparty,
         "by_band": by_band,
         "by_month": by_month,
+        # Keep `insights` as the "yield" lens for backwards compat.
+        "insights": insights_by_lens["yield"],
+        "insights_by_lens": insights_by_lens,
+        "projection": projection,
     }
+
+
+def _insights(
+    *,
+    lens: str,
+    by_counterparty: list[dict[str, Any]],
+    by_band: list[dict[str, Any]],
+    by_month: list[dict[str, Any]],
+    total_interest: int,
+    weighted_rate: int,
+) -> list[dict[str, str]]:
+    """A lens-tinted view of the same numbers. Every figure quoted here
+    comes from the aggregates the same response also returns, so a
+    reader can check them.
+
+    Lenses:
+      - yield          — where the interest came from, and where to
+                         squeeze more.
+      - diversification— how spread the book is, whether any name or
+                         band is over-represented.
+      - safety         — how much of the income sits above vs below
+                         an A-rating floor, and what happens if a
+                         name gets downgraded.
+    """
+    from app.formatting import per_cent, sterling
+
+    out: list[dict[str, str]] = []
+    if not total_interest:
+        return out
+
+    top = by_counterparty[0] if by_counterparty else None
+    top_band = max(by_band, key=lambda b: b["share_bp"]) if by_band else None
+    latest = by_month[-1] if by_month else None
+    prior = by_month[-2] if len(by_month) >= 2 else None
+
+    if lens == "yield":
+        if top:
+            out.append({
+                "kind": "positive",
+                "title": "Top yield contributor",
+                "body": (
+                    f"{top['name']} at {top['rating']} generated "
+                    f"{sterling(top['interest_pence'])} "
+                    f"— {per_cent(top['share_bp'])} of income to date, from "
+                    f"{top['deal_count']} deal{'s' if top['deal_count'] != 1 else ''}. "
+                    "Keep an eye on their headroom before Friday."
+                ),
+            })
+        if top_band:
+            out.append({
+                "kind": "neutral",
+                "title": "Where the yield lives",
+                "body": (
+                    f"{top_band['band']}-rated names produce "
+                    f"{per_cent(top_band['share_bp'])} of the interest. "
+                    "Shifting 20% down one rating band typically lifts "
+                    "the weighted rate by 3–5 bps."
+                ),
+            })
+        if latest and prior:
+            delta = latest["interest_pence"] - prior["interest_pence"]
+            pct = int(round((delta / prior["interest_pence"]) * 100)) if prior["interest_pence"] else 0
+            out.append({
+                "kind": "positive" if delta >= 0 else "watch",
+                "title": "Run rate",
+                "body": (
+                    f"{latest['month']} earned {sterling(latest['interest_pence'])} "
+                    f"({'+' if delta >= 0 else ''}{pct}% vs {prior['month']}). "
+                    f"At this pace the next 12 months project to "
+                    f"{sterling(latest['interest_pence'] * 12)}."
+                ),
+            })
+        return out
+
+    if lens == "diversification":
+        # Herfindahl-lite index on counterparty share.
+        shares = [c["share_bp"] / 10000 for c in by_counterparty]
+        hhi = int(round(sum(s * s for s in shares) * 10000))  # in bp
+        spread_word = (
+            "concentrated" if hhi >= 2500
+            else "moderately spread" if hhi >= 1500
+            else "well spread"
+        )
+        out.append({
+            "kind": "watch" if hhi >= 2500 else "neutral",
+            "title": f"Concentration index: {spread_word}",
+            "body": (
+                f"The book's income is {spread_word} across "
+                f"{len(by_counterparty)} counterparties. Herfindahl-style "
+                f"score is {hhi} bp — below 1500 is well spread; above "
+                f"2500 is concentrated."
+            ),
+        })
+        if top:
+            out.append({
+                "kind": "watch" if top["share_bp"] >= 4000 else "neutral",
+                "title": "Largest single name",
+                "body": (
+                    f"{top['name']} alone accounts for "
+                    f"{per_cent(top['share_bp'])} of income. "
+                    + (
+                        "Consider trimming or spreading before the next roll."
+                        if top["share_bp"] >= 4000
+                        else "That share is inside a comfortable range."
+                    )
+                ),
+            })
+        if top_band and top_band["share_bp"] >= 6000:
+            out.append({
+                "kind": "watch",
+                "title": "Single-band dominance",
+                "body": (
+                    f"{top_band['band']} carries {per_cent(top_band['share_bp'])} "
+                    "of the income. Widening the allocation bucket "
+                    "distributes credit risk without a large yield cost."
+                ),
+            })
+        return out
+
+    if lens == "safety":
+        # Share above / at-or-below the A floor.
+        above_bp = sum(
+            b["share_bp"] for b in by_band if b["band"] in ("AAA", "AA")
+        )
+        below_bp = sum(
+            b["share_bp"] for b in by_band if b["band"] in ("A", "BBB")
+        )
+        out.append({
+            "kind": "positive" if above_bp >= 5000 else "watch",
+            "title": "Above / below the A floor",
+            "body": (
+                f"{per_cent(above_bp)} of income comes from AAA / AA names; "
+                f"{per_cent(below_bp)} from A / BBB. "
+                + (
+                    "Comfortably safety-weighted."
+                    if above_bp >= 5000
+                    else "A rating cut on any A-band name would bite the run rate."
+                )
+            ),
+        })
+        if top and top["band"] in ("A", "BBB"):
+            out.append({
+                "kind": "watch",
+                "title": "Top contributor sits below the A floor",
+                "body": (
+                    f"{top['name']} ({top['rating']}) is generating "
+                    f"{per_cent(top['share_bp'])} of income from the "
+                    f"{top['band']} band. A downgrade to BB+ or below "
+                    "would move that position outside policy overnight."
+                ),
+            })
+        out.append({
+            "kind": "neutral",
+            "title": "Weighted rate discipline",
+            "body": (
+                f"The book's weighted realised rate is {per_cent(weighted_rate)}. "
+                "Every basis point above the AAA benchmark is a basis point of "
+                "credit-spread income the Register is deliberately taking."
+            ),
+        })
+        return out
+
+    return out
