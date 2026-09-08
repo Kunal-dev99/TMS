@@ -1,41 +1,39 @@
-# Render Blueprint for Treasury Register.
+# Render Blueprint for Treasury Register — FREE TIER.
 #
-# Two services in one project:
-#   - tms-backend  (FastAPI, SQLite on a persistent disk at /data)
-#   - tms-frontend (Next.js, calls the backend over Render's private network)
+# Two web services, no persistent disk:
+#   - tms-backend  (FastAPI, SQLite in the ephemeral container filesystem)
+#   - tms-frontend (Next.js)
 #
-# The Starter plan is required for both services: the free plan sleeps
-# after 15 minutes idle and does NOT support persistent disks (SQLite
-# would evaporate on each restart). Starter is $7/service/month plus
-# $0.25/GB/month for the disk.
+# Free tier trade-offs:
+#   * Services sleep after 15 min idle (~30s cold start on next hit)
+#   * No persistent disk — SQLite lives inside the container and is
+#     wiped on every restart. bootstrap.sh runs `alembic upgrade head`
+#     and reseeds an empty book on boot, so a fresh demo state comes
+#     up cleanly each time. Absolutely fine for a demo; not for prod.
 
 services:
   # ------------------------------------------------------------------
-  # Backend — FastAPI + SQLite
+  # Backend — FastAPI + SQLite (ephemeral)
   # ------------------------------------------------------------------
   - type: web
     name: tms-backend
     runtime: python
-    plan: starter
+    plan: free
     region: oregon
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: bash scripts/bootstrap.sh
     healthCheckPath: /health
     autoDeploy: true
-    disk:
-      name: tms-data
-      mountPath: /data
-      sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: "3.13"
       - key: TREASURY_DATABASE_URL
-        value: sqlite:////data/treasury.db
+        value: sqlite:///./treasury.db     # relative to backend/, ephemeral
       - key: TREASURY_MODEL_NAME
         value: openai/gpt-oss-120b
       - key: TREASURY_MODEL_API_KEY
-        sync: false          # set in the Render dashboard, not the repo
+        sync: false                         # set in the Render dashboard
 
   # ------------------------------------------------------------------
   # Frontend — Next.js
@@ -43,7 +41,7 @@ services:
   - type: web
     name: tms-frontend
     runtime: node
-    plan: starter
+    plan: free
     region: oregon
     rootDir: frontend
     buildCommand: npm install && npm run build
@@ -57,4 +55,4 @@ services:
         fromService:
           type: web
           name: tms-backend
-          property: hostport   # e.g. tms-backend:10000 on the private net
+          property: hostport                # e.g. tms-backend:10000 (private)
