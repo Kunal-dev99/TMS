@@ -19,27 +19,12 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: 'Treasury Register | Fusion Practices',
   description: 'A control system for Treasury: Counterparty control, deal lifecycle, advisory layer, and policy checks.',
+  icons: {
+    icon: '/fusion-logo.png',
+    shortcut: '/fusion-logo.png',
+    apple: '/fusion-logo.png',
+  },
 }
-
-/**
- * Pre-hydration script: read the user's saved theme and apply the `dark`
- * class to <html> BEFORE first paint. This avoids a flash of light/dark mode
- * during hydration. Storage key matches the one used in `lib/theme.ts`.
- */
-const themeInitScript = `
-(function() {
-  try {
-    var saved = localStorage.getItem('fp_theme');
-    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    var dark = saved === 'dark' || (saved === 'system' && prefersDark) || (!saved && false);
-    if (dark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  } catch (e) {}
-})();
-`
 
 export default function RootLayout({
   children,
@@ -47,12 +32,12 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${plexMono.variable}`}>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-      </head>
-      <body className="font-sans antialiased min-h-screen bg-background text-foreground">
-        {children}
+    <html lang="en" className={`${inter.variable} ${plexMono.variable}`}>
+      <body className="font-sans antialiased min-h-screen bg-background text-foreground flex flex-col">
+        <div className="flex-1">{children}</div>
+        <footer className="border-t border-border py-3 text-center text-[11px] text-muted-foreground">
+          Built by <span className="font-medium text-foreground">Fusion Practices</span>
+        </footer>
         <Toaster />
       </body>
     </html>

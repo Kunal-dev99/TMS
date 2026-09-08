@@ -3,7 +3,6 @@
 import type { StateResponse } from "@/lib/types";
 import { shortDate } from "@/lib/format";
 import { Header as RedwoodHeader } from "@/components/layout/header";
-import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { resetBook, runNightly, signOut } from "@/lib/api";
 import { useState } from "react";
@@ -91,7 +90,7 @@ export function Header({
   return (
     <RedwoodHeader
       title="Treasury Register"
-      logoSrc="/brand/logo.png"
+      logoSrc="/fusion-logo.png"
       logoAlt="Fusion Practices"
       actions={
         <div className="flex items-center gap-3">
@@ -219,10 +218,6 @@ export function Header({
               </Button>
             </div>
           ) : null}
-
-          <div className="pl-1 border-l border-border">
-            <ThemeToggle />
-          </div>
         </div>
       }
     />

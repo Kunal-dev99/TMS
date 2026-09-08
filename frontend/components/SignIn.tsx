@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound } from "lucide-react";
+import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,8 +65,15 @@ export function SignIn({ onSignedIn }: { onSignedIn: (user: SignedInUser) => voi
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/15 text-primary">
-            <KeyRound className="h-5 w-5" />
+          <div className="mx-auto mb-4 flex items-center justify-center rounded-md bg-[#15171A] px-4 py-2 shadow-sm w-fit">
+            <Image
+              src="/fusion-logo.png"
+              alt="Fusion Practices"
+              width={160}
+              height={32}
+              priority
+              className="h-8 w-auto"
+            />
           </div>
           <h1 className="text-lg font-semibold">Treasury Register</h1>
           <p className="mt-1 text-xs text-muted-foreground">

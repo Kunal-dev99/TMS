@@ -6,7 +6,6 @@ import { useState, useEffect, type ComponentType } from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
-import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { ChevronLeft, ChevronRight, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -200,7 +199,6 @@ export function Sidebar({
               )}
               {sidebarOpen && (
                 <>
-                  <ThemeToggle />
                   {onLogout && (
                     <Button
                       variant="ghost"
