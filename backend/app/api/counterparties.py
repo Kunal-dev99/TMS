@@ -143,3 +143,18 @@ def record_rating_action(
 
 def _onboarding(ctx: Ctx) -> OnboardingService:
     return OnboardingService(ctx.session, ctx.tenant_id, ctx.as_of_date)
+
+
+# --------------------------------------------------------------------------
+# Rating sources + ISIN codes (Anil's Sep-8 "where does this data come from")
+# --------------------------------------------------------------------------
+
+from app.services import counterparty_sources as _cp_sources  # noqa: E402
+
+
+@router.get("/counterparties/sources")
+def counterparty_sources(caller: Caller) -> dict:
+    """Where each counterparty's rating comes from and what instruments
+    (with ISINs) are on file for them. Stubbed for the prototype; in
+    production this is pulled from Bloomberg / Fitch / S&P / Moody's."""
+    return _cp_sources.as_dict()

@@ -294,6 +294,32 @@ export function resetAccountingEvents(): Promise<AccountingEventSettings> {
   return post<AccountingEventSettings>("/accounting/events/reset", {});
 }
 
+// -- Counterparty data sources (Bloomberg / Fitch / ISINs) ---------------
+
+export type InstrumentCode = {
+  instrument: string;
+  isin: string;
+  code: string;
+  source: string;
+};
+
+export type CounterpartySource = {
+  rating_source: string;
+  rating_as_of: string;
+  instruments: InstrumentCode[];
+};
+
+export type CounterpartySourcesView = {
+  sources: Record<string, CounterpartySource>;
+  notice: string;
+};
+
+export function getCounterpartySources(
+  signal?: AbortSignal,
+): Promise<CounterpartySourcesView> {
+  return get<CounterpartySourcesView>("/counterparties/sources", signal);
+}
+
 // -- the advisory layer ----------------------------------------------------
 
 /** Null is a valid answer, not a 404. */

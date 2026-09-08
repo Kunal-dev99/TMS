@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { BookRow } from "@/lib/types";
 import {
   headroomBand,
@@ -11,6 +12,10 @@ import { PageSection } from "@/components/common/PageSection";
 import { Building2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import {
+  getCounterpartySources,
+  type CounterpartySource,
+} from "@/lib/api";
 
 /**
  * The book. Model 1, the state of the world.
@@ -37,6 +42,18 @@ export function Book({
   /** The Add control. Onboarding opens from the book it will appear in. */
   action?: React.ReactNode;
 }) {
+  // Fetch rating sources + ISINs once, per Anil's "where does this
+  // data come from" ask. Stubbed on the server; the fetch itself proves
+  // the shape production would use.
+  const [sources, setSources] = useState<Record<string, CounterpartySource>>({});
+  useEffect(() => {
+    const controller = new AbortController();
+    getCounterpartySources(controller.signal)
+      .then((v) => setSources(v.sources))
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
+
   return (
     <PageSection
       icon={Building2}
@@ -86,6 +103,21 @@ export function Book({
                       group at {sterling(row.group_used_pence)} of{" "}
                       {sterling(row.group_limit_pence)}
                     </div>
+                    {sources[row.counterparty_id]?.instruments?.length ? (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {sources[row.counterparty_id].instruments.map((ins) => (
+                          <span
+                            key={ins.isin}
+                            title={`${ins.code} · source: ${ins.source}`}
+                            className="inline-flex items-center gap-1 rounded border border-border bg-surface-2/60 px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground"
+                          >
+                            <span className="font-semibold text-foreground/80">{ins.instrument}</span>
+                            <span className="text-[8px]">·</span>
+                            <span>{ins.isin}</span>
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
                   </td>
                   <td className="py-3 px-2 whitespace-nowrap">
                     {row.rating_status === "WATCH" ? (
@@ -97,6 +129,16 @@ export function Book({
                         {row.rating}
                       </span>
                     )}
+                    {sources[row.counterparty_id] ? (
+                      <div className="text-[9px] text-muted-foreground mt-1">
+                        from {sources[row.counterparty_id].rating_source}
+                        {sources[row.counterparty_id].rating_as_of ? (
+                          <>
+                            <br />as of {sources[row.counterparty_id].rating_as_of}
+                          </>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </td>
                   <td className="py-3 px-3 text-right num">
                     <div className="font-medium text-foreground">{sterling(row.limit_pence)}</div>
