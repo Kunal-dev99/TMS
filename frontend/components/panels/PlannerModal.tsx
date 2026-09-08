@@ -60,6 +60,7 @@ export function PlannerModal({
   open,
   onClose,
   onPick,
+  onPickBatch,
 }: {
   open: boolean;
   onClose: () => void;
@@ -70,6 +71,22 @@ export function PlannerModal({
     tenor_months: number;
     rate_bp: number;
   }) => void;
+  /**
+   * Fire every allocation on a whole candidate through the six checks
+   * in sequence — same shape as clicking Initiate on each row one by
+   * one, but without the click count. Passes the candidate's label so
+   * the toast can name which plan is being placed.
+   */
+  onPickBatch?: (
+    allocations: {
+      counterparty_id: string;
+      counterparty_name: string;
+      principal_pence: number;
+      tenor_months: number;
+      rate_bp: number;
+    }[],
+    label: string,
+  ) => Promise<void> | void;
 }) {
   const [plan, setPlan] = useState<DeploymentPlan | null>(null);
   const [pending, setPending] = useState<DeploymentPlan | null>(null);
@@ -146,7 +163,7 @@ export function PlannerModal({
             />
           ) : null}
 
-          {plan ? <PlanBody plan={plan} onPick={onPick} /> : null}
+          {plan ? <PlanBody plan={plan} onPick={onPick} onPickBatch={onPickBatch} /> : null}
         </div>
       </div>
     </div>
@@ -157,6 +174,7 @@ export function PlannerModal({
 function PlanBody({
   plan,
   onPick,
+  onPickBatch,
 }: {
   plan: DeploymentPlan;
   onPick: (a: {
@@ -165,6 +183,16 @@ function PlanBody({
     tenor_months: number;
     rate_bp: number;
   }) => void;
+  onPickBatch?: (
+    allocations: {
+      counterparty_id: string;
+      counterparty_name: string;
+      principal_pence: number;
+      tenor_months: number;
+      rate_bp: number;
+    }[],
+    label: string,
+  ) => Promise<void> | void;
 }) {
   return (
     <div className="space-y-5">
@@ -235,6 +263,7 @@ function PlanBody({
                   recommended={blended.kind === plan.recommendation_kind}
                   aiLabel={plan.per_candidate_labels[blended.kind]}
                   onPick={onPick}
+                  onPickBatch={onPickBatch}
                 />
               </div>
             ) : null}
@@ -257,6 +286,7 @@ function PlanBody({
                       recommended={c.kind === plan.recommendation_kind}
                       aiLabel={plan.per_candidate_labels[c.kind]}
                       onPick={onPick}
+                      onPickBatch={onPickBatch}
                     />
                   ))}
                 </div>
@@ -650,6 +680,7 @@ function CandidateCard({
   recommended,
   aiLabel,
   onPick,
+  onPickBatch,
 }: {
   candidate: PlannerCandidate;
   recommended: boolean;
@@ -660,8 +691,31 @@ function CandidateCard({
     tenor_months: number;
     rate_bp: number;
   }) => void;
+  onPickBatch?: (
+    allocations: {
+      counterparty_id: string;
+      counterparty_name: string;
+      principal_pence: number;
+      tenor_months: number;
+      rate_bp: number;
+    }[],
+    label: string,
+  ) => Promise<void> | void;
 }) {
   const total = candidate.deployed_pence || 1;
+  const runBatch = () => {
+    if (!onPickBatch) return;
+    onPickBatch(
+      candidate.allocations.map((a) => ({
+        counterparty_id: a.counterparty_id,
+        counterparty_name: a.counterparty_name,
+        principal_pence: a.principal_pence,
+        tenor_months: a.tenor_months,
+        rate_bp: a.rate_bp,
+      })),
+      candidate.label,
+    );
+  };
   return (
     <article
       className={`rounded-lg border p-3 transition ${
@@ -709,6 +763,25 @@ function CandidateCard({
           value={"+" + perCent(candidate.concentration_change_bp)}
         />
       </div>
+
+      {/* Batch initiate — Anil's Sep-8 flow: place the whole plan in
+          one click. Each allocation still passes the six checks; a
+          blocked deal lands in the queue like any other. */}
+      {onPickBatch && candidate.allocations.length > 1 ? (
+        <div className="mb-2">
+          <Button
+            type="button"
+            size="sm"
+            className="h-7 w-full gap-1.5 text-[11px]"
+            onClick={runBatch}
+          >
+            Initiate all {candidate.allocations.length} at once
+          </Button>
+          <p className="mt-1 text-[9px] italic text-muted-foreground">
+            Each allocation runs the same six checks — blocked deals go to the queue.
+          </p>
+        </div>
+      ) : null}
 
       {/* Allocation bar: a stacked segment per counterparty. */}
       <div className="mb-2">

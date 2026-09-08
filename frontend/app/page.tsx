@@ -484,6 +484,37 @@ export default function Surface() {
             "Initiated. Runs the same six checks as anything typed by hand.",
           );
         }}
+        onPickBatch={async (allocations, label) => {
+          setPlannerOpen(false);
+          let recorded = 0;
+          let blocked = 0;
+          for (let i = 0; i < allocations.length; i++) {
+            const a = allocations[i];
+            setToast(
+              `${label}: placing ${i + 1} of ${allocations.length} — ${a.counterparty_name}`,
+            );
+            try {
+              const booked = await recordDeal({
+                counterparty_id: a.counterparty_id,
+                instrument: "DEPOSIT",
+                principal_pence: a.principal_pence,
+                tenor_months: a.tenor_months,
+                rate_bp: a.rate_bp,
+              });
+              if (booked.deal.status === "BLOCKED") {
+                blocked += 1;
+              } else {
+                recorded += 1;
+              }
+            } catch {
+              blocked += 1;
+            }
+          }
+          await load();
+          setToast(
+            `${label}: ${recorded} recorded${blocked ? `, ${blocked} blocked (see the queue)` : ""}.`,
+          );
+        }}
       />
 
       <PlannerSettingsPanel
