@@ -202,7 +202,7 @@ export function AccountingEventsPanel({
             <span className="font-medium text-foreground"> Treasury Register Connector</span> —
             our first-party integration layer, not Oracle Integration
             Cloud — into whichever destination is selected above (Fusion
-            AHCS, Fusion GL, EBS, SAP, Workday, or a custom endpoint),
+            AHCS, Fusion GL, Oracle EBS, or a custom endpoint),
             preserving drill-back to the deal.
           </p>
         </div>

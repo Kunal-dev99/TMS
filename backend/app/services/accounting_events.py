@@ -149,8 +149,6 @@ SUPPORTED_TARGETS: list[dict[str, str]] = [
     {"key": "ORACLE_FUSION_AHCS",  "label": "Oracle Fusion Accounting Hub (AHCS)"},
     {"key": "ORACLE_FUSION_GL",    "label": "Oracle Fusion GL (direct journal import)"},
     {"key": "ORACLE_EBS_GL",       "label": "Oracle EBS General Ledger"},
-    {"key": "SAP_S4_FI",           "label": "SAP S/4HANA FI"},
-    {"key": "WORKDAY_FINANCIALS",  "label": "Workday Financials"},
     {"key": "CUSTOM_REST",         "label": "Custom REST endpoint"},
 ]
 
