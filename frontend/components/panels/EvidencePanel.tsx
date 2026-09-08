@@ -11,9 +11,29 @@ import {
   SettlementSection,
 } from "@/components/panels/DealLifecycle";
 import { WhatIfNotRolled } from "@/components/panels/WhatIfNotRolled";
-import { approveDeal, getDeal } from "@/lib/api";
+import {
+  approveDeal,
+  getDeal,
+  getAccountingEvents,
+  type AccountingEventRule,
+} from "@/lib/api";
 import { approverLabel, perCent, shortDate, sterling } from "@/lib/format";
 import type { DealDetail } from "@/lib/types";
+
+/**
+ * Map a timeline event key to the accounting-events catalogue stage.
+ * Only stages that appear on the deal lifecycle are here; ACCRUED is
+ * a nightly background job and never a single timeline row.
+ */
+const TIMELINE_TO_STAGE: Record<string, string> = {
+  captured: "PROPOSED",
+  approved: "APPROVED",
+  executed: "EXECUTED",
+  confirmed: "CONFIRMED",
+  instructed: "SETTLED",   // "Payment instructed" is the value-date event
+  maturity: "MATURED",
+  closed: "CLOSED",
+};
 
 /**
  * The deal lifecycle, and the evidence behind the booking.
@@ -47,6 +67,22 @@ export function EvidencePanel({
   const [detail, setDetail] = useState<DealDetail | null>(null);
   const [signing, setSigning] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
+  // The accounting-events catalogue drives the "Accounting event"
+  // badge on the timeline rows. Fetched once when the panel opens.
+  const [eventsByStage, setEventsByStage] = useState<Record<string, AccountingEventRule>>({});
+  useEffect(() => {
+    if (dealId == null) return;
+    let cancelled = false;
+    getAccountingEvents()
+      .then((s) => {
+        if (cancelled) return;
+        const map: Record<string, AccountingEventRule> = {};
+        for (const r of s.rules) map[r.stage] = r;
+        setEventsByStage(map);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [dealId]);
 
   const reload = useCallback(
     (signal?: AbortSignal) => {
@@ -166,7 +202,11 @@ export function EvidencePanel({
               Lifecycle
             </h3>
             <ol className="space-y-3">
-              {detail.timeline.map((event) => (
+              {detail.timeline.map((event) => {
+                const stage = TIMELINE_TO_STAGE[event.key];
+                const rule = stage ? eventsByStage[stage] : undefined;
+                const isAcctg = rule?.is_event ?? false;
+                return (
                 <li key={event.key} className="flex gap-3">
                   <span
                     className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
@@ -190,6 +230,14 @@ export function EvidencePanel({
                             {SOURCE_LABEL[event.source]}
                           </span>
                         ) : null}
+                        {isAcctg && rule ? (
+                          <span
+                            className="ml-1.5 rounded-sm bg-primary/15 px-1 py-px text-[9px] font-medium uppercase tracking-wider text-primary"
+                            title={`${rule.event_class} · ${rule.event_type} — posts to ${rule.posts_to} via ${rule.integration}`}
+                          >
+                            → Fusion GL
+                          </span>
+                        ) : null}
                       </span>
                       <span className="shrink-0 text-[10px] text-muted-foreground">
                         {event.occurred_at ? shortDate(event.occurred_at) : "—"}
@@ -198,9 +246,15 @@ export function EvidencePanel({
                     <p className="text-[10.5px] text-muted-foreground">
                       {event.detail}
                     </p>
+                    {isAcctg && rule ? (
+                      <p className="mt-0.5 text-[10px] italic text-primary/80">
+                        Accounting event: {rule.event_class} · {rule.event_type} — {rule.integration}
+                      </p>
+                    ) : null}
                   </div>
                 </li>
-              ))}
+                );
+              })}
             </ol>
           </section>
 
