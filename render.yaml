@@ -52,7 +52,8 @@ services:
       - key: NODE_VERSION
         value: "20"
       - key: TREASURY_API_ORIGIN
-        fromService:
-          type: web
-          name: tms-backend
-          property: hostport                # e.g. tms-backend:10000 (private)
+        value: https://tms-backend-iyvb.onrender.com
+        # Render's private-network hostname (fromService.hostport) is a
+        # paid-tier feature; on free plans it does not resolve. We point
+        # the Next.js rewrite at the backend's public URL instead — same
+        # traffic, one extra TLS hop, no other change.
