@@ -20,13 +20,15 @@ import {
 /**
  * The cash deployment planner.
  *
- * Four candidate deployments of today's idle cash, computed by the same
- * CheckEngine that gates every other deal (so every one is bookable), then
- * ranked and labelled by the model.
+ * One blended plan for today's idle cash, computed against the treasurer's
+ * investment principles (allocation buckets, risk floor, concentration
+ * cap) and gated by the same CheckEngine as every other deal. Two
+ * alternatives — Higher yield and Tighter concentration — sit alongside
+ * for comparison. The model labels; the numbers are ours.
  *
  * The modal draws its own SVG charts inline: an allocation bar per
- * candidate showing who gets what, a yield-vs-concentration scatter placing
- * the four side by side, and a running total.
+ * candidate showing who gets what, a yield-vs-concentration scatter
+ * placing all candidates side by side, and a running total.
  */
 
 const PLANNER_STEPS = [
@@ -110,8 +112,9 @@ export function PlannerModal({
               Deploy the idle cash
             </h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Four ways to place today&apos;s uninvested balance. Every
-              allocation is pre-checked; the model ranks them.
+              One blended plan for today&apos;s uninvested balance, fitting
+              your investment principles. Two variants for comparison.
+              Every allocation is pre-checked.
             </p>
           </div>
           <button
