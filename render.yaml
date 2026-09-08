@@ -44,7 +44,7 @@ services:
     plan: free
     region: oregon
     rootDir: frontend
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --legacy-peer-deps && npm run build
     startCommand: npm start -- -p $PORT
     healthCheckPath: /
     autoDeploy: true
