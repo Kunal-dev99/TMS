@@ -65,16 +65,14 @@ export function SignIn({ onSignedIn }: { onSignedIn: (user: SignedInUser) => voi
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex items-center justify-center rounded-md bg-[#15171A] px-4 py-2 shadow-sm w-fit">
-            <Image
-              src="/fusion-logo.png"
-              alt="Fusion Practices"
-              width={160}
-              height={32}
-              priority
-              className="h-8 w-auto"
-            />
-          </div>
+          <Image
+            src="/fusion-logo.png"
+            alt="Fusion Practices"
+            width={220}
+            height={80}
+            priority
+            className="mx-auto mb-3 h-20 w-auto"
+          />
           <h1 className="text-lg font-semibold">Treasury Register</h1>
           <p className="mt-1 text-xs text-muted-foreground">
             Every action is recorded against the person who took it.

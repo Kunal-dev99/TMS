@@ -45,18 +45,16 @@ export function Header({
     <header className="sticky top-0 z-30 w-full border-b border-border bg-surface-1">
       <div className={cn('flex h-16 items-center gap-4 px-6')}>
         <div className="flex items-center gap-3 shrink-0">
-          {/* Logo plate: white-knockout logo on a fixed dark slate background so
-              the asset survives both light and dark themes without recoloring. */}
-          <div className="flex items-center justify-center rounded-md bg-[#15171A] px-3 py-1.5 shadow-sm">
-            <Image
-              src={logoSrc}
-              alt={logoAlt}
-              width={140}
-              height={28}
-              priority
-              className="h-7 w-auto"
-            />
-          </div>
+          {/* Fusion Practices brand mark: yellow on transparent, sits
+              directly on the header — no plate. Sized to fill the bar. */}
+          <Image
+            src={logoSrc}
+            alt={logoAlt}
+            width={200}
+            height={56}
+            priority
+            className="h-12 w-auto"
+          />
           <div className="border-l border-border pl-3">
             <h1 className="text-base font-semibold tracking-tight text-foreground">{title}</h1>
           </div>
