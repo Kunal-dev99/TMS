@@ -22,6 +22,7 @@ import { QueuePanel } from "@/components/panels/QueuePanel";
 import { ConfirmationParseModal } from "@/components/panels/ConfirmationParseModal";
 import { CreditSignalsPanel } from "@/components/panels/CreditSignalsPanel";
 import { PlannerModal } from "@/components/panels/PlannerModal";
+import { PlannerSettingsPanel } from "@/components/panels/PlannerSettingsPanel";
 import { RatingsPanel } from "@/components/panels/RatingsPanel";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,6 +79,7 @@ export default function Surface() {
   const [error, setError] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>({ kind: "none" });
   const [plannerOpen, setPlannerOpen] = useState(false);
+  const [plannerSettingsOpen, setPlannerSettingsOpen] = useState(false);
   const [parseOpen, setParseOpen] = useState(false);
   const [signalsOpen, setSignalsOpen] = useState(false);
 
@@ -211,6 +213,7 @@ export default function Surface() {
           setState(null);
         }}
         onParseConfirmation={() => setParseOpen(true)}
+        onOpenPlannerSettings={() => setPlannerSettingsOpen(true)}
       />
 
       {state === null ? (
@@ -478,6 +481,12 @@ export default function Surface() {
             "Loaded. Runs the same six checks as anything typed by hand.",
           );
         }}
+      />
+
+      <PlannerSettingsPanel
+        open={plannerSettingsOpen}
+        onClose={() => setPlannerSettingsOpen(false)}
+        onSaved={() => setToast("Planner policy saved. Reopen the planner to see the effect.")}
       />
     </div>
   );

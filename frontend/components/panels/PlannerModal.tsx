@@ -38,12 +38,16 @@ const PLANNER_STEPS = [
   "Asking the model to rank the four.",
 ];
 
-const ACCENT: Record<PlannerCandidate["kind"], string> = {
+const BUILTIN_ACCENT: Record<string, string> = {
   MAX_YIELD: "hsl(var(--warning))",
   DIVERSIFIED: "hsl(var(--primary))",
   PRESERVE_HEADROOM: "hsl(var(--success))",
   CONSERVATIVE: "hsl(var(--muted-foreground))",
 };
+// Custom strategies fall back to a neutral accent.
+const ACCENT = new Proxy(BUILTIN_ACCENT, {
+  get: (t, k: string) => t[k] ?? "hsl(var(--muted-foreground))",
+}) as Record<string, string>;
 
 export function PlannerModal({
   open,
@@ -178,7 +182,7 @@ function PlanBody({
               className="ml-1 rounded px-1.5 py-px text-[9px] font-medium uppercase tracking-wider text-primary"
               style={{
                 background: `color-mix(in srgb, ${
-                  ACCENT[plan.recommendation_kind as PlannerCandidate["kind"]] ||
+                  ACCENT[plan.recommendation_kind] ||
                   "hsl(var(--primary))"
                 } 15%, transparent)`,
               }}

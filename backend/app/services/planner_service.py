@@ -25,6 +25,13 @@ from app.models import Deal, PolicyVersion, RatingBand
 from app.repo import counterparties as cp_repo
 from app.services.check_engine import CheckEngine
 from app.services.exposure_calculator import ExposureCalculator
+from app.services.planner_settings import (
+    BUILTIN_STRATEGIES,
+    RATING_ORDINAL,
+    CustomStrategy,
+    PlannerSettings,
+    get_settings,
+)
 from app.services.state_service import StateService
 
 # The candidate archetypes, in the order they appear in the modal.
@@ -154,6 +161,8 @@ class PlannerService:
     # ------------------------------------------------------------------
 
     def deploy_cash(self) -> DeploymentPlan:
+        settings = get_settings()
+
         state = StateService(
             self.session, self.tenant_id, self.as_of_date, self.policy,
             tenant_name="",
@@ -168,7 +177,14 @@ class PlannerService:
                 "account today.",
             )
 
-        book = list(state.book())
+        # Rating floor and per-name cap come from the settings modal.
+        min_ord = RATING_ORDINAL.get(settings.min_rating, 1)
+        per_name_cap = int(idle * settings.per_name_cap_pct / 100)
+
+        book = [
+            row for row in state.book()
+            if RATING_ORDINAL.get(row.rating, 0) >= min_ord
+        ]
 
         # Group the book so PRESERVE_HEADROOM knows which group already
         # holds the largest share.
@@ -194,15 +210,16 @@ class PlannerService:
             headroom = row.headroom_pence or 0
             if headroom <= 0 or row.status != "ACTIVE":
                 continue
-            max_tenor = min(row.max_tenor_months or 3, 12)
-            # A short and a long option, capped by the band.
+            max_tenor = min(row.max_tenor_months or 3, settings.max_tenor_months)
+            # A short and a long option, capped by the band and the
+            # tenor ceiling from settings.
             for tenor in {3, max_tenor}:
-                if tenor < 3:
+                if tenor < 3 or tenor > settings.max_tenor_months:
                     continue
                 rate = _rate_for(row.rating, tenor)
-                # Never propose more than headroom allows or than there is
-                # cash for. Round to a sensible number.
-                place = min(headroom, idle)
+                # Never propose more than headroom allows, more than there
+                # is cash for, or more than the per-name cap from settings.
+                place = min(headroom, idle, per_name_cap)
                 place = (place // 100_000) * 100_000  # £1,000 rounding
                 if place <= 0:
                     continue
@@ -234,39 +251,24 @@ class PlannerService:
                 "deployed today.",
             )
 
-        # Build the four candidates.
+        # Build the candidates the treasurer has enabled in settings.
+        # Order matches settings.enabled_strategies, custom strategies
+        # after the built-ins.
         candidates: list[Candidate] = []
 
-        # 1. Maximum yield: the single placement with the highest expected
-        # interest. One counterparty, one deal.
-        max_yield = max(placements, key=lambda p: p.rate_bp * p.principal_pence)
-        candidates.append(
-            self._one_deal_candidate(
-                "MAX_YIELD", "Maximum yield",
-                "Everything with the highest-paying name that has room.",
-                max_yield,
+        for kind in settings.enabled_strategies:
+            candidate = self._build_builtin(
+                kind, idle, placements, tightest_group
             )
-        )
+            if candidate is not None:
+                candidates.append(candidate)
 
-        # 2. Diversified: split across up to four counterparties, each
-        # taking an equal share of the idle cash (capped by their headroom).
-        candidates.append(
-            self._diversified_candidate(idle, placements)
-        )
-
-        # 3. Preserve group headroom: skip the tightest group, place the
-        # rest of the cash across the remaining names.
-        candidates.append(
-            self._preserve_headroom_candidate(
-                idle, placements, tightest_group
+        for custom in settings.custom_strategies:
+            candidate = self._build_custom(
+                custom, idle, placements, tightest_group, book
             )
-        )
-
-        # 4. Conservative: A- and above only, one deal per counterparty at
-        # short tenor.
-        candidates.append(
-            self._conservative_candidate(idle, placements)
-        )
+            if candidate is not None:
+                candidates.append(candidate)
 
         # Verify each allocation with the six checks. If any one refuses,
         # drop that allocation. A candidate with nothing left is dropped
@@ -378,6 +380,95 @@ class PlannerService:
             tagline="A and above only, at three months.",
             allocations=allocations,
         )
+
+    # ----------------------------------------------------------- dispatch
+
+    def _builtin_meta(self, kind: str) -> dict[str, str]:
+        for s in BUILTIN_STRATEGIES:
+            if s["kind"] == kind:
+                return s
+        return {"kind": kind, "label": kind.title(), "tagline": ""}
+
+    def _build_builtin(
+        self,
+        kind: str,
+        idle: int,
+        placements: list[Allocation],
+        tightest_group: str,
+    ) -> Candidate | None:
+        """Dispatch a built-in strategy kind to its archetype method."""
+        meta = self._builtin_meta(kind)
+        if kind == "MAX_YIELD":
+            if not placements:
+                return None
+            top = max(placements, key=lambda p: p.rate_bp * p.principal_pence)
+            return self._one_deal_candidate(
+                kind, meta["label"], meta["tagline"], top
+            )
+        if kind == "DIVERSIFIED":
+            c = self._diversified_candidate(idle, placements)
+            c.kind = kind
+            c.label = meta["label"]
+            if c.tagline:
+                c.tagline = meta["tagline"]
+            return c
+        if kind == "PRESERVE_HEADROOM":
+            c = self._preserve_headroom_candidate(idle, placements, tightest_group)
+            c.kind = kind
+            c.label = meta["label"]
+            # keep the dynamic "Leaves <group> room" tagline if it was set;
+            # otherwise fall back to the config one.
+            if not c.tagline:
+                c.tagline = meta["tagline"]
+            return c
+        if kind == "CONSERVATIVE":
+            c = self._conservative_candidate(idle, placements)
+            c.kind = kind
+            c.label = meta["label"]
+            if not c.tagline:
+                c.tagline = meta["tagline"]
+            return c
+        return None
+
+    def _build_custom(
+        self,
+        custom: CustomStrategy,
+        idle: int,
+        placements: list[Allocation],
+        tightest_group: str,
+        book: list[Any],
+    ) -> Candidate | None:
+        """A custom strategy is a base archetype with rating/tenor overrides.
+
+        The overrides re-filter the placement pool; the base archetype's
+        algorithm then runs against the narrower pool.
+        """
+        pool = placements
+        if custom.min_rating:
+            min_ord = RATING_ORDINAL.get(custom.min_rating, 1)
+            pool = [
+                p for p in pool
+                if RATING_ORDINAL.get(p.counterparty_rating, 0) >= min_ord
+            ]
+        if custom.max_tenor_months:
+            pool = [p for p in pool if p.tenor_months <= custom.max_tenor_months]
+
+        if not pool:
+            return None
+
+        base_kind = custom.based_on or "MAX_YIELD"
+        candidate = self._build_builtin(base_kind, idle, pool, tightest_group)
+        if candidate is None:
+            return None
+        candidate.kind = custom.kind
+        candidate.label = custom.label or custom.kind
+        candidate.tagline = (
+            custom.tagline
+            or f"Custom: {base_kind.replace('_', ' ').lower()} · "
+               f"≥ {custom.min_rating or 'any'} · "
+               f"≤ {custom.max_tenor_months or '—'} months"
+        )
+        return candidate
 
     # ----------------------------------------------------------- helpers
 

@@ -6,7 +6,7 @@ import { Header as RedwoodHeader } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { resetBook, runNightly, signOut } from "@/lib/api";
 import { useState } from "react";
-import { Check, FileText, Loader2, Play, RotateCcw } from "lucide-react";
+import { Check, FileText, Loader2, Play, RotateCcw, Settings2 } from "lucide-react";
 import type { SignedInUser } from "@/lib/session";
 
 /**
@@ -19,12 +19,14 @@ export function Header({
   onReset,
   onSignedOut,
   onParseConfirmation,
+  onOpenPlannerSettings,
 }: {
   state: StateResponse | null;
   user?: SignedInUser | null;
   onReset?: () => void;
   onSignedOut?: () => void;
   onParseConfirmation?: () => void;
+  onOpenPlannerSettings?: () => void;
 }) {
   const [nightlyBusy, setNightlyBusy] = useState(false);
   const [nightlyResult, setNightlyResult] = useState<string | null>(null);
@@ -192,6 +194,24 @@ export function Header({
               </>
             )}
           </Button>
+
+          {/* Planner policy — Anil's "everything config-driven" ask.
+              Sliders for rating floor, tenor ceiling, per-name cap,
+              group concentration; checkboxes for strategies;
+              inline form to add custom strategies. */}
+          {onOpenPlannerSettings ? (
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={onOpenPlannerSettings}
+              className="h-7 w-7 p-0 text-muted-foreground"
+              title="Planner policy — rating floor, tenor cap, strategies"
+              aria-label="Planner policy"
+            >
+              <Settings2 className="h-3.5 w-3.5" />
+            </Button>
+          ) : null}
 
           {/* Who is acting. Every write is recorded against this person,
               and a deal they proposed cannot be signed by them. */}

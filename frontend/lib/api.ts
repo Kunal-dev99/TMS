@@ -91,6 +91,14 @@ function post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> 
   return request<T>(path, { method: "POST", body: JSON.stringify(body), signal });
 }
 
+function put<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  return request<T>(path, { method: "PUT", body: JSON.stringify(body), signal });
+}
+
+function get<T>(path: string, signal?: AbortSignal): Promise<T> {
+  return request<T>(path, { method: "GET", signal });
+}
+
 // -- signing in -----------------------------------------------------------
 
 export async function signIn(
@@ -498,7 +506,9 @@ export type PlannerAllocation = {
 };
 
 export type PlannerCandidate = {
-  kind: "MAX_YIELD" | "DIVERSIFIED" | "PRESERVE_HEADROOM" | "CONSERVATIVE";
+  // Built-in kinds: MAX_YIELD, DIVERSIFIED, PRESERVE_HEADROOM, CONSERVATIVE.
+  // Custom strategies added from the settings modal have arbitrary kinds.
+  kind: string;
   label: string;
   tagline: string;
   allocations: PlannerAllocation[];
@@ -521,6 +531,48 @@ export type DeploymentPlan = {
 
 export function deployCash(): Promise<DeploymentPlan> {
   return post("/planner/deploy-cash", {}) as Promise<DeploymentPlan>;
+}
+
+// -- Cash Deployment Planner: editable settings --------------------------
+
+export type PlannerStrategyMeta = {
+  kind: string;
+  label: string;
+  tagline: string;
+};
+
+export type CustomStrategy = {
+  kind: string;
+  label: string;
+  tagline: string;
+  based_on: string;
+  min_rating: string;
+  max_tenor_months: number;
+};
+
+export type PlannerSettings = {
+  min_rating: string;
+  max_tenor_months: number;
+  per_name_cap_pct: number;
+  group_concentration_cap_pct: number;
+  enabled_strategies: string[];
+  custom_strategies: CustomStrategy[];
+  builtin_strategies: PlannerStrategyMeta[];
+  rating_ladder: string[];
+};
+
+export function getPlannerSettings(): Promise<PlannerSettings> {
+  return get<PlannerSettings>("/planner/settings");
+}
+
+export function updatePlannerSettings(
+  patch: Partial<PlannerSettings>,
+): Promise<PlannerSettings> {
+  return put<PlannerSettings>("/planner/settings", patch);
+}
+
+export function resetPlannerSettings(): Promise<PlannerSettings> {
+  return post<PlannerSettings>("/planner/settings/reset", {});
 }
 
 // -- Confirmation parser (AI) -----------------------------------------------
