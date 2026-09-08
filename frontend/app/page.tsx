@@ -23,6 +23,7 @@ import { ConfirmationParseModal } from "@/components/panels/ConfirmationParseMod
 import { CreditSignalsPanel } from "@/components/panels/CreditSignalsPanel";
 import { PlannerModal } from "@/components/panels/PlannerModal";
 import { PlannerSettingsPanel } from "@/components/panels/PlannerSettingsPanel";
+import { AccountingEventsPanel } from "@/components/panels/AccountingEventsPanel";
 import { RatingsPanel } from "@/components/panels/RatingsPanel";
 import { Button } from "@/components/ui/button";
 import {
@@ -80,6 +81,7 @@ export default function Surface() {
   const [panel, setPanel] = useState<Panel>({ kind: "none" });
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [plannerSettingsOpen, setPlannerSettingsOpen] = useState(false);
+  const [accountingEventsOpen, setAccountingEventsOpen] = useState(false);
   const [parseOpen, setParseOpen] = useState(false);
   const [signalsOpen, setSignalsOpen] = useState(false);
 
@@ -214,6 +216,7 @@ export default function Surface() {
         }}
         onParseConfirmation={() => setParseOpen(true)}
         onOpenPlannerSettings={() => setPlannerSettingsOpen(true)}
+        onOpenAccountingEvents={() => setAccountingEventsOpen(true)}
       />
 
       {state === null ? (
@@ -487,6 +490,12 @@ export default function Surface() {
         open={plannerSettingsOpen}
         onClose={() => setPlannerSettingsOpen(false)}
         onSaved={() => setToast("Investment principles saved. Reopen the planner to see the effect.")}
+      />
+
+      <AccountingEventsPanel
+        open={accountingEventsOpen}
+        onClose={() => setAccountingEventsOpen(false)}
+        onSaved={() => setToast("Accounting-event catalogue saved.")}
       />
     </div>
   );

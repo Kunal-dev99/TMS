@@ -6,7 +6,7 @@ import { Header as RedwoodHeader } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { resetBook, runNightly, signOut } from "@/lib/api";
 import { useState } from "react";
-import { Check, FileText, Loader2, Play, RotateCcw, Settings2 } from "lucide-react";
+import { Check, FileText, Landmark, Loader2, Play, RotateCcw, Settings2 } from "lucide-react";
 import type { SignedInUser } from "@/lib/session";
 
 /**
@@ -20,6 +20,7 @@ export function Header({
   onSignedOut,
   onParseConfirmation,
   onOpenPlannerSettings,
+  onOpenAccountingEvents,
 }: {
   state: StateResponse | null;
   user?: SignedInUser | null;
@@ -27,6 +28,7 @@ export function Header({
   onSignedOut?: () => void;
   onParseConfirmation?: () => void;
   onOpenPlannerSettings?: () => void;
+  onOpenAccountingEvents?: () => void;
 }) {
   const [nightlyBusy, setNightlyBusy] = useState(false);
   const [nightlyResult, setNightlyResult] = useState<string | null>(null);
@@ -210,6 +212,23 @@ export function Header({
               aria-label="Investment principles"
             >
               <Settings2 className="h-3.5 w-3.5" />
+            </Button>
+          ) : null}
+
+          {/* Anil's "everything config-driven" catalogue: which
+              lifecycle stages fire an accounting event, and where
+              they post. */}
+          {onOpenAccountingEvents ? (
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={onOpenAccountingEvents}
+              className="h-7 w-7 p-0 text-muted-foreground"
+              title="Accounting events — configurable triggers into Oracle GL"
+              aria-label="Accounting events"
+            >
+              <Landmark className="h-3.5 w-3.5" />
             </Button>
           ) : null}
 

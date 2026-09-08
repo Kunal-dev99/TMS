@@ -87,3 +87,25 @@ def post_journals(body: rq.PostJournalsRequest, ctx: Ctx, caller: Caller) -> dic
         "failed": result.failed,
         "references": result.references,
     }
+
+
+# ==========================================================================
+# Accounting-event catalogue (Anil's "everything config-driven" ask).
+# ==========================================================================
+
+from app.services import accounting_events as _events  # noqa: E402
+
+
+@router.get("/accounting/events")
+def get_accounting_events(caller: Caller) -> dict:
+    return _events.as_dict(_events.get_settings())
+
+
+@router.put("/accounting/events")
+def put_accounting_events(patch: dict, caller: Caller) -> dict:
+    return _events.as_dict(_events.update_settings(patch))
+
+
+@router.post("/accounting/events/reset")
+def reset_accounting_events(caller: Caller) -> dict:
+    return _events.as_dict(_events.reset_defaults())

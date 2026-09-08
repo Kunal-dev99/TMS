@@ -262,6 +262,38 @@ export function getPerformance(signal?: AbortSignal): Promise<PerformanceView> {
   return request<PerformanceView>("/performance", { signal });
 }
 
+// -- Accounting events (mock) --------------------------------------------
+
+export type AccountingEventRule = {
+  stage: string;
+  is_event: boolean;
+  event_class: string;
+  event_type: string;
+  posts_to: string;
+  integration: string;
+  cadence: string;
+  note: string;
+};
+
+export type AccountingEventSettings = {
+  rules: AccountingEventRule[];
+  lifecycle_stages: string[];
+};
+
+export function getAccountingEvents(): Promise<AccountingEventSettings> {
+  return get<AccountingEventSettings>("/accounting/events");
+}
+
+export function updateAccountingEvents(
+  patch: { rules: AccountingEventRule[] },
+): Promise<AccountingEventSettings> {
+  return put<AccountingEventSettings>("/accounting/events", patch);
+}
+
+export function resetAccountingEvents(): Promise<AccountingEventSettings> {
+  return post<AccountingEventSettings>("/accounting/events/reset", {});
+}
+
 // -- the advisory layer ----------------------------------------------------
 
 /** Null is a valid answer, not a 404. */
