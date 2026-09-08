@@ -195,10 +195,10 @@ export function Header({
             )}
           </Button>
 
-          {/* Planner policy — Anil's "everything config-driven" ask.
-              Sliders for rating floor, tenor ceiling, per-name cap,
-              group concentration; checkboxes for strategies;
-              inline form to add custom strategies. */}
+          {/* Investment principles — Anil's Sep-8 "everything
+              config-driven" ask. Sliders for risk floor, tenor cap,
+              concentration, and an allocation-bucket table. The
+              planner reads these on every run. */}
           {onOpenPlannerSettings ? (
             <Button
               variant="outline"
@@ -206,8 +206,8 @@ export function Header({
               type="button"
               onClick={onOpenPlannerSettings}
               className="h-7 w-7 p-0 text-muted-foreground"
-              title="Planner policy — rating floor, tenor cap, strategies"
-              aria-label="Planner policy"
+              title="Investment principles — buckets, risk floor, concentration"
+              aria-label="Investment principles"
             >
               <Settings2 className="h-3.5 w-3.5" />
             </Button>

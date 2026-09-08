@@ -478,7 +478,7 @@ export default function Surface() {
           });
           setPlannerOpen(false);
           setToast(
-            "Loaded. Runs the same six checks as anything typed by hand.",
+            "Initiated. Runs the same six checks as anything typed by hand.",
           );
         }}
       />
@@ -486,7 +486,7 @@ export default function Surface() {
       <PlannerSettingsPanel
         open={plannerSettingsOpen}
         onClose={() => setPlannerSettingsOpen(false)}
-        onSaved={() => setToast("Planner policy saved. Reopen the planner to see the effect.")}
+        onSaved={() => setToast("Investment principles saved. Reopen the planner to see the effect.")}
       />
     </div>
   );

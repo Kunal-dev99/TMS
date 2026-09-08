@@ -86,10 +86,14 @@ RATING_BANDS = [
 
 CP_GROUPS = [
     # id, name, group_limit_pence
+    ("grp_ukgov", "UK Government", 60_000_000 * P),
+    ("grp_kfw", "KfW Group", 50_000_000 * P),
     ("grp_meridian", "Meridian Group", 25_000_000 * P),
     ("grp_caledonia", "Caledonia Group", 30_000_000 * P),
+    ("grp_nordea", "Nordea Group", 30_000_000 * P),
     ("grp_northern", "Northern Group", 25_000_000 * P),
     ("grp_harbour", "Harbour and Vale Group", 8_000_000 * P),
+    ("grp_regional", "Regional Trust Group", 6_000_000 * P),
 ]
 
 # --------------------------------------------------------------------------
@@ -97,6 +101,42 @@ CP_GROUPS = [
 # --------------------------------------------------------------------------
 
 COUNTERPARTIES = [
+    {
+        "id": "cp_ukdmo",
+        "group_id": "grp_ukgov",
+        "name": "UK Debt Management Office",
+        "lei": "213800UKDMOGILTS0001",
+        "group_parent": "HM Treasury",
+        "country": "GB",
+        "rating": "AAA",
+        "rating_status": "STABLE",
+        "status": "ACTIVE",
+        "instruments": ["GILT", "DEPOSIT"],
+    },
+    {
+        "id": "cp_kfw",
+        "group_id": "grp_kfw",
+        "name": "KfW Bankengruppe",
+        "lei": "213800KFWBANKENGR001",
+        "group_parent": "KfW Group",
+        "country": "DE",
+        "rating": "AAA",
+        "rating_status": "STABLE",
+        "status": "ACTIVE",
+        "instruments": ["DEPOSIT", "MMF"],
+    },
+    {
+        "id": "cp_nordea",
+        "group_id": "grp_nordea",
+        "name": "Nordea Bank Abp",
+        "lei": "213800NORDEABANKA001",
+        "group_parent": "Nordea Group",
+        "country": "FI",
+        "rating": "AA-",
+        "rating_status": "STABLE",
+        "status": "ACTIVE",
+        "instruments": ["DEPOSIT", "MMF"],
+    },
     {
         "id": "cp_meridian",
         "group_id": "grp_meridian",
@@ -157,6 +197,18 @@ COUNTERPARTIES = [
         "status": "ACTIVE",
         "instruments": ["FX_FORWARD", "DEPOSIT"],
     },
+    {
+        "id": "cp_regional",
+        "group_id": "grp_regional",
+        "name": "Regional Trust Bank",
+        "lei": "213800REGIONALTRT001",
+        "group_parent": "Regional Trust Group Ltd",
+        "country": "GB",
+        "rating": "BBB",
+        "rating_status": "STABLE",
+        "status": "ACTIVE",
+        "instruments": ["DEPOSIT"],
+    },
 ]
 
 # --------------------------------------------------------------------------
@@ -168,6 +220,36 @@ COUNTERPARTIES = [
 # not do.
 
 CP_LIMITS = [
+    {
+        "id": "lim_ukdmo_1",
+        "counterparty_id": "cp_ukdmo",
+        "amount_pence": 50_000_000 * P,
+        "max_tenor_months": 24,
+        "source": "BAND",
+        "effective_from": "2026-01-05",
+        "approved_by": "Head of Treasury",
+        "reason": "Band limit at AAA; UK government paper.",
+    },
+    {
+        "id": "lim_kfw_1",
+        "counterparty_id": "cp_kfw",
+        "amount_pence": 40_000_000 * P,
+        "max_tenor_months": 24,
+        "source": "BAND",
+        "effective_from": "2026-01-05",
+        "approved_by": "Head of Treasury",
+        "reason": "Band limit at AAA; KfW carries an explicit German guarantee.",
+    },
+    {
+        "id": "lim_nordea_1",
+        "counterparty_id": "cp_nordea",
+        "amount_pence": 25_000_000 * P,
+        "max_tenor_months": 12,
+        "source": "BAND",
+        "effective_from": "2026-01-05",
+        "approved_by": "Head of Treasury",
+        "reason": "Band limit at AA-.",
+    },
     {
         "id": "lim_meridian_1",
         "counterparty_id": "cp_meridian",
@@ -220,6 +302,16 @@ CP_LIMITS = [
         "effective_from": "2026-03-02",
         "approved_by": "Head of Treasury",
         "reason": "Band limit at BBB+.",
+    },
+    {
+        "id": "lim_regional_1",
+        "counterparty_id": "cp_regional",
+        "amount_pence": 5_000_000 * P,
+        "max_tenor_months": 3,
+        "source": "BAND",
+        "effective_from": "2026-03-02",
+        "approved_by": "Head of Treasury",
+        "reason": "Band limit at BBB.",
     },
 ]
 

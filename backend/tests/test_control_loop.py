@@ -633,7 +633,7 @@ def test_a_limit_above_the_band_needs_a_reason(client):
 def test_the_state_call_opens_the_book_with_nothing_in_breach(client):
     body = client.get("/api/v1/state").json()
 
-    assert len(body["book"]) == 5
+    assert len(body["book"]) == 9
     assert len(body["deals"]) == 4
     assert body["breach_count"] == 0
     assert body["queue_counts"] == {
@@ -695,9 +695,9 @@ def test_the_demonstration_run_sheet(client, signer):
 
     Every assertion below is a line the presenter says out loud.
     """
-    # 0:00  Five counterparties, four live deals. Every figure computed.
+    # 0:00  Nine counterparties, four live deals. Every figure computed.
     state = client.get("/api/v1/state").json()
-    assert len(state["book"]) == 5
+    assert len(state["book"]) == 9
     assert len(state["deals"]) == 4
     assert state["breach_count"] == 0
 

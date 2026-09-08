@@ -555,10 +555,14 @@ export type PlannerSettings = {
   max_tenor_months: number;
   per_name_cap_pct: number;
   group_concentration_cap_pct: number;
+  /** Rating-band allocation buckets — must sum to 100 for Save to be valid. */
+  buckets: Record<string, number>;
   enabled_strategies: string[];
   custom_strategies: CustomStrategy[];
   builtin_strategies: PlannerStrategyMeta[];
   rating_ladder: string[];
+  /** Bucket labels in display order (highest rating first). */
+  rating_bands: string[];
 };
 
 export function getPlannerSettings(): Promise<PlannerSettings> {

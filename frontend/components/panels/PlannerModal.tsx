@@ -39,6 +39,11 @@ const PLANNER_STEPS = [
 ];
 
 const BUILTIN_ACCENT: Record<string, string> = {
+  BLENDED: "hsl(var(--primary))",
+  HIGHER_YIELD: "hsl(var(--warning))",
+  TIGHTER_CONCENTRATION: "hsl(var(--success))",
+  // Legacy kinds — still rendered in a valid palette if a custom
+  // strategy points at one of them.
   MAX_YIELD: "hsl(var(--warning))",
   DIVERSIFIED: "hsl(var(--primary))",
   PRESERVE_HEADROOM: "hsl(var(--success))",
@@ -205,18 +210,58 @@ function PlanBody({
         <YieldConcentrationChart plan={plan} />
       ) : null}
 
-      {/* One card per candidate */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        {plan.candidates.map((c) => (
-          <CandidateCard
-            key={c.kind}
-            candidate={c}
-            recommended={c.kind === plan.recommendation_kind}
-            aiLabel={plan.per_candidate_labels[c.kind]}
-            onPick={onPick}
-          />
-        ))}
-      </div>
+      {/* Anil's Sep-8 shape: blended is the primary plan; the others
+          are compare-side alternatives. */}
+      {(() => {
+        const blended = plan.candidates.find((c) => c.kind === "BLENDED");
+        const alternatives = plan.candidates.filter((c) => c.kind !== "BLENDED");
+        return (
+          <>
+            {blended ? (
+              <div>
+                <div className="mb-2 flex items-baseline gap-2">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Your blended plan
+                  </h3>
+                  <span className="text-[10px] text-muted-foreground">
+                    fits the investment principles you set
+                  </span>
+                </div>
+                <CandidateCard
+                  candidate={blended}
+                  recommended={blended.kind === plan.recommendation_kind}
+                  aiLabel={plan.per_candidate_labels[blended.kind]}
+                  onPick={onPick}
+                />
+              </div>
+            ) : null}
+
+            {alternatives.length ? (
+              <div>
+                <div className="mb-2 flex items-baseline gap-2">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Alternatives
+                  </h3>
+                  <span className="text-[10px] text-muted-foreground">
+                    same principles, different trade-offs
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  {alternatives.map((c) => (
+                    <CandidateCard
+                      key={c.kind}
+                      candidate={c}
+                      recommended={c.kind === plan.recommendation_kind}
+                      aiLabel={plan.per_candidate_labels[c.kind]}
+                      onPick={onPick}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </>
+        );
+      })()}
     </div>
   );
 }
@@ -722,7 +767,7 @@ function CandidateCard({
                   })
                 }
               >
-                Load
+                Initiate
               </Button>
             </div>
           </li>

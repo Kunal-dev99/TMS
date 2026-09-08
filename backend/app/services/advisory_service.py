@@ -527,28 +527,38 @@ class AdvisoryService:
 
         # Every figure in the prose has to match one computed at stage 3.
         # The model has no arithmetic to do, so a figure that does not match
-        # is a figure it invented.
-        agree, detail = self._figures_agree(pick.rationale, chosen)
+        # is a figure it invented. The prose can name any eligible candidate
+        # (the runner-up too, in the standard template) so every eligible
+        # rate/tenor/amount is fair game — only figures that match no
+        # candidate at all are flagged.
+        agree, detail = self._figures_agree(pick.rationale, chosen, eligible)
         results.append(self._record(run, "FIGURES_AGREE", agree, detail))
         return results
 
     @staticmethod
-    def _figures_agree(rationale: str | None, candidate: Candidate) -> tuple[bool, str]:
+    def _figures_agree(
+        rationale: str | None,
+        candidate: Candidate,
+        eligible: list[Candidate] | None = None,
+    ) -> tuple[bool, str]:
         if not rationale:
             return True, "No prose to check. The rule based pick writes none."
 
         import re
 
-        permitted = {
-            f"{candidate.indicative_rate_bp / 100:.2f}",
-            f"{candidate.tenor_months}",
-            f"{round(candidate.amount_pence / 100):,}",
-        }
+        pool = list(eligible) if eligible else [candidate]
+        permitted: set[str] = set()
+        for c in pool:
+            permitted.add(f"{c.indicative_rate_bp / 100:.2f}")
+            permitted.add(f"{c.tenor_months}")
+            permitted.add(f"{round(c.amount_pence / 100):,}")
         quoted = set(re.findall(r"\d[\d,]*\.?\d*", rationale))
         invented = {
             figure
             for figure in quoted
-            if figure not in permitted and figure.replace(",", "") not in permitted
+            # Strip trailing period (end-of-sentence) and commas before comparing.
+            if figure.rstrip(".") not in permitted
+            and figure.rstrip(".").replace(",", "") not in permitted
         }
         if invented:
             return False, f"Figures not computed at stage 3: {sorted(invented)}"

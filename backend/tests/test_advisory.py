@@ -479,7 +479,7 @@ def test_the_run_panel_shows_the_excluded_candidates_with_their_reasons(client):
 
     run = client.get(f"/api/v1/advisory/runs/{card['run_id']}").json()
 
-    assert len(run["candidates"]) == 5
+    assert len(run["candidates"]) == 9
     excluded = [c for c in run["candidates"] if c["excluded"]]
     assert excluded
     assert all(c["exclusion_reason"] for c in excluded)

@@ -80,7 +80,10 @@ export function Book({
                       {row.name}
                     </div>
                     <div className="text-[11px] text-muted-foreground mt-0.5">
-                      {row.group_name} • group at {sterling(row.group_used_pence)} of{" "}
+                      <span className="font-medium uppercase tracking-wider text-[9px] text-muted-foreground/80 mr-1">Parent</span>
+                      <span className="text-foreground/80">{row.group_name}</span>
+                      <span className="mx-1">•</span>
+                      group at {sterling(row.group_used_pence)} of{" "}
                       {sterling(row.group_limit_pence)}
                     </div>
                   </td>

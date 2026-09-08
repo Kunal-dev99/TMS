@@ -40,7 +40,7 @@ BUILTIN_STRATEGIES: list[dict[str, str]] = [
     {
         "kind": "CONSERVATIVE",
         "label": "Conservative",
-        "tagline": "A and above only, at three months.",
+        "tagline": "AAA only, at three months.",
     },
 ]
 
@@ -55,6 +55,30 @@ RATING_LADDER: list[str] = [
     r for r, _ in sorted(RATING_ORDINAL.items(), key=lambda kv: kv[1])
 ]
 
+# Coarse rating bands the treasurer allocates across in buckets.
+# Order matters: highest (safest) first, so it renders top-to-bottom.
+RATING_BANDS: list[str] = ["AAA", "AA", "A", "BBB"]
+
+
+def band_of(rating: str) -> str:
+    """Collapse a fine-grained rating (e.g. 'AA-') onto a band ('AA').
+
+    Anything outside the known bands (or missing) falls back to 'BBB' so
+    it never disappears from the pool by accident.
+    """
+    if not rating:
+        return "BBB"
+    r = rating.upper()
+    if r == "AAA":
+        return "AAA"
+    if r.startswith("AA"):
+        return "AA"
+    if r.startswith("A"):
+        return "A"
+    if r.startswith("BBB"):
+        return "BBB"
+    return "BBB"
+
 
 @dataclass
 class CustomStrategy:
@@ -68,11 +92,16 @@ class CustomStrategy:
 
 @dataclass
 class PlannerSettings:
-    """Everything the treasurer can twist from the settings modal."""
+    """Everything the treasurer can twist from the settings modal.
 
-    # Rating floor: any counterparty below this is excluded from every
-    # placement (including the conservative one). Default "BBB-" reproduces
-    # the old behaviour (no floor).
+    Anil's Sep-8 model: the treasurer sets investment principles first
+    (buckets by rating, floor, concentration, headroom), and the planner
+    then computes ONE blended plan that fits those rules — not four
+    or/or/or choices to pick from. The buckets are the primary input.
+    """
+
+    # Rating floor: any counterparty below this is excluded. Default
+    # "BBB-" reproduces the pre-Anil behaviour (no floor).
     min_rating: str = "BBB-"
 
     # Tenor ceiling in months, capped by the per-band max in the book.
@@ -81,18 +110,23 @@ class PlannerSettings:
     # Cap per counterparty as a % of idle cash. 100 = no cap.
     per_name_cap_pct: int = 100
 
-    # Group concentration cap displayed alongside the existing policy
-    # limit; the actual gate is the CheckEngine concentration check.
-    # Editing this here documents the desired posture for the demo.
+    # Group concentration cap. Rendered as a policy statement and used
+    # to compute the "tighter concentration" alternative candidate.
     group_concentration_cap_pct: int = 25
 
-    # Which built-in strategies to render, in the order they appear.
+    # Allocation buckets — a % of idle cash to place in each rating
+    # band. Must sum to 100. This IS the investment principle Anil
+    # wants the treasurer to declare before deploying.
+    # Default: 50% AAA, 30% AA, 20% A, 0% BBB.
+    buckets: dict[str, int] = field(
+        default_factory=lambda: {"AAA": 50, "AA": 30, "A": 20, "BBB": 0}
+    )
+
+    # Kept for backwards-compat with the API surface, no longer rendered
+    # in the settings UI (the blended output replaced multi-select).
     enabled_strategies: list[str] = field(
         default_factory=lambda: [s["kind"] for s in BUILTIN_STRATEGIES]
     )
-
-    # User-defined strategies. Each runs as its `based_on` archetype with
-    # rating/tenor overrides applied to the placement pool.
     custom_strategies: list[CustomStrategy] = field(default_factory=list)
 
 
@@ -116,6 +150,7 @@ def as_dict(s: PlannerSettings) -> dict[str, Any]:
         "max_tenor_months": s.max_tenor_months,
         "per_name_cap_pct": s.per_name_cap_pct,
         "group_concentration_cap_pct": s.group_concentration_cap_pct,
+        "buckets": {band: int(s.buckets.get(band, 0)) for band in RATING_BANDS},
         "enabled_strategies": list(s.enabled_strategies),
         "custom_strategies": [
             {
@@ -130,6 +165,7 @@ def as_dict(s: PlannerSettings) -> dict[str, Any]:
         ],
         "builtin_strategies": BUILTIN_STRATEGIES,
         "rating_ladder": RATING_LADDER,
+        "rating_bands": RATING_BANDS,
     }
 
 
@@ -144,6 +180,14 @@ def update_settings(patch: dict[str, Any]) -> PlannerSettings:
     with _lock:
         current = _settings
 
+        # Normalise buckets: strip unknown bands, default missing ones
+        # to 0, keep only integer percentages.
+        raw_buckets = patch.get("buckets", current.buckets)
+        buckets = {
+            band: max(0, min(100, int(raw_buckets.get(band, 0) or 0)))
+            for band in RATING_BANDS
+        }
+
         new = PlannerSettings(
             min_rating=str(patch.get("min_rating", current.min_rating)),
             max_tenor_months=int(patch.get("max_tenor_months", current.max_tenor_months)),
@@ -151,6 +195,7 @@ def update_settings(patch: dict[str, Any]) -> PlannerSettings:
             group_concentration_cap_pct=int(
                 patch.get("group_concentration_cap_pct", current.group_concentration_cap_pct)
             ),
+            buckets=buckets,
             enabled_strategies=list(
                 patch.get("enabled_strategies", current.enabled_strategies)
             ),
@@ -187,6 +232,11 @@ def update_settings(patch: dict[str, Any]) -> PlannerSettings:
         new.enabled_strategies = [
             k for k in new.enabled_strategies if k in builtin_kinds
         ] or [s["kind"] for s in BUILTIN_STRATEGIES]
+
+        # If buckets sum to zero (all cleared), fall back to 100% AAA so
+        # the planner still returns a plan rather than an empty pane.
+        if sum(new.buckets.values()) == 0:
+            new.buckets = {b: (100 if b == "AAA" else 0) for b in RATING_BANDS}
 
         _settings = new
         return new
