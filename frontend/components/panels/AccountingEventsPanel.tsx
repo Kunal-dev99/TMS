@@ -66,7 +66,10 @@ export function AccountingEventsPanel({
     setSaving(true);
     setError(null);
     try {
-      const saved = await updateAccountingEvents({ rules: settings.rules });
+      const saved = await updateAccountingEvents({
+        rules: settings.rules,
+        target_gl: settings.target_gl,
+      });
       setSettings(saved);
       onSaved?.();
       onClose();
@@ -108,6 +111,43 @@ export function AccountingEventsPanel({
               {error}
             </div>
           ) : null}
+
+          <section>
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Destination
+            </h3>
+            <div className="rounded-lg border border-border bg-surface-2/40 p-4 space-y-3">
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
+                  Post accounting events to
+                </label>
+                <select
+                  value={settings.target_gl}
+                  onChange={(e) => setSettings({ ...settings, target_gl: e.target.value })}
+                  className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-xs"
+                >
+                  {settings.supported_targets.map((t) => (
+                    <option key={t.key} value={t.key}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-baseline justify-between text-[11px]">
+                <span className="text-muted-foreground">Integration</span>
+                <span className="font-medium text-foreground">
+                  {settings.connector_name}{" "}
+                  <span className="text-[9px] uppercase tracking-wider text-primary">first-party</span>
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                The Connector is built into the Treasury Register — no
+                Oracle Integration Cloud, no separate middleware SKU. Change
+                the destination once here and every enabled event routes
+                there.
+              </p>
+            </div>
+          </section>
 
           <section>
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -158,11 +198,12 @@ export function AccountingEventsPanel({
 
           <p className="text-[10px] text-muted-foreground">
             Prototype: no journals are actually posted from the Register.
-            In production the toggled-on events publish as Accounting Hub
-            transactions (XlaTrxH/XlaTrxL) through Oracle Integration
-            Cloud's ERP Cloud Adapter, where Subledger Accounting creates
-            the journal and posts it to General Ledger with drill-back to
-            the deal.
+            In production the toggled-on events flow through the
+            <span className="font-medium text-foreground"> Treasury Register Connector</span> —
+            our first-party integration layer, not Oracle Integration
+            Cloud — into whichever destination is selected above (Fusion
+            AHCS, Fusion GL, EBS, SAP, Workday, or a custom endpoint),
+            preserving drill-back to the deal.
           </p>
         </div>
       )}

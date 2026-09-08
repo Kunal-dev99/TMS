@@ -79,7 +79,7 @@ def _default_catalogue() -> list[EventRule]:
             event_class="Deals",
             event_type="Deal Executed",
             posts_to="Oracle Fusion Accounting Hub",
-            integration="Oracle Integration Cloud + ERP Cloud Adapter",
+            integration="Treasury Register Connector",
             cadence="event-driven",
             note="Trade-date recognition. Fires the first accounting entry.",
         ),
@@ -99,7 +99,7 @@ def _default_catalogue() -> list[EventRule]:
             event_class="Deals",
             event_type="Deal Settled",
             posts_to="Oracle Fusion Accounting Hub",
-            integration="Oracle Integration Cloud + ERP Cloud Adapter",
+            integration="Treasury Register Connector",
             cadence="event-driven",
             note="Value-date cash movement; must reconcile to the bank statement.",
         ),
@@ -109,7 +109,7 @@ def _default_catalogue() -> list[EventRule]:
             event_class="Accruals",
             event_type="Daily Accrual",
             posts_to="Oracle Fusion Accounting Hub",
-            integration="Oracle Integration Cloud + ERP Cloud Adapter",
+            integration="Treasury Register Connector",
             cadence="batch (end-of-day)",
             note="Nightly job accrues interest per open deal.",
         ),
@@ -119,7 +119,7 @@ def _default_catalogue() -> list[EventRule]:
             event_class="Deals",
             event_type="Deal Matured",
             posts_to="Oracle Fusion Accounting Hub",
-            integration="Oracle Integration Cloud + ERP Cloud Adapter",
+            integration="Treasury Register Connector",
             cadence="event-driven",
             note="Principal + interest final settlement; unwinds open accruals.",
         ),
@@ -136,9 +136,39 @@ def _default_catalogue() -> list[EventRule]:
     ]
 
 
+# The connector is first-party: Treasury Register ships its own
+# integration layer instead of forcing the customer onto Oracle
+# Integration Cloud. Anil's Sep-8 feedback: "we should not be using
+# Oracle Integration Cloud. We should build a connector in the Treasury
+# management tool — this essentially will be our Data Migration platform
+# used as a connector for GL and any other ERP/EPM integration."
+CONNECTOR_NAME: str = "Treasury Register Connector"
+
+# The destinations the Connector can post to. First one is the default.
+SUPPORTED_TARGETS: list[dict[str, str]] = [
+    {"key": "ORACLE_FUSION_AHCS",  "label": "Oracle Fusion Accounting Hub (AHCS)"},
+    {"key": "ORACLE_FUSION_GL",    "label": "Oracle Fusion GL (direct journal import)"},
+    {"key": "ORACLE_EBS_GL",       "label": "Oracle EBS General Ledger"},
+    {"key": "SAP_S4_FI",           "label": "SAP S/4HANA FI"},
+    {"key": "WORKDAY_FINANCIALS",  "label": "Workday Financials"},
+    {"key": "CUSTOM_REST",         "label": "Custom REST endpoint"},
+]
+
+
+def target_label(key: str) -> str:
+    for t in SUPPORTED_TARGETS:
+        if t["key"] == key:
+            return t["label"]
+    return key
+
+
 @dataclass
 class AccountingEventSettings:
     rules: list[EventRule] = field(default_factory=_default_catalogue)
+    # Where the Connector posts to book-wide. Change once here; every
+    # enabled event routes there. Overrides the per-row `posts_to`
+    # value at read time for display purposes.
+    target_gl: str = "ORACLE_FUSION_AHCS"
 
 
 # ---------------------------------------------------------------------------
@@ -155,6 +185,7 @@ def get_settings() -> AccountingEventSettings:
 
 
 def as_dict(s: AccountingEventSettings) -> dict[str, Any]:
+    resolved_posts_to = target_label(s.target_gl)
     return {
         "rules": [
             {
@@ -162,7 +193,10 @@ def as_dict(s: AccountingEventSettings) -> dict[str, Any]:
                 "is_event": r.is_event,
                 "event_class": r.event_class,
                 "event_type": r.event_type,
-                "posts_to": r.posts_to,
+                # The row's own posts_to is a per-row default; the
+                # effective destination is the book-wide target_gl,
+                # returned here so the UI can render it directly.
+                "posts_to": resolved_posts_to if r.is_event else r.posts_to,
                 "integration": r.integration,
                 "cadence": r.cadence,
                 "note": r.note,
@@ -170,6 +204,10 @@ def as_dict(s: AccountingEventSettings) -> dict[str, Any]:
             for r in s.rules
         ],
         "lifecycle_stages": LIFECYCLE_STAGES,
+        "target_gl": s.target_gl,
+        "target_label": resolved_posts_to,
+        "supported_targets": SUPPORTED_TARGETS,
+        "connector_name": CONNECTOR_NAME,
     }
 
 
@@ -208,7 +246,14 @@ def update_settings(patch: dict[str, Any]) -> AccountingEventSettings:
         combined = new_rules + preserved
         combined.sort(key=lambda r: LIFECYCLE_STAGES.index(r.stage))
 
-        _settings = AccountingEventSettings(rules=combined)
+        # Book-wide target-GL — carried through unless the patch
+        # asked to change it. Guard-rail: unknown keys fall back
+        # to the current setting.
+        target_gl = str(patch.get("target_gl", current.target_gl))
+        if target_gl not in {t["key"] for t in SUPPORTED_TARGETS}:
+            target_gl = current.target_gl
+
+        _settings = AccountingEventSettings(rules=combined, target_gl=target_gl)
         return _settings
 
 

@@ -275,9 +275,22 @@ export type AccountingEventRule = {
   note: string;
 };
 
+export type AccountingEventTarget = {
+  key: string;
+  label: string;
+};
+
 export type AccountingEventSettings = {
   rules: AccountingEventRule[];
   lifecycle_stages: string[];
+  /** Book-wide destination (e.g. "ORACLE_FUSION_AHCS"). */
+  target_gl: string;
+  /** Human label for `target_gl`. */
+  target_label: string;
+  /** Available destinations the connector can route to. */
+  supported_targets: AccountingEventTarget[];
+  /** First-party connector name — never OIC. */
+  connector_name: string;
 };
 
 export function getAccountingEvents(): Promise<AccountingEventSettings> {
@@ -285,7 +298,7 @@ export function getAccountingEvents(): Promise<AccountingEventSettings> {
 }
 
 export function updateAccountingEvents(
-  patch: { rules: AccountingEventRule[] },
+  patch: { rules: AccountingEventRule[]; target_gl?: string },
 ): Promise<AccountingEventSettings> {
   return put<AccountingEventSettings>("/accounting/events", patch);
 }
