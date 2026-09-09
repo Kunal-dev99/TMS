@@ -18,6 +18,7 @@ echo "[bootstrap] running alembic upgrade head"
 python -m alembic upgrade head
 
 echo "[bootstrap] checking whether the book is seeded"
+export SEED_FX_DEMO=1
 python - <<'PYEOF'
 from app.db import SessionLocal
 from app.models import Counterparty

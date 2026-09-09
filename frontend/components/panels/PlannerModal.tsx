@@ -200,6 +200,8 @@ function PlanBody({
     plan.recommendation_kind || plan.candidates[0]?.kind || "BLENDED",
   );
   const [showChart, setShowChart] = useState<boolean>(false);
+  const [showAllocations, setShowAllocations] = useState<boolean>(false);
+  const [showFullSummary, setShowFullSummary] = useState<boolean>(false);
 
   const selectedCandidate =
     plan.candidates.find((c) => c.kind === selectedKind) ||
@@ -207,6 +209,19 @@ function PlanBody({
 
   const baseCandidate =
     plan.candidates.find((c) => c.kind === "BLENDED") || plan.candidates[0];
+
+  const recommendedCandidate = plan.recommendation_kind
+    ? plan.candidates.find((c) => c.kind === plan.recommendation_kind)
+    : undefined;
+
+  // Take the first paragraph (up to first double newline) as the hero
+  // summary; the rest sits under "See full analysis".
+  const reasonBits = (plan.recommendation_reason || "")
+    .split(/\n\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const heroReason = reasonBits[0] || "";
+  const restReason = reasonBits.slice(1);
 
   return (
     <div className="space-y-4">
@@ -220,245 +235,219 @@ function PlanBody({
         />
       </div>
 
-      {/* AI Quick Summary */}
-      {plan.recommendation_kind ? (
-        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3.5">
-          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary shrink-0" aria-hidden />
-              <span className="text-xs font-bold uppercase tracking-wider text-primary">
-                AI Quick Summary
-              </span>
-              <span
-                className="rounded px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-primary"
-                style={{
-                  background: `color-mix(in srgb, ${
-                    ACCENT[plan.recommendation_kind] ||
-                    "hsl(var(--primary))"
-                  } 18%, transparent)`,
-                }}
-              >
-                Recommended: {plan.candidates.find((c) => c.kind === plan.recommendation_kind)
-                  ?.label ?? plan.recommendation_kind}
-              </span>
-            </div>
-            <span className="text-[10px] italic text-muted-foreground hidden sm:inline">
-              Point-by-point executive briefing · all trade-offs in one place
+      {/* AI Hero - one-line recommendation + a short paragraph.
+          Full 4-bullet analysis behind "See full analysis". */}
+      {plan.recommendation_kind && recommendedCandidate ? (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+          <div className="mb-1 flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+              AI recommends
+            </span>
+            <span
+              className="rounded px-1.5 py-px text-[10px] font-bold uppercase tracking-wider text-primary"
+              style={{
+                background: `color-mix(in srgb, ${
+                  ACCENT[recommendedCandidate.kind] || "hsl(var(--primary))"
+                } 18%, transparent)`,
+              }}
+            >
+              {recommendedCandidate.label}
+            </span>
+            <span className="ml-auto text-[10px] font-medium text-muted-foreground">
+              {sterling(recommendedCandidate.expected_annual_interest_pence)} / yr ·{" "}
+              {perCent(recommendedCandidate.weighted_rate_bp)}
             </span>
           </div>
-          <p className="text-xs leading-relaxed text-foreground font-normal whitespace-pre-line">
-            <TypedText text={plan.recommendation_reason} />
-          </p>
+          {heroReason ? (
+            <p className="text-xs leading-relaxed text-foreground">
+              <TypedText text={heroReason} />
+            </p>
+          ) : null}
+          {restReason.length ? (
+            <>
+              {showFullSummary ? (
+                <div className="mt-2 space-y-1.5 border-t border-primary/20 pt-2">
+                  {restReason.map((line, i) => (
+                    <p key={i} className="text-[11px] leading-relaxed text-foreground/90">
+                      {line}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setShowFullSummary((prev) => !prev)}
+                className="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-primary hover:underline"
+              >
+                {showFullSummary ? (
+                  <>
+                    <ChevronUp className="h-2.5 w-2.5" /> Hide full analysis
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-2.5 w-2.5" /> See full analysis
+                  </>
+                )}
+              </button>
+            </>
+          ) : null}
         </div>
       ) : null}
 
-      {/* 3-Strategy Side-by-Side Comparison */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
-              Compare {plan.candidates.length} Placement Strategies
-            </h3>
-            <span className="text-[11px] text-muted-foreground hidden sm:inline">
-              Select any strategy card to inspect its allocations below
-            </span>
-          </div>
-          {plan.candidates.length ? (
+      {/* Plan switcher chips - compact side-by-side */}
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+        {plan.candidates.map((c) => {
+          const isSelected = c.kind === selectedCandidate?.kind;
+          const isRec = c.kind === plan.recommendation_kind;
+          const accent = ACCENT[c.kind] || "hsl(var(--primary))";
+          const delta =
+            c.expected_annual_interest_pence -
+            baseCandidate.expected_annual_interest_pence;
+          return (
             <button
               type="button"
-              onClick={() => setShowChart((prev) => !prev)}
-              className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+              key={c.kind}
+              onClick={() => {
+                setSelectedKind(c.kind);
+                setShowAllocations(false);
+              }}
+              className={`flex flex-col items-start rounded-lg border px-3 py-2 text-left transition-all ${
+                isSelected
+                  ? "border-primary bg-primary/5 ring-2 ring-primary/25"
+                  : "border-border bg-card hover:bg-surface-2/40"
+              }`}
             >
-              {showChart ? (
-                <>
-                  <ChevronUp className="h-3 w-3" /> Hide Trade-Off Scatter Chart
-                </>
+              <div className="mb-1 flex w-full items-center gap-1.5">
+                <span
+                  className="inline-block h-2 w-2 shrink-0 rounded-full"
+                  style={{ background: accent }}
+                  aria-hidden
+                />
+                <span className="truncate text-xs font-semibold text-foreground">
+                  {c.label}
+                </span>
+                {isRec ? (
+                  <span className="ml-auto rounded bg-primary/15 px-1 py-px text-[8.5px] font-bold uppercase tracking-wider text-primary">
+                    Model pick
+                  </span>
+                ) : null}
+              </div>
+              <div className="flex w-full items-baseline justify-between">
+                <span className="num text-sm font-bold text-foreground">
+                  {perCent(c.weighted_rate_bp)}
+                </span>
+                <span className="num text-[10.5px] text-muted-foreground">
+                  {sterling(c.expected_annual_interest_pence)}
+                </span>
+              </div>
+              {delta !== 0 && c.kind !== baseCandidate.kind ? (
+                <span
+                  className={`mt-0.5 text-[9.5px] font-semibold ${
+                    delta > 0
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-amber-600 dark:text-amber-400"
+                  }`}
+                >
+                  {delta > 0 ? "+" : ""}
+                  {sterling(delta)} vs Blended
+                </span>
               ) : (
-                <>
-                  <ChevronDown className="h-3 w-3" /> Show Trade-Off Scatter Chart
-                </>
+                <span className="mt-0.5 text-[9.5px] text-muted-foreground">
+                  {c.allocations.length} names
+                </span>
               )}
             </button>
-          ) : null}
-        </div>
-
-        {showChart && plan.candidates.length ? (
-          <YieldConcentrationChart plan={plan} />
-        ) : null}
-
-        {/* 3-Column Comparative Cards */}
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          {plan.candidates.map((c) => {
-            const isSelected = c.kind === selectedCandidate?.kind;
-            const isRec = c.kind === plan.recommendation_kind;
-            const accentColor = ACCENT[c.kind] || "hsl(var(--primary))";
-            const yieldDelta =
-              c.expected_annual_interest_pence -
-              baseCandidate.expected_annual_interest_pence;
-            const total = c.deployed_pence || 1;
-
-            return (
-              <div
-                key={c.kind}
-                onClick={() => setSelectedKind(c.kind)}
-                className={`relative flex flex-col justify-between rounded-lg border p-3.5 transition-all cursor-pointer ${
-                  isSelected
-                    ? "border-primary bg-primary/[0.04] ring-2 ring-primary/25 shadow-sm"
-                    : "border-border bg-card hover:border-muted-foreground/40 hover:bg-surface-2/20"
-                }`}
-              >
-                <div>
-                  {/* Card Title + Model Pick Badge */}
-                  <div className="mb-1.5 flex items-center justify-between gap-1">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span
-                        className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
-                        style={{ background: accentColor }}
-                        aria-hidden
-                      />
-                      <span className="truncate text-xs font-semibold text-foreground">
-                        {c.label}
-                      </span>
-                    </div>
-                    {isRec ? (
-                      <span className="inline-flex items-center gap-0.5 rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary shrink-0">
-                        <Sparkles className="h-2.5 w-2.5" /> Model Pick
-                      </span>
-                    ) : null}
-                  </div>
-
-                  {/* Summary / Tagline */}
-                  <p className="mb-2.5 text-[10.5px] leading-snug text-muted-foreground line-clamp-2 min-h-[28px]">
-                    {plan.per_candidate_labels[c.kind] || c.tagline}
-                  </p>
-
-                  {/* High-level metrics container */}
-                  <div className="mb-2 rounded border border-border/50 bg-surface-2/40 p-2 text-left">
-                    <div className="flex items-baseline justify-between">
-                      <span className="num text-sm font-bold text-foreground">
-                        {sterling(c.expected_annual_interest_pence)}
-                      </span>
-                      {yieldDelta !== 0 && c.kind !== baseCandidate.kind ? (
-                        <span
-                          className={`num text-[10.5px] font-semibold ${
-                            yieldDelta > 0
-                              ? "text-emerald-600 dark:text-emerald-400"
-                              : "text-amber-600 dark:text-amber-400"
-                          }`}
-                        >
-                          {yieldDelta > 0 ? `+${sterling(yieldDelta)}` : sterling(yieldDelta)} / yr
-                        </span>
-                      ) : (
-                        <span className="text-[9.5px] font-medium uppercase text-muted-foreground">
-                          annual interest
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="mt-1.5 grid grid-cols-3 gap-1 border-t border-border/40 pt-1.5 text-center text-[10px]">
-                      <div>
-                        <p className="text-[8.5px] uppercase text-muted-foreground">Rate</p>
-                        <p className="num font-semibold text-foreground">
-                          {perCent(c.weighted_rate_bp)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[8.5px] uppercase text-muted-foreground">Concentration</p>
-                        <p className="num font-semibold text-foreground">
-                          +{perCent(c.concentration_change_bp)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[8.5px] uppercase text-muted-foreground">Deals</p>
-                        <p className="num font-semibold text-foreground">
-                          {c.allocations.length}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Proportional Mini Bar */}
-                  <div className="mb-2">
-                    <div className="flex h-2 overflow-hidden rounded-full border border-border/40 bg-muted/40">
-                      {c.allocations.map((a, idx) => {
-                        const pct = (a.principal_pence / total) * 100;
-                        return (
-                          <div
-                            key={a.counterparty_id + idx}
-                            style={{
-                              width: `${pct}%`,
-                              background: accentColor,
-                              opacity: 0.45 + 0.55 * (a.principal_pence / total),
-                            }}
-                            title={`${a.counterparty_name}: ${pct.toFixed(0)}%`}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card footer CTA */}
-                <div className="pt-1">
-                  {isSelected ? (
-                    <div className="flex items-center justify-between text-[10.5px] font-semibold text-primary py-0.5">
-                      <span className="flex items-center gap-1">
-                        <Check className="h-3 w-3" /> Active View
-                      </span>
-                      <span className="text-[9.5px] font-normal text-muted-foreground">
-                        Inspecting below
-                      </span>
-                    </div>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-6 w-full text-[10.5px]"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedKind(c.kind);
-                      }}
-                    >
-                      Inspect Strategy
-                    </Button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+          );
+        })}
       </div>
 
-      {/* Selected Strategy Allocation Table (Clean Executive Drilldown) */}
+      {/* Selected plan card - only ONE at a time, chosen by the chips above.
+          Allocations collapsed by default. Primary CTA visible. */}
       {selectedCandidate ? (
         <div className="rounded-lg border border-border bg-card p-3.5 space-y-2.5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-2.5">
-            <div>
+          {/* Header row */}
+          <div className="flex items-baseline justify-between gap-2 flex-wrap">
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span
                   className="h-2.5 w-2.5 rounded-full"
                   style={{ background: ACCENT[selectedCandidate.kind] }}
                   aria-hidden
                 />
-                <h4 className="text-xs font-semibold text-foreground">
-                  {selectedCandidate.label} Placements Breakdown
+                <h4 className="text-sm font-semibold text-foreground">
+                  {selectedCandidate.label}
                 </h4>
-                <span className="text-[11px] text-muted-foreground">
-                  ({selectedCandidate.allocations.length} counterparties ·{" "}
-                  {sterling(selectedCandidate.deployed_pence)} deployed)
+                <span className="text-[10.5px] text-muted-foreground">
+                  {selectedCandidate.allocations.length} names ·{" "}
+                  {sterling(selectedCandidate.deployed_pence)} deployed
                 </span>
               </div>
-              <p className="mt-0.5 text-[10.5px] text-muted-foreground">
+              <p className="mt-0.5 text-[10.5px] leading-snug text-muted-foreground">
                 {selectedCandidate.tagline}
               </p>
             </div>
+            <div className="text-right shrink-0">
+              <p className="num text-sm font-bold text-foreground">
+                {sterling(selectedCandidate.expected_annual_interest_pence)}
+              </p>
+              <p className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                annual interest
+              </p>
+            </div>
+          </div>
 
+          {/* Allocation bar - always visible, one-line visualisation */}
+          <div className="flex h-2.5 w-full overflow-hidden rounded-full border border-border/40 bg-muted/40">
+            {selectedCandidate.allocations.map((a, idx) => {
+              const total = selectedCandidate.deployed_pence || 1;
+              const pct = (a.principal_pence / total) * 100;
+              return (
+                <div
+                  key={a.counterparty_id + idx}
+                  style={{
+                    width: `${pct}%`,
+                    background: ACCENT[selectedCandidate.kind] || "hsl(var(--primary))",
+                    opacity: 0.5 + 0.5 * (a.principal_pence / total),
+                  }}
+                  title={`${a.counterparty_name}: ${pct.toFixed(0)}%`}
+                />
+              );
+            })}
+          </div>
+
+          {/* Micro stats + primary CTA */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-4 text-[10.5px]">
+              <div>
+                <span className="text-muted-foreground">Rate </span>
+                <span className="num font-semibold text-foreground">
+                  {perCent(selectedCandidate.weighted_rate_bp)}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Concentration </span>
+                <span className="num font-semibold text-foreground">
+                  +{perCent(selectedCandidate.concentration_change_bp)}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAllocations((prev) => !prev)}
+                className="flex items-center gap-1 font-medium text-primary hover:underline"
+              >
+                {showAllocations ? (
+                  <><ChevronUp className="h-2.5 w-2.5" /> Hide allocations</>
+                ) : (
+                  <><ChevronDown className="h-2.5 w-2.5" /> Show allocations ({selectedCandidate.allocations.length})</>
+                )}
+              </button>
+            </div>
             {onPickBatch && selectedCandidate.allocations.length > 0 ? (
               <Button
                 type="button"
                 size="sm"
-                className="h-7 gap-1.5 text-xs font-semibold shrink-0"
+                className="h-7 gap-1.5 text-xs font-semibold"
                 onClick={() =>
                   onPickBatch(
                     selectedCandidate.allocations.map((a) => ({
@@ -472,85 +461,100 @@ function PlanBody({
                   )
                 }
               >
-                Initiate all {selectedCandidate.allocations.length} at once
+                Initiate this plan
               </Button>
             ) : null}
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto rounded border border-border/60">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-border bg-surface-2/60 text-[10px] uppercase font-semibold text-muted-foreground">
-                  <th className="py-2 px-3">Counterparty</th>
-                  <th className="py-2 px-2.5 text-center">Rating</th>
-                  <th className="py-2 px-2 text-center">Tenor</th>
-                  <th className="py-2 px-2.5 text-right">Indicative Rate</th>
-                  <th className="py-2 px-3 text-right">Utilisation</th>
-                  <th className="py-2 px-3 text-right">Allocated Amount</th>
-                  <th className="py-2 px-3 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40">
-                {selectedCandidate.allocations.map((a) => (
-                  <tr
-                    key={a.counterparty_id + "_" + a.tenor_months}
-                    className="hover:bg-muted/30 transition-colors"
-                  >
-                    <td className="py-2 px-3 font-medium">
-                      {a.counterparty_name}
-                      <span className="block text-[9.5px] text-muted-foreground font-normal">
-                        Group: {a.group_name}
-                      </span>
-                    </td>
-                    <td className="py-2 px-2.5 text-center">
-                      <span className="inline-block rounded bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold border border-border/60">
-                        {a.counterparty_rating}
-                      </span>
-                    </td>
-                    <td className="py-2 px-2 text-center num text-muted-foreground">
-                      {a.tenor_months}m
-                    </td>
-                    <td className="py-2 px-2.5 text-right num font-medium text-foreground">
-                      {perCent(a.rate_bp)}
-                    </td>
-                    <td className="py-2 px-3 text-right num text-muted-foreground">
-                      {perCent(a.resulting_utilisation_bp)}
-                    </td>
-                    <td className="py-2 px-3 text-right num font-semibold text-foreground">
-                      {sterling(a.principal_pence)}
-                    </td>
-                    <td className="py-2 px-3 text-center">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-6 px-2.5 text-[10.5px]"
-                        onClick={() =>
-                          onPick({
-                            counterparty_id: a.counterparty_id,
-                            principal_pence: a.principal_pence,
-                            tenor_months: a.tenor_months,
-                            rate_bp: a.rate_bp,
-                          })
-                        }
-                      >
-                        Initiate
-                      </Button>
-                    </td>
+          {/* Collapsible allocations */}
+          {showAllocations ? (
+            <div className="overflow-x-auto rounded border border-border/60">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-border bg-surface-2/60 text-[10px] uppercase font-semibold text-muted-foreground">
+                    <th className="py-2 px-3">Counterparty</th>
+                    <th className="py-2 px-2.5 text-center">Rating</th>
+                    <th className="py-2 px-2 text-center">Tenor</th>
+                    <th className="py-2 px-2.5 text-right">Rate</th>
+                    <th className="py-2 px-3 text-right">Amount</th>
+                    <th className="py-2 px-3 text-center"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {selectedCandidate.allocations.map((a) => (
+                    <tr
+                      key={a.counterparty_id + "_" + a.tenor_months}
+                      className="hover:bg-muted/30 transition-colors"
+                    >
+                      <td className="py-2 px-3 font-medium">
+                        {a.counterparty_name}
+                        <span className="block text-[9.5px] text-muted-foreground font-normal">
+                          {a.group_name}
+                        </span>
+                      </td>
+                      <td className="py-2 px-2.5 text-center">
+                        <span className="inline-block rounded bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold border border-border/60">
+                          {a.counterparty_rating}
+                        </span>
+                      </td>
+                      <td className="py-2 px-2 text-center num text-muted-foreground">
+                        {a.tenor_months}m
+                      </td>
+                      <td className="py-2 px-2.5 text-right num font-medium">
+                        {perCent(a.rate_bp)}
+                      </td>
+                      <td className="py-2 px-3 text-right num font-semibold">
+                        {sterling(a.principal_pence)}
+                      </td>
+                      <td className="py-2 px-3 text-center">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-6 px-2.5 text-[10.5px]"
+                          onClick={() =>
+                            onPick({
+                              counterparty_id: a.counterparty_id,
+                              principal_pence: a.principal_pence,
+                              tenor_months: a.tenor_months,
+                              rate_bp: a.rate_bp,
+                            })
+                          }
+                        >
+                          Initiate
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="border-t border-border/40 bg-surface-2/40 px-3 py-1.5 text-[9.5px] italic text-muted-foreground">
+                Rates: Bloomberg BGN composite (stubbed). Every allocation pre-checked against the six controls.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
-          {/* Consolidated disclaimer footnote */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[9.5px] text-muted-foreground/80 italic pt-0.5 gap-1">
-            <span>
-              * Indicative rate from Bloomberg BGN composite. Click &ldquo;Initiate&rdquo; to load into dealing ticket.
-            </span>
-            <span>Every allocation is pre-checked and passes the six controls.</span>
-          </div>
+      {/* Compare all three - opt-in scatter at the bottom */}
+      {plan.candidates.length > 1 ? (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowChart((prev) => !prev)}
+            className="flex items-center gap-1 text-[10.5px] font-medium text-primary hover:underline"
+          >
+            {showChart ? (
+              <><ChevronUp className="h-2.5 w-2.5" /> Hide comparison chart</>
+            ) : (
+              <><ChevronDown className="h-2.5 w-2.5" /> Compare all three (yield vs concentration)</>
+            )}
+          </button>
+          {showChart ? (
+            <div className="mt-2">
+              <YieldConcentrationChart plan={plan} />
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

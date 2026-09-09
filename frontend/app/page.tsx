@@ -25,6 +25,8 @@ import { PlannerModal } from "@/components/panels/PlannerModal";
 import { PlannerSettingsPanel } from "@/components/panels/PlannerSettingsPanel";
 import { AccountingEventsPanel } from "@/components/panels/AccountingEventsPanel";
 import { ControlPanel } from "@/components/panels/ControlPanel";
+import { HedgingPanel } from "@/components/panels/HedgingPanel";
+import { InitiateHedgeModal } from "@/components/panels/InitiateHedgeModal";
 import { PerformancePanel } from "@/components/panels/PerformancePanel";
 import { SystemPolicyPanel } from "@/components/panels/SystemPolicyPanel";
 import { ReferenceSourcesPanel } from "@/components/panels/ReferenceSourcesPanel";
@@ -59,6 +61,7 @@ type Panel =
   | { kind: "ratings" }
   | { kind: "control" }
   | { kind: "performance" }
+  | { kind: "hedging" }
   | { kind: "onboarding" }
   | { kind: "evidence"; dealId: string };
 
@@ -92,6 +95,19 @@ export default function Surface() {
   const [referenceOpen, setReferenceOpen] = useState(false);
   const [parseOpen, setParseOpen] = useState(false);
   const [signalsOpen, setSignalsOpen] = useState(false);
+  const [initiateHedge, setInitiateHedge] = useState<
+    | {
+        currency: string;
+        exposureIds: string[];
+        unhedgedMinor: number;
+        label: string;
+        prefillAmountMinor?: number;
+        prefillTenorMonths?: number;
+        prefillCounterpartyId?: string;
+      }
+    | null
+  >(null);
+  const [hedgingRefresh, setHedgingRefresh] = useState(0);
 
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [breaches, setBreaches] = useState<BreachView[]>([]);
@@ -376,6 +392,7 @@ export default function Surface() {
           if (item === "Ratings and policy") setPanel({ kind: "ratings" });
           if (item === "Control") setPanel({ kind: "control" });
           if (item === "Performance") setPanel({ kind: "performance" });
+          if (item === "Hedging") setPanel({ kind: "hedging" });
         }}
       />
 
@@ -433,6 +450,31 @@ export default function Surface() {
           <PerformancePanel
             open={panel.kind === "performance"}
             onClose={() => setPanel({ kind: "none" })}
+          />
+          <HedgingPanel
+            open={panel.kind === "hedging"}
+            onClose={() => setPanel({ kind: "none" })}
+            onOpenInitiate={(args) => {
+              setInitiateHedge(args);
+            }}
+            refreshKey={hedgingRefresh}
+          />
+          <InitiateHedgeModal
+            open={initiateHedge !== null}
+            onClose={() => setInitiateHedge(null)}
+            onDone={() => {
+              setToast("Hedge initiated.");
+              setInitiateHedge(null);
+              setHedgingRefresh((n) => n + 1);
+              load();
+            }}
+            currency={initiateHedge?.currency ?? "EUR"}
+            exposureIds={initiateHedge?.exposureIds ?? []}
+            unhedgedMinor={initiateHedge?.unhedgedMinor ?? 0}
+            label={initiateHedge?.label ?? ""}
+            prefillAmountMinor={initiateHedge?.prefillAmountMinor}
+            prefillTenorMonths={initiateHedge?.prefillTenorMonths}
+            prefillCounterpartyId={initiateHedge?.prefillCounterpartyId}
           />
           <SystemPolicyPanel
             open={systemPolicyOpen}

@@ -135,7 +135,7 @@ COUNTERPARTIES = [
         "rating": "AA-",
         "rating_status": "STABLE",
         "status": "ACTIVE",
-        "instruments": ["DEPOSIT", "MMF"],
+        "instruments": ["DEPOSIT", "MMF", "FX_FORWARD"],
     },
     {
         "id": "cp_meridian",
@@ -159,7 +159,7 @@ COUNTERPARTIES = [
         "rating": "AA-",
         "rating_status": "STABLE",
         "status": "ACTIVE",
-        "instruments": ["DEPOSIT", "GILT", "MMF"],
+        "instruments": ["DEPOSIT", "GILT", "MMF", "FX_FORWARD"],
     },
     {
         "id": "cp_nts",
@@ -525,6 +525,110 @@ LADDER_TARGETS = [
 CURRENCY_COVER_TARGETS = [
     # currency, target_cover_bp, horizon_days
     ("EUR", 8000, 180),
+    ("USD", 7500, 180),
+    ("CHF", 6000, 180),
+]
+
+# --------------------------------------------------------------------------
+# FX exposures (sales-side). Forecast receivables from overseas customers,
+# to be surfaced on the Hedging panel. Directions are RECEIVABLE because
+# we sell recyclables in EUR / USD / CHF; the sold-EUR-forward hedge
+# protects the GBP value of that receipt.
+# --------------------------------------------------------------------------
+
+FX_EXPOSURES = [
+    # ---- EUR: €100m spread over 12 months, laddered by delivery ----
+    {"id": "fxe_eur_001", "currency": "EUR", "amount_minor": 8_000_000 * 100,  "expected_offset_days": 30,  "source": "FORECAST",   "source_reference": "Oracle EPM FY26"},
+    {"id": "fxe_eur_002", "currency": "EUR", "amount_minor": 10_000_000 * 100, "expected_offset_days": 60,  "source": "CONTRACT",   "source_reference": "SC-EU-4412"},
+    {"id": "fxe_eur_003", "currency": "EUR", "amount_minor": 7_000_000 * 100,  "expected_offset_days": 90,  "source": "FORECAST",   "source_reference": "Oracle EPM FY26"},
+    {"id": "fxe_eur_004", "currency": "EUR", "amount_minor": 12_000_000 * 100, "expected_offset_days": 130, "source": "CONTRACT",   "source_reference": "SC-EU-4471"},
+    {"id": "fxe_eur_005", "currency": "EUR", "amount_minor": 15_000_000 * 100, "expected_offset_days": 170, "source": "PURCHASE_ORDER", "source_reference": "PO-45119"},
+    {"id": "fxe_eur_006", "currency": "EUR", "amount_minor": 12_000_000 * 100, "expected_offset_days": 220, "source": "FORECAST",   "source_reference": "Oracle EPM FY26"},
+    {"id": "fxe_eur_007", "currency": "EUR", "amount_minor": 13_000_000 * 100, "expected_offset_days": 270, "source": "FORECAST",   "source_reference": "Oracle EPM FY26"},
+    {"id": "fxe_eur_008", "currency": "EUR", "amount_minor": 23_000_000 * 100, "expected_offset_days": 340, "source": "FORECAST",   "source_reference": "Oracle EPM FY26"},
+
+    # ---- USD: $60m over 12 months ----
+    {"id": "fxe_usd_001", "currency": "USD", "amount_minor": 6_000_000 * 100,  "expected_offset_days": 45,  "source": "CONTRACT",   "source_reference": "SC-US-2201"},
+    {"id": "fxe_usd_002", "currency": "USD", "amount_minor": 8_000_000 * 100,  "expected_offset_days": 100, "source": "FORECAST",   "source_reference": "Oracle EPM FY26"},
+    {"id": "fxe_usd_003", "currency": "USD", "amount_minor": 12_000_000 * 100, "expected_offset_days": 160, "source": "CONTRACT",   "source_reference": "SC-US-2230"},
+    {"id": "fxe_usd_004", "currency": "USD", "amount_minor": 14_000_000 * 100, "expected_offset_days": 240, "source": "FORECAST",   "source_reference": "Oracle EPM FY26"},
+    {"id": "fxe_usd_005", "currency": "USD", "amount_minor": 20_000_000 * 100, "expected_offset_days": 330, "source": "FORECAST",   "source_reference": "Oracle EPM FY26"},
+
+    # ---- CHF: CHF 12m over 12 months, entirely unhedged ----
+    {"id": "fxe_chf_001", "currency": "CHF", "amount_minor": 2_000_000 * 100, "expected_offset_days": 60,  "source": "CONTRACT", "source_reference": "SC-CH-0091"},
+    {"id": "fxe_chf_002", "currency": "CHF", "amount_minor": 3_000_000 * 100, "expected_offset_days": 150, "source": "FORECAST", "source_reference": "Oracle EPM FY26"},
+    {"id": "fxe_chf_003", "currency": "CHF", "amount_minor": 3_000_000 * 100, "expected_offset_days": 250, "source": "FORECAST", "source_reference": "Oracle EPM FY26"},
+    {"id": "fxe_chf_004", "currency": "CHF", "amount_minor": 4_000_000 * 100, "expected_offset_days": 340, "source": "FORECAST", "source_reference": "Oracle EPM FY26"},
+]
+
+# --------------------------------------------------------------------------
+# Existing FX_FORWARD deals + HedgeLinks so the panel opens with a story:
+# EUR ~60% hedged, USD ~40% hedged, CHF 0% hedged.
+# --------------------------------------------------------------------------
+
+FX_HEDGE_DEALS = [
+    # EUR forwards booked against near-term receivables — cp_caledonia is
+    # AA-, cp_nordea is AA-, both FX_FORWARD-permitted.
+    {
+        "id": "dl_fx_eur_001",
+        "counterparty_id": "cp_caledonia",
+        "currency": "EUR",
+        "sell_amount_minor": 20_000_000 * P,
+        "rate": 0.8570,
+        "tenor_months": 3,
+        "trade_offset_days": -15,
+    },
+    {
+        "id": "dl_fx_eur_002",
+        "counterparty_id": "cp_nordea",
+        "currency": "EUR",
+        "sell_amount_minor": 25_000_000 * P,
+        "rate": 0.8555,
+        "tenor_months": 6,
+        "trade_offset_days": -30,
+    },
+    {
+        "id": "dl_fx_eur_003",
+        "counterparty_id": "cp_caledonia",
+        "currency": "EUR",
+        "sell_amount_minor": 15_000_000 * P,
+        "rate": 0.8540,
+        "tenor_months": 9,
+        "trade_offset_days": -10,
+    },
+
+    # USD — one forward covering ~40% of the book
+    {
+        "id": "dl_fx_usd_001",
+        "counterparty_id": "cp_nordea",
+        "currency": "USD",
+        "sell_amount_minor": 24_000_000 * P,
+        "rate": 0.7810,
+        "tenor_months": 6,
+        "trade_offset_days": -20,
+    },
+]
+
+# links: [(deal_id, exposure_id, covered_amount_minor)]
+FX_HEDGE_LINKS = [
+    # EUR forward #1 (20m) → covers Oct, Nov, part-Dec
+    ("dl_fx_eur_001", "fxe_eur_001", 8_000_000 * 100),
+    ("dl_fx_eur_001", "fxe_eur_002", 10_000_000 * 100),
+    ("dl_fx_eur_001", "fxe_eur_003", 2_000_000 * 100),
+
+    # EUR forward #2 (25m) → part-Dec Jan Feb
+    ("dl_fx_eur_002", "fxe_eur_003", 5_000_000 * 100),
+    ("dl_fx_eur_002", "fxe_eur_004", 12_000_000 * 100),
+    ("dl_fx_eur_002", "fxe_eur_005", 8_000_000 * 100),
+
+    # EUR forward #3 (15m) → Feb tail + Mar
+    ("dl_fx_eur_003", "fxe_eur_005", 7_000_000 * 100),
+    ("dl_fx_eur_003", "fxe_eur_006", 8_000_000 * 100),
+
+    # USD forward → covers the first two months of USD
+    ("dl_fx_usd_001", "fxe_usd_001", 6_000_000 * 100),
+    ("dl_fx_usd_001", "fxe_usd_002", 8_000_000 * 100),
+    ("dl_fx_usd_001", "fxe_usd_003", 10_000_000 * 100),
 ]
 
 #: Interface I-9, from Oracle EPM. Without it the advisory layer has nothing

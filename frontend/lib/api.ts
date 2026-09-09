@@ -854,3 +854,184 @@ export type CreditSignal = {
 export function scanCreditSignals(): Promise<{ signals: CreditSignal[] }> {
   return post("/credit-signals/scan", {}) as Promise<{ signals: CreditSignal[] }>;
 }
+
+// -- FX Hedging ------------------------------------------------------------
+
+export type FxCurrencySummary = {
+  currency: string;
+  gross_minor: number;
+  hedged_minor: number;
+  unhedged_minor: number;
+  hedge_ratio_bp: number;
+  gross_gbp_pence: number;
+  unhedged_gbp_pence: number;
+  target_cover_bp: number;
+  gap_to_target_minor: number;
+};
+
+export type FxBucketRow = {
+  bucket: string;
+  label: string;
+  forecast_minor: number;
+  hedged_minor: number;
+  unhedged_minor: number;
+  forecast_gbp_pence: number;
+  unhedged_gbp_pence: number;
+};
+
+export type FxExposureRow = {
+  id: string;
+  expected_date: string;
+  amount_minor: number;
+  direction: string;
+  source: string;
+  source_reference: string | null;
+  status: string;
+  hedged_minor: number;
+};
+
+export type FxSummaryView = {
+  as_of_date: string;
+  base_currency: string;
+  currencies: FxCurrencySummary[];
+  sources: Record<string, string>;
+};
+
+export type FxExposureView = {
+  currency: string;
+  summary: FxCurrencySummary;
+  buckets: FxBucketRow[];
+  exposures: FxExposureRow[];
+};
+
+export type FxRateQuote = {
+  pair: string;
+  spot: number;
+  forward: number;
+  forward_points_bp: number;
+  tenor_months: number;
+  source: string;
+  quality: string;
+  as_of: string;
+};
+
+export type FxCounterparty = {
+  id: string;
+  name: string;
+  rating: string;
+  status: string;
+  group_name: string | null;
+  entity_limit_pence: number;
+  entity_used_pence: number;
+  entity_headroom_pence: number;
+  group_limit_pence: number;
+  group_used_pence: number;
+  group_headroom_pence: number;
+  near_cap: boolean;
+};
+
+export type FxHedgeInitiateResponse = {
+  deal_id: string;
+  hedge_link_ids: string[];
+  currency: string;
+  sell_amount_minor: number;
+  tenor_months: number;
+  forward_rate: number;
+  expected_gbp_pence: number;
+  counterparty_name: string;
+  trade_date: string;
+  maturity_date: string;
+};
+
+export function getFxSummary(): Promise<FxSummaryView> {
+  return get("/fx/exposures");
+}
+
+export function getFxByCurrency(currency: string): Promise<FxExposureView> {
+  return get(`/fx/exposures/${currency}`);
+}
+
+export function getFxForwardRate(
+  pair: string,
+  tenor: number,
+): Promise<FxRateQuote> {
+  return get(`/fx/rates/forward/${pair}?tenor=${tenor}`);
+}
+
+export function getFxCounterparties(): Promise<FxCounterparty[]> {
+  return get("/fx/counterparties");
+}
+
+export function initiateHedge(body: {
+  currency: string;
+  sell_amount_minor: number;
+  tenor_months: number;
+  counterparty_id: string;
+  exposure_ids: string[];
+  reference?: string;
+  comments?: string;
+  override_reason?: string;
+}): Promise<FxHedgeInitiateResponse> {
+  return post("/fx/hedges", body);
+}
+
+export type FxRecommendation = {
+  currency: string;
+  amount_minor: number;
+  tenor_months: number;
+  counterparty_id: string;
+  counterparty_name: string;
+  reason: string;
+};
+
+export type FxBriefing = {
+  briefing: string;
+  recommendations: FxRecommendation[];
+  watch: string[];
+};
+
+export function narrateFx(): Promise<FxBriefing> {
+  return post("/fx/narrate", {});
+}
+
+export function adviseHedge(
+  body: {
+    currency: string;
+    sell_amount_minor: number;
+    tenor_months: number;
+    counterparty_id: string;
+  },
+  signal?: AbortSignal,
+): Promise<{ observations: string[] }> {
+  return post("/fx/hedges/advise", body, signal);
+}
+
+export type FxLiveHedge = {
+  deal_id: string;
+  counterparty_id: string;
+  counterparty_name: string;
+  currency: string;
+  principal_pence: number;
+  tenor_months: number;
+  trade_date: string;
+  maturity_date: string;
+  status: string;
+  covered_amount_minor: number;
+  exposure_ids: string[];
+};
+
+export function listHedges(): Promise<FxLiveHedge[]> {
+  return get("/fx/hedges");
+}
+
+export function checkHedge(
+  body: {
+    currency: string;
+    sell_amount_minor: number;
+    tenor_months: number;
+    counterparty_id: string;
+  },
+  signal?: AbortSignal,
+): Promise<CheckResult> {
+  return post<CheckResult>("/fx/hedges/check", body, signal);
+}

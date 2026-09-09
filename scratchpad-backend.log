@@ -1,0 +1,88 @@
+INFO:     Will watch for changes in these directories: ['C:\\Users\\KunalSharma\\OneDrive - fusionpractices.com\\Documents\\TMS\\backend']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [2648] using WatchFiles
+INFO:     Started server process [9868]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:55317 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54866 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54866 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56328 - "GET /api/v1/breaches HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56327 - "GET /api/v1/queue HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56327 - "GET /api/v1/breaches HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56328 - "GET /api/v1/queue HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56329 - "GET /api/v1/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56329 - "GET /api/v1/counterparties/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56329 - "GET /api/v1/counterparties/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57455 - "POST /api/v1/auth/token HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57455 - "POST /api/v1/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53543 - "GET /api/v1/breaches HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53542 - "GET /api/v1/queue HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57455 - "GET /api/v1/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53542 - "GET /api/v1/counterparties/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53542 - "POST /api/v1/fx/narrate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53543 - "GET /api/v1/fx/exposures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53542 - "GET /api/v1/fx/exposures/EUR HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57064 - "GET /api/v1/fx/hedges HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63277 - "GET /api/v1/fx/exposures/CHF HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63277 - "GET /api/v1/fx/exposures/EUR HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63277 - "GET /api/v1/fx/exposures/USD HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62405 - "GET /api/v1/fx/exposures/EUR HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62405 - "GET /api/v1/fx/exposures/CHF HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62405 - "GET /api/v1/fx/exposures/EUR HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62405 - "GET /api/v1/fx/exposures/USD HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62405 - "GET /api/v1/fx/exposures/EUR HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62405 - "GET /api/v1/fx/exposures/CHF HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62405 - "GET /api/v1/fx/exposures/EUR HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62405 - "GET /api/v1/fx/exposures/USD HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62405 - "GET /api/v1/fx/exposures/EUR HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62405 - "GET /api/v1/fx/exposures/CHF HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62405 - "GET /api/v1/fx/exposures/EUR HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62405 - "GET /api/v1/fx/exposures/USD HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62405 - "GET /api/v1/fx/exposures/EUR HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54503 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55069 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55069 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55069 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55069 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59477 - "GET /api/v1/queue HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59478 - "GET /api/v1/breaches HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59478 - "GET /api/v1/queue HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55069 - "GET /api/v1/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59477 - "GET /api/v1/breaches HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59477 - "GET /api/v1/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59477 - "GET /api/v1/counterparties/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59477 - "GET /api/v1/counterparties/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59477 - "GET /api/v1/counterparties/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59477 - "GET /api/v1/counterparties/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59477 - "POST /api/v1/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59201 - "GET /api/v1/queue HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59202 - "GET /api/v1/breaches HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59477 - "GET /api/v1/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59202 - "GET /api/v1/counterparties/sources HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59201 - "GET /api/v1/performance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57555 - "GET /api/v1/performance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51318 - "GET /api/v1/rates/quote?counterparty_id=cp_caledonia&instrument=DEPOSIT&tenor_months=6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64131 - "GET /api/v1/performance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57555 - "POST /api/v1/jobs/nightly HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:64131 - "GET /api/v1/queue HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63498 - "GET /api/v1/breaches HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57555 - "GET /api/v1/state HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63498 - "GET /api/v1/performance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63498 - "POST /api/v1/fx/narrate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60342 - "GET /api/v1/fx/hedges HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60341 - "GET /api/v1/fx/exposures HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63498 - "GET /api/v1/fx/exposures/EUR HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63498 - "GET /api/v1/fx/exposures/CHF HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63498 - "GET /api/v1/fx/exposures/EUR HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63498 - "GET /api/v1/fx/exposures/USD HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63498 - "GET /api/v1/fx/exposures/EUR HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63498 - "GET /api/v1/fx/exposures/CHF HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56631 - "POST /api/v1/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56633 - "POST /api/v1/fx/narrate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56635 - "POST /api/v1/fx/hedges/advise HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58245 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58247 - "POST /api/v1/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58249 - "POST /api/v1/fx/narrate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58251 - "POST /api/v1/fx/hedges/advise HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49258 - "GET /openapi.json HTTP/1.1" 200 OK

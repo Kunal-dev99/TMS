@@ -28,7 +28,9 @@ from app.models import (
     Confirmation,
     Counterparty,
     CurrencyCoverTarget,
+    CurrencyExposure,
     ForecastLine,
+    HedgeLink,
     InvestmentPolicy,
     LadderTarget,
     CounterpartyInstrument,
@@ -306,6 +308,96 @@ def load(session: Session) -> None:
         )
 
 
+    # FX exposures (sales-side receivables) + existing hedge forwards +
+    # HedgeLinks so the Hedging panel opens with a story rather than a
+    # blank canvas. Amounts and directions all RECEIVABLE — payables use
+    # the older /currency-exposures endpoint.
+    #
+    # Gated behind SEED_FX_DEMO=1 so the existing currency tests keep
+    # their empty starting state; the seeder script and Render start-up
+    # both set the flag.
+    import os
+    from datetime import date, timedelta
+
+    if os.environ.get("SEED_FX_DEMO", "0") != "1":
+        return
+
+    _today = date.fromisoformat(s.CLOCK_DATE)
+    for exposure in getattr(s, "FX_EXPOSURES", []):
+        expected = (_today + timedelta(days=exposure["expected_offset_days"])).isoformat()
+        session.add(
+            CurrencyExposure(
+                id=exposure["id"],
+                tenant_id=s.TENANT_ID,
+                currency=exposure["currency"],
+                amount_minor=exposure["amount_minor"],
+                direction="RECEIVABLE",
+                expected_date=expected,
+                source=exposure["source"],
+                source_reference=exposure["source_reference"],
+                status="IDENTIFIED",
+                created_by="Oracle EPM (stubbed)",
+                created_by_user_id="usr_sethi",
+                created_at=NOW,
+            )
+        )
+    session.flush()
+
+    for deal_spec in getattr(s, "FX_HEDGE_DEALS", []):
+        trade_date = (
+            _today + timedelta(days=deal_spec["trade_offset_days"])
+        ).isoformat()
+        maturity = (
+            _today
+            + timedelta(days=deal_spec["trade_offset_days"] + 30 * deal_spec["tenor_months"])
+        ).isoformat()
+        session.add(
+            Deal(
+                id=deal_spec["id"],
+                tenant_id=s.TENANT_ID,
+                counterparty_id=deal_spec["counterparty_id"],
+                instrument="FX_FORWARD",
+                principal_pence=round(deal_spec["sell_amount_minor"] * deal_spec["rate"]),
+                currency=deal_spec["currency"],
+                rate_bp=int(round(deal_spec["rate"] * 10_000)),
+                tenor_months=deal_spec["tenor_months"],
+                trade_date=trade_date,
+                value_date=trade_date,
+                maturity_date=maturity,
+                status="ACTIVE",
+                capture_source="KEYED",
+                created_by="A. Whitfield",
+                created_by_user_id="usr_sethi",
+                created_at=NOW,
+                approved_by="M. Doran",
+                approved_at=NOW,
+            )
+        )
+    session.flush()
+
+    # Recompute exposure statuses as each link is added.
+    from app.services.hedge_service import HedgeService
+
+    hedge = HedgeService(session, s.TENANT_ID, s.CLOCK_DATE)
+    for deal_id, exposure_id, covered_minor in getattr(s, "FX_HEDGE_LINKS", []):
+        session.add(
+            HedgeLink(
+                id=new_id("hl"),
+                tenant_id=s.TENANT_ID,
+                currency_exposure_id=exposure_id,
+                deal_id=deal_id,
+                covered_amount_minor=covered_minor,
+                linked_by="A. Whitfield",
+                linked_at=NOW,
+            )
+        )
+    session.flush()
+    # One pass to recompute statuses.
+    for exposure in session.query(CurrencyExposure).filter(
+        CurrencyExposure.tenant_id == s.TENANT_ID
+    ):
+        hedge._recompute_status(exposure)
+
     # News items — one prototype substitute for a live newswire, so the
     # credit-signal scanner has something to read on open. Assumption 48
     # covers why this is seeded rather than fed live.
@@ -335,6 +427,12 @@ def run() -> None:
 
 
 if __name__ == "__main__":
+    import os
+
+    # The CLI seeder loads the FX-hedging demo book by default; unit tests
+    # invoke `load(session)` directly without setting this flag, so their
+    # currency assertions keep their empty starting state.
+    os.environ.setdefault("SEED_FX_DEMO", "1")
     run()
     print(
         f"Seeded {len(s.COUNTERPARTIES)} counterparties, "
