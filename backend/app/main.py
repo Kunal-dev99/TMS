@@ -34,6 +34,7 @@ from app.api import (
     rates,
     scenarios,
     state,
+    system_policy,
 )
 from app.errors import TreasuryError
 
@@ -89,6 +90,7 @@ for router in (
     planner.router,
     performance.router,
     rates.router,
+    system_policy.router,
     admin.router,
 ):
     app.include_router(router, prefix="/api/v1")

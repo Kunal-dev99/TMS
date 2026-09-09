@@ -125,11 +125,14 @@ _RATE_CURVE: dict[str, dict[int, int]] = {
 def _rate_for(rating: str, tenor: int) -> int:
     """Rate in bp for a given rating and tenor.
 
-    Interpolates: takes the offered rate for the closest tenor listed for
-    that rating band, defaulting to the shortest if the exact tenor is not
-    in the table. Deposits shorter than three months are not modelled.
+    Reads the treasurer-editable rate curve from system_policy if the
+    singleton has diverged from defaults; otherwise uses the built-in
+    table. Interpolates by nearest listed tenor.
     """
-    curve = _RATE_CURVE.get(rating)
+    from app.services import system_policy
+
+    override = system_policy.get_rate_curve()
+    curve = override.get(rating) or _RATE_CURVE.get(rating)
     if not curve:
         # Unknown rating; assume A- as a middle-of-the-road placeholder.
         curve = _RATE_CURVE["A-"]

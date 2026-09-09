@@ -1,6 +1,6 @@
 "use client";
 
-import { Cog, Landmark, Settings2, type LucideIcon } from "lucide-react";
+import { BookOpen, Cog, Landmark, Settings2, ShieldCheck, type LucideIcon } from "lucide-react";
 
 import { PanelShell } from "@/components/PanelShell";
 
@@ -17,11 +17,15 @@ export function ControlPanel({
   onClose,
   onOpenPrinciples,
   onOpenAccountingEvents,
+  onOpenSystemPolicy,
+  onOpenReferenceSources,
 }: {
   open: boolean;
   onClose: () => void;
   onOpenPrinciples: () => void;
   onOpenAccountingEvents: () => void;
+  onOpenSystemPolicy: () => void;
+  onOpenReferenceSources: () => void;
 }) {
   return (
     <PanelShell
@@ -48,6 +52,24 @@ export function ControlPanel({
           onClick={() => {
             onClose();
             onOpenAccountingEvents();
+          }}
+        />
+        <ControlTile
+          icon={ShieldCheck}
+          label="System policy"
+          description="The numbers behind the six-check gate. Concentration cap, enforcement mode, rating bands (max limit + max tenor per rating), and the rate curve."
+          onClick={() => {
+            onClose();
+            onOpenSystemPolicy();
+          }}
+        />
+        <ControlTile
+          icon={BookOpen}
+          label="Reference & sources"
+          description="Every field on the screen: where the value comes from, whether the treasurer can edit it, and where. The cheat sheet."
+          onClick={() => {
+            onClose();
+            onOpenReferenceSources();
           }}
         />
 

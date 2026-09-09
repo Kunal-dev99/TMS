@@ -382,6 +382,53 @@ export function getRateQuote(
   return get<RateQuote>(`/rates/quote?${q.toString()}`, signal);
 }
 
+// -- System policy (Control) --------------------------------------------
+
+export type SystemPolicyBand = {
+  rating: string;
+  ordinal: number;
+  max_limit_pence: number;
+  max_tenor_months: number;
+};
+
+export type SystemPolicySource = {
+  field: string;
+  source: string;
+  editable: string;
+  shown_on: string;
+};
+
+export type SystemPolicyView = {
+  policy: {
+    concentration_cap_bp: number;
+    enforcement: "HARD_BLOCK" | "WARN_WITH_OVERRIDE";
+    threshold_analyst_pence: number;
+    threshold_hot_pence: number;
+    fx_add_on_bp: number;
+  };
+  rating_bands: SystemPolicyBand[];
+  rate_curve: Record<string, Record<string, number>>;
+  curve_tenors: number[];
+  rating_ladder: string[];
+  sources: SystemPolicySource[];
+};
+
+export function getSystemPolicy(signal?: AbortSignal): Promise<SystemPolicyView> {
+  return get<SystemPolicyView>("/system-policy", signal);
+}
+
+export function updateSystemPolicy(patch: {
+  policy?: Partial<SystemPolicyView["policy"]>;
+  rating_bands?: Array<Partial<SystemPolicyBand> & { rating: string }>;
+  rate_curve?: Record<string, Record<string, number>>;
+}): Promise<SystemPolicyView> {
+  return put<SystemPolicyView>("/system-policy", patch);
+}
+
+export function resetRateCurve(): Promise<SystemPolicyView> {
+  return post<SystemPolicyView>("/system-policy/reset-rate-curve", {});
+}
+
 // -- the advisory layer ----------------------------------------------------
 
 /** Null is a valid answer, not a 404. */

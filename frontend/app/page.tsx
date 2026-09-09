@@ -26,6 +26,8 @@ import { PlannerSettingsPanel } from "@/components/panels/PlannerSettingsPanel";
 import { AccountingEventsPanel } from "@/components/panels/AccountingEventsPanel";
 import { ControlPanel } from "@/components/panels/ControlPanel";
 import { PerformancePanel } from "@/components/panels/PerformancePanel";
+import { SystemPolicyPanel } from "@/components/panels/SystemPolicyPanel";
+import { ReferenceSourcesPanel } from "@/components/panels/ReferenceSourcesPanel";
 import { RatingsPanel } from "@/components/panels/RatingsPanel";
 import { Button } from "@/components/ui/button";
 import {
@@ -86,6 +88,8 @@ export default function Surface() {
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [plannerSettingsOpen, setPlannerSettingsOpen] = useState(false);
   const [accountingEventsOpen, setAccountingEventsOpen] = useState(false);
+  const [systemPolicyOpen, setSystemPolicyOpen] = useState(false);
+  const [referenceOpen, setReferenceOpen] = useState(false);
   const [parseOpen, setParseOpen] = useState(false);
   const [signalsOpen, setSignalsOpen] = useState(false);
 
@@ -423,10 +427,21 @@ export default function Surface() {
             onClose={() => setPanel({ kind: "none" })}
             onOpenPrinciples={() => setPlannerSettingsOpen(true)}
             onOpenAccountingEvents={() => setAccountingEventsOpen(true)}
+            onOpenSystemPolicy={() => setSystemPolicyOpen(true)}
+            onOpenReferenceSources={() => setReferenceOpen(true)}
           />
           <PerformancePanel
             open={panel.kind === "performance"}
             onClose={() => setPanel({ kind: "none" })}
+          />
+          <SystemPolicyPanel
+            open={systemPolicyOpen}
+            onClose={() => setSystemPolicyOpen(false)}
+            onSaved={() => { setToast("System policy saved."); load(); }}
+          />
+          <ReferenceSourcesPanel
+            open={referenceOpen}
+            onClose={() => setReferenceOpen(false)}
           />
           <OnboardingPanel
             open={panel.kind === "onboarding"}
