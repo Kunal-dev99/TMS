@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles, TrendingUp, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Sparkles, TrendingUp, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { deployCash, type DeploymentPlan, type PlannerCandidate } from "@/lib/api";
@@ -20,11 +20,13 @@ import {
 /**
  * The cash deployment planner.
  *
- * One blended plan for today's idle cash, computed against the treasurer's
- * investment principles (allocation buckets, risk floor, concentration
- * cap) and gated by the same CheckEngine as every other deal. Two
- * alternatives — Higher yield and Tighter concentration — sit alongside
- * for comparison. The model labels; the numbers are ours.
+ * One blended plan for today's idle cash. The treasurer sets caps
+ * per rating band (up to 80% AAA, up to 10% AA…) and the planner
+ * greedily picks the highest-yielding spread that fits inside those
+ * ceilings. Every allocation is gated by the same CheckEngine as any
+ * typed deal. Two alternatives — Higher yield (loosens A/BBB caps by
+ * 15 pts each) and Tighter concentration (halves the per-name cap) —
+ * sit alongside for comparison. The model labels; the numbers are ours.
  *
  * The modal draws its own SVG charts inline: an allocation bar per
  * candidate showing who gets what, a yield-vs-concentration scatter
@@ -129,9 +131,9 @@ export function PlannerModal({
               Deploy the idle cash
             </h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              One blended plan for today&apos;s uninvested balance, fitting
-              your investment principles. Two variants for comparison.
-              Every allocation is pre-checked.
+              The highest-yielding spread inside the rating caps you set.
+              Two variants for comparison. Every allocation is pre-checked
+              against the six-check gate.
             </p>
           </div>
           <button
@@ -194,107 +196,363 @@ function PlanBody({
     label: string,
   ) => Promise<void> | void;
 }) {
+  const [selectedKind, setSelectedKind] = useState<string>(
+    plan.recommendation_kind || plan.candidates[0]?.kind || "BLENDED",
+  );
+  const [showChart, setShowChart] = useState<boolean>(false);
+
+  const selectedCandidate =
+    plan.candidates.find((c) => c.kind === selectedKind) ||
+    plan.candidates[0];
+
+  const baseCandidate =
+    plan.candidates.find((c) => c.kind === "BLENDED") || plan.candidates[0];
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Header stats */}
-      <div className="grid grid-cols-3 gap-3 rounded-lg border border-border bg-surface-2/30 p-3">
-        <Stat label="Idle cash" value={sterling(plan.idle_cash_pence)} />
-        <Stat label="Portfolio" value={sterling(plan.portfolio_total_pence)} />
+      <div className="grid grid-cols-3 gap-3 rounded-lg border border-border bg-surface-2/30 p-2.5">
+        <Stat label="Idle cash to deploy" value={sterling(plan.idle_cash_pence)} />
+        <Stat label="Total portfolio" value={sterling(plan.portfolio_total_pence)} />
         <Stat
           label="Concentration cap"
           value={perCent(plan.concentration_cap_bp)}
         />
       </div>
 
-      {/* AI recommendation */}
+      {/* AI Quick Summary */}
       {plan.recommendation_kind ? (
-        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
-          <div className="mb-1 flex items-center gap-1.5">
-            <Sparkles className="h-3 w-3 text-primary" aria-hidden />
-            <span className="text-[9px] font-medium uppercase tracking-wider text-primary">
-              Recommendation
-            </span>
-            <span
-              className="ml-1 rounded px-1.5 py-px text-[9px] font-medium uppercase tracking-wider text-primary"
-              style={{
-                background: `color-mix(in srgb, ${
-                  ACCENT[plan.recommendation_kind] ||
-                  "hsl(var(--primary))"
-                } 15%, transparent)`,
-              }}
-            >
-              {plan.candidates.find((c) => c.kind === plan.recommendation_kind)
-                ?.label ?? plan.recommendation_kind}
-            </span>
-            <span className="ml-auto text-[9px] italic text-muted-foreground">
-              drafted just now
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3.5">
+          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary shrink-0" aria-hidden />
+              <span className="text-xs font-bold uppercase tracking-wider text-primary">
+                AI Quick Summary
+              </span>
+              <span
+                className="rounded px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-primary"
+                style={{
+                  background: `color-mix(in srgb, ${
+                    ACCENT[plan.recommendation_kind] ||
+                    "hsl(var(--primary))"
+                  } 18%, transparent)`,
+                }}
+              >
+                Recommended: {plan.candidates.find((c) => c.kind === plan.recommendation_kind)
+                  ?.label ?? plan.recommendation_kind}
+              </span>
+            </div>
+            <span className="text-[10px] italic text-muted-foreground hidden sm:inline">
+              Point-by-point executive briefing · all trade-offs in one place
             </span>
           </div>
-          <p className="text-xs leading-relaxed text-foreground">
+          <p className="text-xs leading-relaxed text-foreground font-normal whitespace-pre-line">
             <TypedText text={plan.recommendation_reason} />
           </p>
         </div>
       ) : null}
 
-      {/* Yield / concentration scatter */}
-      {plan.candidates.length ? (
-        <YieldConcentrationChart plan={plan} />
-      ) : null}
+      {/* 3-Strategy Side-by-Side Comparison */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+              Compare {plan.candidates.length} Placement Strategies
+            </h3>
+            <span className="text-[11px] text-muted-foreground hidden sm:inline">
+              Select any strategy card to inspect its allocations below
+            </span>
+          </div>
+          {plan.candidates.length ? (
+            <button
+              type="button"
+              onClick={() => setShowChart((prev) => !prev)}
+              className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+            >
+              {showChart ? (
+                <>
+                  <ChevronUp className="h-3 w-3" /> Hide Trade-Off Scatter Chart
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-3 w-3" /> Show Trade-Off Scatter Chart
+                </>
+              )}
+            </button>
+          ) : null}
+        </div>
 
-      {/* Anil's Sep-8 shape: blended is the primary plan; the others
-          are compare-side alternatives. */}
-      {(() => {
-        const blended = plan.candidates.find((c) => c.kind === "BLENDED");
-        const alternatives = plan.candidates.filter((c) => c.kind !== "BLENDED");
-        return (
-          <>
-            {blended ? (
-              <div>
-                <div className="mb-2 flex items-baseline gap-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Your blended plan
-                  </h3>
-                  <span className="text-[10px] text-muted-foreground">
-                    fits the investment principles you set
-                  </span>
+        {showChart && plan.candidates.length ? (
+          <YieldConcentrationChart plan={plan} />
+        ) : null}
+
+        {/* 3-Column Comparative Cards */}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {plan.candidates.map((c) => {
+            const isSelected = c.kind === selectedCandidate?.kind;
+            const isRec = c.kind === plan.recommendation_kind;
+            const accentColor = ACCENT[c.kind] || "hsl(var(--primary))";
+            const yieldDelta =
+              c.expected_annual_interest_pence -
+              baseCandidate.expected_annual_interest_pence;
+            const total = c.deployed_pence || 1;
+
+            return (
+              <div
+                key={c.kind}
+                onClick={() => setSelectedKind(c.kind)}
+                className={`relative flex flex-col justify-between rounded-lg border p-3.5 transition-all cursor-pointer ${
+                  isSelected
+                    ? "border-primary bg-primary/[0.04] ring-2 ring-primary/25 shadow-sm"
+                    : "border-border bg-card hover:border-muted-foreground/40 hover:bg-surface-2/20"
+                }`}
+              >
+                <div>
+                  {/* Card Title + Model Pick Badge */}
+                  <div className="mb-1.5 flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span
+                        className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+                        style={{ background: accentColor }}
+                        aria-hidden
+                      />
+                      <span className="truncate text-xs font-semibold text-foreground">
+                        {c.label}
+                      </span>
+                    </div>
+                    {isRec ? (
+                      <span className="inline-flex items-center gap-0.5 rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary shrink-0">
+                        <Sparkles className="h-2.5 w-2.5" /> Model Pick
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/* Summary / Tagline */}
+                  <p className="mb-2.5 text-[10.5px] leading-snug text-muted-foreground line-clamp-2 min-h-[28px]">
+                    {plan.per_candidate_labels[c.kind] || c.tagline}
+                  </p>
+
+                  {/* High-level metrics container */}
+                  <div className="mb-2 rounded border border-border/50 bg-surface-2/40 p-2 text-left">
+                    <div className="flex items-baseline justify-between">
+                      <span className="num text-sm font-bold text-foreground">
+                        {sterling(c.expected_annual_interest_pence)}
+                      </span>
+                      {yieldDelta !== 0 && c.kind !== baseCandidate.kind ? (
+                        <span
+                          className={`num text-[10.5px] font-semibold ${
+                            yieldDelta > 0
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-amber-600 dark:text-amber-400"
+                          }`}
+                        >
+                          {yieldDelta > 0 ? `+${sterling(yieldDelta)}` : sterling(yieldDelta)} / yr
+                        </span>
+                      ) : (
+                        <span className="text-[9.5px] font-medium uppercase text-muted-foreground">
+                          annual interest
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-1.5 grid grid-cols-3 gap-1 border-t border-border/40 pt-1.5 text-center text-[10px]">
+                      <div>
+                        <p className="text-[8.5px] uppercase text-muted-foreground">Rate</p>
+                        <p className="num font-semibold text-foreground">
+                          {perCent(c.weighted_rate_bp)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[8.5px] uppercase text-muted-foreground">Concentration</p>
+                        <p className="num font-semibold text-foreground">
+                          +{perCent(c.concentration_change_bp)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[8.5px] uppercase text-muted-foreground">Deals</p>
+                        <p className="num font-semibold text-foreground">
+                          {c.allocations.length}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Proportional Mini Bar */}
+                  <div className="mb-2">
+                    <div className="flex h-2 overflow-hidden rounded-full border border-border/40 bg-muted/40">
+                      {c.allocations.map((a, idx) => {
+                        const pct = (a.principal_pence / total) * 100;
+                        return (
+                          <div
+                            key={a.counterparty_id + idx}
+                            style={{
+                              width: `${pct}%`,
+                              background: accentColor,
+                              opacity: 0.45 + 0.55 * (a.principal_pence / total),
+                            }}
+                            title={`${a.counterparty_name}: ${pct.toFixed(0)}%`}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-                <CandidateCard
-                  candidate={blended}
-                  recommended={blended.kind === plan.recommendation_kind}
-                  aiLabel={plan.per_candidate_labels[blended.kind]}
-                  onPick={onPick}
-                  onPickBatch={onPickBatch}
+
+                {/* Card footer CTA */}
+                <div className="pt-1">
+                  {isSelected ? (
+                    <div className="flex items-center justify-between text-[10.5px] font-semibold text-primary py-0.5">
+                      <span className="flex items-center gap-1">
+                        <Check className="h-3 w-3" /> Active View
+                      </span>
+                      <span className="text-[9.5px] font-normal text-muted-foreground">
+                        Inspecting below
+                      </span>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-6 w-full text-[10.5px]"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedKind(c.kind);
+                      }}
+                    >
+                      Inspect Strategy
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Selected Strategy Allocation Table (Clean Executive Drilldown) */}
+      {selectedCandidate ? (
+        <div className="rounded-lg border border-border bg-card p-3.5 space-y-2.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-2.5">
+            <div>
+              <div className="flex items-center gap-2">
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ background: ACCENT[selectedCandidate.kind] }}
+                  aria-hidden
                 />
+                <h4 className="text-xs font-semibold text-foreground">
+                  {selectedCandidate.label} Placements Breakdown
+                </h4>
+                <span className="text-[11px] text-muted-foreground">
+                  ({selectedCandidate.allocations.length} counterparties ·{" "}
+                  {sterling(selectedCandidate.deployed_pence)} deployed)
+                </span>
               </div>
-            ) : null}
+              <p className="mt-0.5 text-[10.5px] text-muted-foreground">
+                {selectedCandidate.tagline}
+              </p>
+            </div>
 
-            {alternatives.length ? (
-              <div>
-                <div className="mb-2 flex items-baseline gap-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Alternatives
-                  </h3>
-                  <span className="text-[10px] text-muted-foreground">
-                    same principles, different trade-offs
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                  {alternatives.map((c) => (
-                    <CandidateCard
-                      key={c.kind}
-                      candidate={c}
-                      recommended={c.kind === plan.recommendation_kind}
-                      aiLabel={plan.per_candidate_labels[c.kind]}
-                      onPick={onPick}
-                      onPickBatch={onPickBatch}
-                    />
-                  ))}
-                </div>
-              </div>
+            {onPickBatch && selectedCandidate.allocations.length > 0 ? (
+              <Button
+                type="button"
+                size="sm"
+                className="h-7 gap-1.5 text-xs font-semibold shrink-0"
+                onClick={() =>
+                  onPickBatch(
+                    selectedCandidate.allocations.map((a) => ({
+                      counterparty_id: a.counterparty_id,
+                      counterparty_name: a.counterparty_name,
+                      principal_pence: a.principal_pence,
+                      tenor_months: a.tenor_months,
+                      rate_bp: a.rate_bp,
+                    })),
+                    selectedCandidate.label,
+                  )
+                }
+              >
+                Initiate all {selectedCandidate.allocations.length} at once
+              </Button>
             ) : null}
-          </>
-        );
-      })()}
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto rounded border border-border/60">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-border bg-surface-2/60 text-[10px] uppercase font-semibold text-muted-foreground">
+                  <th className="py-2 px-3">Counterparty</th>
+                  <th className="py-2 px-2.5 text-center">Rating</th>
+                  <th className="py-2 px-2 text-center">Tenor</th>
+                  <th className="py-2 px-2.5 text-right">Indicative Rate</th>
+                  <th className="py-2 px-3 text-right">Utilisation</th>
+                  <th className="py-2 px-3 text-right">Allocated Amount</th>
+                  <th className="py-2 px-3 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {selectedCandidate.allocations.map((a) => (
+                  <tr
+                    key={a.counterparty_id + "_" + a.tenor_months}
+                    className="hover:bg-muted/30 transition-colors"
+                  >
+                    <td className="py-2 px-3 font-medium">
+                      {a.counterparty_name}
+                      <span className="block text-[9.5px] text-muted-foreground font-normal">
+                        Group: {a.group_name}
+                      </span>
+                    </td>
+                    <td className="py-2 px-2.5 text-center">
+                      <span className="inline-block rounded bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold border border-border/60">
+                        {a.counterparty_rating}
+                      </span>
+                    </td>
+                    <td className="py-2 px-2 text-center num text-muted-foreground">
+                      {a.tenor_months}m
+                    </td>
+                    <td className="py-2 px-2.5 text-right num font-medium text-foreground">
+                      {perCent(a.rate_bp)}
+                    </td>
+                    <td className="py-2 px-3 text-right num text-muted-foreground">
+                      {perCent(a.resulting_utilisation_bp)}
+                    </td>
+                    <td className="py-2 px-3 text-right num font-semibold text-foreground">
+                      {sterling(a.principal_pence)}
+                    </td>
+                    <td className="py-2 px-3 text-center">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-2.5 text-[10.5px]"
+                        onClick={() =>
+                          onPick({
+                            counterparty_id: a.counterparty_id,
+                            principal_pence: a.principal_pence,
+                            tenor_months: a.tenor_months,
+                            rate_bp: a.rate_bp,
+                          })
+                        }
+                      >
+                        Initiate
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Consolidated disclaimer footnote */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[9.5px] text-muted-foreground/80 italic pt-0.5 gap-1">
+            <span>
+              * Indicative rate from Bloomberg BGN composite. Click &ldquo;Initiate&rdquo; to load into dealing ticket.
+            </span>
+            <span>Every allocation is pre-checked and passes the six controls.</span>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -674,196 +932,3 @@ function YieldConcentrationChart({ plan }: { plan: DeploymentPlan }) {
   );
 }
 
-
-function CandidateCard({
-  candidate,
-  recommended,
-  aiLabel,
-  onPick,
-  onPickBatch,
-}: {
-  candidate: PlannerCandidate;
-  recommended: boolean;
-  aiLabel: string | undefined;
-  onPick: (a: {
-    counterparty_id: string;
-    principal_pence: number;
-    tenor_months: number;
-    rate_bp: number;
-  }) => void;
-  onPickBatch?: (
-    allocations: {
-      counterparty_id: string;
-      counterparty_name: string;
-      principal_pence: number;
-      tenor_months: number;
-      rate_bp: number;
-    }[],
-    label: string,
-  ) => Promise<void> | void;
-}) {
-  const total = candidate.deployed_pence || 1;
-  const runBatch = () => {
-    if (!onPickBatch) return;
-    onPickBatch(
-      candidate.allocations.map((a) => ({
-        counterparty_id: a.counterparty_id,
-        counterparty_name: a.counterparty_name,
-        principal_pence: a.principal_pence,
-        tenor_months: a.tenor_months,
-        rate_bp: a.rate_bp,
-      })),
-      candidate.label,
-    );
-  };
-  return (
-    <article
-      className={`rounded-lg border p-3 transition ${
-        recommended
-          ? "border-primary/60 bg-primary/[.04] ring-1 ring-primary/30"
-          : "border-border bg-card"
-      }`}
-    >
-      <div className="mb-2 flex items-baseline justify-between gap-2">
-        <div>
-          <h3 className="flex items-center gap-2 text-sm font-semibold">
-            <span
-              className="inline-block h-2 w-2 rounded-full"
-              style={{ background: ACCENT[candidate.kind] }}
-              aria-hidden
-            />
-            {candidate.label}
-            {recommended ? (
-              <span className="rounded bg-primary/15 px-1.5 py-px text-[9px] font-medium uppercase tracking-wider text-primary">
-                Model pick
-              </span>
-            ) : null}
-          </h3>
-          {aiLabel ? (
-            <p className="mt-1 text-[10.5px] leading-snug text-muted-foreground">
-              <TypedText text={aiLabel} charsPerSecond={80} />
-            </p>
-          ) : null}
-        </div>
-        <div className="text-right">
-          <p className="num text-sm font-semibold">
-            {sterling(candidate.expected_annual_interest_pence)}
-          </p>
-          <p className="text-[9px] uppercase tracking-wider text-muted-foreground">
-            annual interest
-          </p>
-        </div>
-      </div>
-
-      <div className="mb-2 grid grid-cols-3 gap-2 text-[10px]">
-        <MiniStat label="Weighted rate" value={perCent(candidate.weighted_rate_bp)} />
-        <MiniStat label="Deployed" value={sterling(candidate.deployed_pence)} />
-        <MiniStat
-          label="Concentration"
-          value={"+" + perCent(candidate.concentration_change_bp)}
-        />
-      </div>
-
-      {/* Batch initiate — Anil's Sep-8 flow: place the whole plan in
-          one click. Each allocation still passes the six checks; a
-          blocked deal lands in the queue like any other. */}
-      {onPickBatch && candidate.allocations.length > 1 ? (
-        <div className="mb-2">
-          <Button
-            type="button"
-            size="sm"
-            className="h-7 w-full gap-1.5 text-[11px]"
-            onClick={runBatch}
-          >
-            Initiate all {candidate.allocations.length} at once
-          </Button>
-          <p className="mt-1 text-[9px] italic text-muted-foreground">
-            Each allocation runs the same six checks — blocked deals go to the queue.
-          </p>
-        </div>
-      ) : null}
-
-      {/* Allocation bar: a stacked segment per counterparty. */}
-      <div className="mb-2">
-        <div className="flex h-4 overflow-hidden rounded border border-border">
-          {candidate.allocations.map((a) => (
-            <div
-              key={a.counterparty_id}
-              className="flex items-center justify-center text-[9px] font-medium text-white"
-              style={{
-                background: ACCENT[candidate.kind],
-                width: `${(a.principal_pence / total) * 100}%`,
-                opacity: 0.55 + 0.45 * (a.principal_pence / total),
-                borderRight: "1px solid hsl(var(--card))",
-              }}
-              title={`${a.counterparty_name}: ${(a.principal_pence / total * 100).toFixed(0)}%`}
-            >
-              {(a.principal_pence / total) * 100 > 15
-                ? a.counterparty_name.split(" ")[0]
-                : ""}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Per-allocation list */}
-      <ul className="space-y-1.5">
-        {candidate.allocations.map((a) => (
-          <li
-            key={a.counterparty_id + "_" + a.tenor_months}
-            className="flex items-center justify-between gap-2 rounded border border-border/40 bg-surface-2/30 px-2 py-1.5 text-[11px]"
-          >
-            <div className="min-w-0">
-              <p className="truncate font-medium">
-                {a.counterparty_name}{" "}
-                <span className="text-muted-foreground">
-                  · {a.counterparty_rating} · {a.tenor_months}m
-                </span>
-              </p>
-              <p className="text-[10px] text-muted-foreground">
-                {perCent(a.rate_bp)} · leaves the counterparty at{" "}
-                {perCent(a.resulting_utilisation_bp)}
-              </p>
-              <p className="text-[9px] italic text-muted-foreground/80">
-                rate from Bloomberg BGN composite · indicative · stubbed
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="num text-[11px]">
-                {sterling(a.principal_pence)}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-6 text-[10px]"
-                onClick={() =>
-                  onPick({
-                    counterparty_id: a.counterparty_id,
-                    principal_pence: a.principal_pence,
-                    tenor_months: a.tenor_months,
-                    rate_bp: a.rate_bp,
-                  })
-                }
-              >
-                Initiate
-              </Button>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </article>
-  );
-}
-
-
-function MiniStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded border border-border/40 bg-surface-2/30 px-2 py-1.5">
-      <p className="text-[9px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
-      <p className="num text-[11px] font-semibold">{value}</p>
-    </div>
-  );
-}

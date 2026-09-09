@@ -277,12 +277,12 @@ export default function Surface() {
                     ✨ Deploy the idle cash
                   </span>
                   <p className="mt-0.5 text-[11px] text-foreground">
-                    Blended plan for £
+                    Best spread for £
                     {(state.uninvested_cash_pence / 100).toLocaleString(
                       "en-GB",
                       { maximumFractionDigits: 0 },
                     )}
-                    , fitting your investment principles.
+                    , inside your rating caps.
                   </p>
                 </button>
               ) : null}

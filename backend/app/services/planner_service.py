@@ -394,84 +394,88 @@ class PlannerService:
             allocations=allocations,
         )
 
-    # ------------------------------------------------------------- blend
+    # ------------------------------------------------------------- optimise
 
-    def _fill_bucket(
-        self,
-        band: str,
-        amount: int,
-        placements: list[Allocation],
-        per_name_cap: int,
-    ) -> list[Allocation]:
-        """Place `amount` across the best-rated names in `band`.
+    # Buckets are now CAPS, not targets. The treasurer sets a ceiling
+    # per rating band ("no more than 80% AAA, no more than 10% AA"),
+    # and the planner picks the highest-yielding spread that fits
+    # inside those ceilings. Anil's Sep-9 feedback: "pick a limit of
+    # each bucket... and then have the AI calculate the best spread
+    # to get maximum income."
 
-        Uses the short-tenor placement (3 months) for each name so the
-        blend is directly comparable across buckets, and equal-shares
-        across up to four names.
-        """
-        if amount <= 0:
-            return []
-        eligible = [
-            p for p in placements
-            if band_of(p.counterparty_rating) == band and p.tenor_months == 3
-        ]
-        if not eligible:
-            return []
-        best_per_cp: dict[str, Allocation] = {}
-        for p in sorted(eligible, key=lambda x: -x.rate_bp):
-            best_per_cp.setdefault(p.counterparty_id, p)
-        picks = list(best_per_cp.values())[:4]
-        share_cap = min(per_name_cap, amount // len(picks) if picks else amount)
-        share = (share_cap // 100_000) * 100_000  # £1,000 rounding
-        if share <= 0:
-            return []
-        remaining = amount
-        allocations: list[Allocation] = []
-        for pick in picks:
-            place = min(share, pick.principal_pence, remaining)
-            place = (place // 100_000) * 100_000
-            if place <= 0:
-                continue
-            allocations.append(self._retime(pick, place))
-            remaining -= place
-        return allocations
-
-    def _blend(
+    def _optimize(
         self,
         idle: int,
         placements: list[Allocation],
-        buckets: dict[str, int],
+        band_caps_pct: dict[str, int],
         per_name_cap: int,
     ) -> list[Allocation]:
-        """Distribute idle cash across every rating bucket in `buckets`."""
+        """Greedy yield-first fill inside per-band caps and per-name caps.
+
+        Each counterparty appears in `placements` at short and long
+        tenor. We keep the placement with the higher rate per
+        counterparty (usually the longer tenor) so a counterparty is
+        not counted twice against its own headroom.
+
+        Then rate-desc through the pool and place until either the
+        cash runs out or every band is at its cap.
+        """
+        if idle <= 0 or not placements:
+            return []
+
+        # Reduce to one best placement per counterparty.
+        best_per_cp: dict[str, Allocation] = {}
+        for p in placements:
+            existing = best_per_cp.get(p.counterparty_id)
+            if existing is None or p.rate_bp > existing.rate_bp:
+                best_per_cp[p.counterparty_id] = p
+        pool = sorted(best_per_cp.values(), key=lambda x: -x.rate_bp)
+
+        band_cap_pence = {
+            band: int(idle * band_caps_pct.get(band, 0) / 100)
+            for band in RATING_BANDS
+        }
+        used_by_band = {band: 0 for band in RATING_BANDS}
+        cash_left = idle
+
         allocations: list[Allocation] = []
-        for band in RATING_BANDS:
-            pct = buckets.get(band, 0)
-            amount = int(idle * pct / 100)
-            allocations.extend(
-                self._fill_bucket(band, amount, placements, per_name_cap)
-            )
+        for pick in pool:
+            if cash_left <= 0:
+                break
+            band = band_of(pick.counterparty_rating)
+            band_remaining = band_cap_pence.get(band, 0) - used_by_band.get(band, 0)
+            if band_remaining <= 0:
+                continue
+            # min of: what the name can take, what's left in the band cap,
+            # what's left in the pot, the per-name cap the treasurer set.
+            place = min(pick.principal_pence, band_remaining, cash_left, per_name_cap)
+            place = (place // 100_000) * 100_000  # £1,000 rounding
+            if place <= 0:
+                continue
+            allocations.append(self._retime(pick, place))
+            used_by_band[band] = used_by_band.get(band, 0) + place
+            cash_left -= place
         return allocations
 
     def _build_blended(
         self,
         idle: int,
         placements: list[Allocation],
-        buckets: dict[str, int],
+        band_caps_pct: dict[str, int],
         per_name_cap: int,
     ) -> Candidate | None:
-        allocations = self._blend(idle, placements, buckets, per_name_cap)
+        allocations = self._optimize(idle, placements, band_caps_pct, per_name_cap)
         if not allocations:
             return None
-        tagline = " · ".join(
-            f"{buckets.get(b, 0)}% {b}"
+        caps_desc = " · ".join(
+            f"≤{band_caps_pct.get(b, 0)}% {b}"
             for b in RATING_BANDS
-            if buckets.get(b, 0) > 0
+            if band_caps_pct.get(b, 0) > 0
         )
         return Candidate(
             kind="BLENDED",
             label="Blended plan",
-            tagline=f"Fills your buckets: {tagline}.",
+            tagline=f"Best mix inside your caps: {caps_desc}.",
             allocations=allocations,
         )
 
@@ -479,27 +483,28 @@ class PlannerService:
         self,
         idle: int,
         placements: list[Allocation],
-        buckets: dict[str, int],
+        band_caps_pct: dict[str, int],
         per_name_cap: int,
     ) -> Candidate | None:
-        """Shift 20% of the safest bucket to the next-lower one — lifts
-        yield at the cost of a small rating drop."""
-        shifted = dict(buckets)
-        # Find highest bucket with cash allocated.
-        for i, b in enumerate(RATING_BANDS[:-1]):
-            if shifted.get(b, 0) >= 20 and RATING_BANDS[i + 1] in shifted:
-                shifted[b] -= 20
-                shifted[RATING_BANDS[i + 1]] = shifted.get(RATING_BANDS[i + 1], 0) + 20
-                break
-        else:
+        """Widen the lower-rated caps by 15 pts each — invites more
+        higher-yielding names in without changing what the treasurer
+        deemed safe at the top."""
+        loosened = dict(band_caps_pct)
+        touched = False
+        for band in ("A", "BBB"):
+            current = loosened.get(band, 0)
+            loosened[band] = min(100, current + 15)
+            if loosened[band] > current:
+                touched = True
+        if not touched:
             return None
-        allocations = self._blend(idle, placements, shifted, per_name_cap)
+        allocations = self._optimize(idle, placements, loosened, per_name_cap)
         if not allocations:
             return None
         return Candidate(
             kind="HIGHER_YIELD",
             label="Higher yield",
-            tagline="Shifts 20% down one rating band — same buckets otherwise.",
+            tagline="Same principles, A / BBB caps loosened by 15 pts each.",
             allocations=allocations,
         )
 
@@ -507,18 +512,19 @@ class PlannerService:
         self,
         idle: int,
         placements: list[Allocation],
-        buckets: dict[str, int],
+        band_caps_pct: dict[str, int],
         per_name_cap: int,
     ) -> Candidate | None:
-        """Same buckets, but caps every name at half the standard share."""
+        """Same caps, but halves the per-name cap so the plan spreads
+        further across names."""
         tighter_cap = max(100_000, per_name_cap // 2)
-        allocations = self._blend(idle, placements, buckets, tighter_cap)
+        allocations = self._optimize(idle, placements, band_caps_pct, tighter_cap)
         if not allocations:
             return None
         return Candidate(
             kind="TIGHTER_CONCENTRATION",
             label="Tighter concentration",
-            tagline="Same buckets, each name capped at half the standard share.",
+            tagline="Same caps, each name limited to half its standard share.",
             allocations=allocations,
         )
 

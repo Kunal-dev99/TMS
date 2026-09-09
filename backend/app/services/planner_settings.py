@@ -114,10 +114,17 @@ class PlannerSettings:
     # to compute the "tighter concentration" alternative candidate.
     group_concentration_cap_pct: int = 25
 
-    # Allocation buckets — a % of idle cash to place in each rating
-    # band. Must sum to 100. This IS the investment principle Anil
-    # wants the treasurer to declare before deploying.
-    # Default: 50% AAA, 30% AA, 20% A, 0% BBB.
+    # Allocation buckets — a CAP per rating band (upper limit on the
+    # share of idle cash that can go into that band). Anil's Sep-9
+    # feedback: "pick a limit of each bucket ie 80% AAA and 10% AA and
+    # then have the AI calculate the best spread to get maximum
+    # income." So the planner treats these as ceilings and greedily
+    # fills highest-rate first within them.
+    #
+    # Caps do NOT need to sum to 100: a treasurer can set 80% AAA and
+    # 10% AA (total ceiling 90%), and up to 10% of cash stays
+    # uninvested if no other band is allowed.
+    # Default: up to 50% AAA, 30% AA, 20% A, 0% BBB (safety-heavy).
     buckets: dict[str, int] = field(
         default_factory=lambda: {"AAA": 50, "AA": 30, "A": 20, "BBB": 0}
     )

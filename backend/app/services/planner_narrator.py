@@ -21,45 +21,65 @@ DEFAULT_MODEL = "openai/gpt-oss-120b"
 TIMEOUT_SECONDS = 12.0
 
 SYSTEM_PROMPT = (
-    "You are advising a corporate treasurer on where to deploy idle cash.\n\n"
-    "The treasurer has four candidate deployment plans, each already checked "
-    "and safe to book. You choose the best one for today's book and write a "
-    "short label for each candidate.\n\n"
+    "You are an expert treasury advisor assisting a corporate treasurer on deploying idle cash.\n\n"
+    "The treasurer has candidate deployment plans, each pre-checked against policy and safe to book. "
+    "Your job is to provide an AI Quick Summary: a clear, point-wise executive briefing that synthesizes "
+    "the decision so the treasurer gets the full picture at a glance without reading dense text.\n\n"
     "Rules:\n"
-    "1. Choose exactly one candidate kind from the list. Never invent one.\n"
-    "2. Every number you quote must be a figure already in the input. No "
-    "rates, amounts, percentages of your own.\n"
-    "3. Per candidate, write a single sentence of trade-off: what it buys, "
-    "what it costs. Not a repetition of the tagline.\n"
-    "4. The recommendation is one sentence. Say why this one, not the others.\n"
+    "1. Choose exactly one candidate kind from the input. Never invent one.\n"
+    "2. Every number you quote must be a figure already in the input. No rates or amounts of your own.\n"
+    "3. Write 'recommendation_reason' as exactly 4 point-wise bullets separated by double newlines (\\n\\n):\n"
+    "   • Cash to Deploy: [idle cash amount and currency] ready for allocation across [N] pre-checked strategies.\n"
+    "   • Strategy Trade-Offs: Contrast the candidates (e.g. Blended Plan policy adherence vs Higher Yield extra return/yield vs concentration).\n"
+    "   • Recommended Pick: State your recommended candidate and why it is the optimal risk-adjusted allocation today.\n"
+    "   • Governance & Safety: Confirm all placements pre-pass policy controls (concentration, rating, limits) for 1-click execution.\n"
+    "4. Per candidate, provide a one-sentence trade-off label under 'labels'.\n"
     "5. Reply as JSON, exactly this shape:\n"
     "   {\n"
-    "     \"recommendation_kind\": \"MAX_YIELD\" | \"DIVERSIFIED\" | "
-    "\"PRESERVE_HEADROOM\" | \"CONSERVATIVE\",\n"
+    "     \"recommendation_kind\": \"...\",\n"
     "     \"recommendation_reason\": \"...\",\n"
-    "     \"labels\": {\n"
-    "       \"MAX_YIELD\": \"...\",\n"
-    "       \"DIVERSIFIED\": \"...\",\n"
-    "       \"PRESERVE_HEADROOM\": \"...\",\n"
-    "       \"CONSERVATIVE\": \"...\"\n"
-    "     }\n"
+    "     \"labels\": { \"<kind>\": \"...\" }\n"
     "   }"
 )
 
-VALID_KINDS = {"MAX_YIELD", "DIVERSIFIED", "PRESERVE_HEADROOM", "CONSERVATIVE"}
+VALID_KINDS = {
+    "BLENDED",
+    "HIGHER_YIELD",
+    "TIGHTER_CONCENTRATION",
+    "MAX_YIELD",
+    "DIVERSIFIED",
+    "PRESERVE_HEADROOM",
+    "CONSERVATIVE",
+}
 
 
 def _fallback(plan: DeploymentPlan) -> dict:
-    """A deterministic fallback: rank by yield, describe each in one line."""
+    """A deterministic fallback: clear point-wise executive summary bullets + labels."""
     if not plan.candidates:
         return {"recommendation_kind": "", "recommendation_reason": "", "labels": {}}
     best = max(plan.candidates, key=lambda c: c.expected_annual_interest_pence)
+    blended = next(
+        (c for c in plan.candidates if c.kind == "BLENDED"), plan.candidates[0]
+    )
+
+    idle_str = f"£{plan.idle_cash_pence // 100:,.0f}"
+    best_yield_str = f"£{best.expected_annual_interest_pence // 100:,.0f}"
+    delta = (
+        best.expected_annual_interest_pence
+        - blended.expected_annual_interest_pence
+    )
+    delta_str = f", gaining +£{delta // 100:,.0f}/yr extra return" if delta > 0 else ""
+
+    bullets = [
+        f"• Cash to Deploy: {idle_str} of uninvested cash ready for allocation across {len(plan.candidates)} pre-checked strategies.",
+        f"• Strategy Trade-Offs: The Blended Plan aligns strictly with your policy buckets at {blended.weighted_rate_bp / 100:.2f}%, whereas {best.label} delivers the highest return at {best_yield_str}/yr ({best.weighted_rate_bp / 100:.2f}%{delta_str}).",
+        f"• Recommended Pick: We recommend {best.label} as the optimal risk-adjusted allocation today, remaining comfortably within your {plan.concentration_cap_bp / 100:.1f}% concentration cap.",
+        "• Governance & Safety: Every placement has pre-passed all six policy controls for immediate one-click execution.",
+    ]
+    reason = "\n\n".join(bullets)
     return {
         "recommendation_kind": best.kind,
-        "recommendation_reason": (
-            f"{best.label.lower()} earns the most: "
-            f"{best.expected_annual_interest_pence // 100:,}p a year."
-        ),
+        "recommendation_reason": reason,
         "labels": {c.kind: c.tagline for c in plan.candidates},
     }
 
@@ -107,7 +127,8 @@ def narrate(plan: DeploymentPlan, planner: PlannerService) -> None:
         parsed = json.loads(raw[start:end + 1])
 
         kind = str(parsed.get("recommendation_kind", "")).strip()
-        if kind not in VALID_KINDS or not any(c.kind == kind for c in plan.candidates):
+        valid_kinds = VALID_KINDS | {c.kind for c in plan.candidates}
+        if kind not in valid_kinds or not any(c.kind == kind for c in plan.candidates):
             # Model made something up. Fall back rather than trust it.
             out = _fallback(plan)
             plan.recommendation_kind = out["recommendation_kind"]

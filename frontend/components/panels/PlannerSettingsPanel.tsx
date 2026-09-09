@@ -19,14 +19,12 @@ import {
  * Section 1 — Parameters. Sliders for min rating, tenor ceiling, per-name
  * cap, and group concentration cap.
  *
- * Section 2 — Allocation buckets. A % per rating band (AAA, AA, A, BBB).
- * Must sum to 100 for Save to enable. This IS the investment principle
- * the treasurer declares before deploying: not "which strategy to pick"
- * but "how to spread across risk bands."
- *
- * The planner then produces ONE blended plan that fits those buckets,
- * plus one or two alternatives with different concentration/yield
- * trade-offs.
+ * Section 2 — Rating caps. A MAX % per rating band (AAA, AA, A, BBB).
+ * Anil's Sep-9 feedback: "pick a limit of each bucket ie 80% AAA and
+ * 10% AA and then have the AI calculate the best spread to get maximum
+ * income." Caps are upper limits, not targets - they don't need to sum
+ * to 100. The planner picks the highest-yielding spread that fits
+ * inside them.
  */
 export function PlannerSettingsPanel({
   open,
@@ -63,13 +61,15 @@ export function PlannerSettingsPanel({
     patch({ buckets: { ...settings.buckets, [band]: pct } });
   };
 
+  // Caps do not need to sum to 100 — that was the old "target" model.
+  // Now buckets are ceilings and any non-negative sum is valid.
   const bucketTotal = settings
     ? Object.values(settings.buckets).reduce((sum, v) => sum + (v || 0), 0)
     : 0;
-  const bucketsValid = bucketTotal === 100;
+  const anyCapSet = bucketTotal > 0;
 
   const save = async () => {
-    if (!settings || !bucketsValid) return;
+    if (!settings || !anyCapSet) return;
     setSaving(true);
     setError(null);
     try {
@@ -110,7 +110,7 @@ export function PlannerSettingsPanel({
       onClose={onClose}
       icon={Settings2}
       title="Investment principles"
-      description="What the treasurer declares before deploying: risk floor, allocation buckets, and concentration rules. Nothing here is hardcoded."
+      description="Set the risk floor, rating caps (upper limits per band), and concentration rules. The planner picks the best spread inside them to maximise income."
     >
       {loading || !settings ? (
         <div className="py-8 text-center text-xs text-muted-foreground">Loading…</div>
@@ -130,7 +130,7 @@ export function PlannerSettingsPanel({
           <Buckets
             settings={settings}
             total={bucketTotal}
-            valid={bucketsValid}
+            valid={anyCapSet}
             onChange={setBucket}
           />
 
@@ -161,9 +161,9 @@ export function PlannerSettingsPanel({
                 type="button"
                 size="sm"
                 onClick={save}
-                disabled={saving || !bucketsValid}
+                disabled={saving || !anyCapSet}
                 className="gap-1.5 text-xs"
-                title={!bucketsValid ? `Buckets must sum to 100 (currently ${bucketTotal})` : undefined}
+                title={!anyCapSet ? "Set at least one rating cap above 0%" : undefined}
               >
                 <Save className="h-3 w-3" />
                 {saving ? "Saving…" : "Save principles"}
@@ -255,14 +255,23 @@ function Buckets({
     <section>
       <div className="mb-3 flex items-baseline justify-between">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Allocation buckets
+          Rating caps
         </h3>
         <span
           className={`font-mono text-xs ${
-            valid ? "text-success" : "text-destructive"
+            total >= 100
+              ? "text-success"
+              : total > 0
+                ? "text-warning"
+                : "text-destructive"
           }`}
+          title={
+            total < 100
+              ? `Combined ceiling is ${total}%; up to ${100 - total}% of cash may stay uninvested.`
+              : `Combined ceiling covers the full ${total}%.`
+          }
         >
-          Total: {total}%
+          Combined ceiling: {total}%
         </span>
       </div>
       <div className="rounded border border-border bg-surface-2/40 p-4">
@@ -316,17 +325,18 @@ function Buckets({
                   }}
                   className="w-12 rounded border border-border bg-background px-1 py-0.5 text-right font-mono text-xs"
                 />
-                <span className="text-xs text-muted-foreground">%</span>
+                <span className="text-xs text-muted-foreground">% max</span>
               </div>
             </div>
           ))}
         </div>
 
         <p className="mt-4 text-[10px] text-muted-foreground">
-          Set what share of idle cash goes in each rating band. Must sum
-          to 100%. The planner then produces one blended plan that fits
-          these buckets — plus a "higher yield" and "tighter
-          concentration" variant for comparison.
+          Each number is a <b>ceiling</b>, not a target. The planner
+          picks the highest-yielding spread it can find inside these
+          caps. Set 80% AAA + 10% AA and the planner will use up to
+          those - but never more. If your caps sum to less than 100%,
+          any leftover cash stays uninvested until the caps rise.
         </p>
       </div>
     </section>
