@@ -30,7 +30,10 @@ export const EMPTY_TICKET: TicketState = {
   instrument: "DEPOSIT",
   principal: "",
   tenor: "6",
-  rate: "4.25",
+  // Rate starts empty; the ticket auto-prefills it from the rate feed
+  // (Bloomberg BGN via /rates/quote) when a counterparty + tenor are
+  // set. A treasurer's override wins from that point on.
+  rate: "",
 };
 
 export function toFields(ticket: TicketState): TicketFields | null {
