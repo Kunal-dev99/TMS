@@ -7,7 +7,7 @@ import { PageSection } from "@/components/common/PageSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { checkDeal } from "@/lib/api";
+import { checkDeal, getRateQuote, type RateQuote } from "@/lib/api";
 import { perCent } from "@/lib/format";
 import type { BookRow, CheckResult, Instrument, TicketFields } from "@/lib/types";
 
@@ -88,6 +88,53 @@ export function Ticket({
   const inFlight = useRef<AbortController | null>(null);
   const fields = toFields(ticket);
   const serialised = fields ? JSON.stringify(fields) : null;
+
+  // Bloomberg-style rate pre-fill. When counterparty + instrument + tenor
+  // are set, fetch an indicative rate from the market feed (stubbed for
+  // the prototype) and pre-fill the Rate field - unless the treasurer
+  // has already typed their own value, in which case we hold it and
+  // flag the override in the caption.
+  const [quote, setQuote] = useState<RateQuote | null>(null);
+  const lastAutoRate = useRef<string | null>(null);
+  const tenorParsed = Number(ticket.tenor);
+  const quoteInputsReady =
+    !!ticket.counterpartyId && Number.isFinite(tenorParsed) && tenorParsed >= 1;
+  useEffect(() => {
+    if (!quoteInputsReady) {
+      setQuote(null);
+      lastAutoRate.current = null;
+      return;
+    }
+    const controller = new AbortController();
+    getRateQuote(
+      ticket.counterpartyId,
+      ticket.instrument,
+      Math.round(tenorParsed),
+      controller.signal,
+    )
+      .then((q) => {
+        setQuote(q);
+        const asString = (q.rate_bp / 100).toFixed(2);
+        // Prefill only if the treasurer has not typed over it. We compare
+        // the current field to the *last* auto value we wrote - if they
+        // are the same, the treasurer has not overridden.
+        if (ticket.rate === "" || ticket.rate === lastAutoRate.current) {
+          lastAutoRate.current = asString;
+          if (ticket.rate !== asString) {
+            onChange({ ...ticket, rate: asString });
+          }
+        }
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticket.counterpartyId, ticket.instrument, ticket.tenor]);
+
+  const isOverridden =
+    quote !== null &&
+    lastAutoRate.current !== null &&
+    ticket.rate !== "" &&
+    ticket.rate !== lastAutoRate.current;
 
   const runCheck = useCallback(
     (payload: TicketFields) => {
@@ -221,6 +268,22 @@ export function Ticket({
               onChange={(event) => onChange({ ...ticket, rate: event.target.value })}
               className="num"
             />
+            {quote ? (
+              <p className="text-[10px] leading-tight">
+                {isOverridden ? (
+                  <>
+                    <span className="font-medium text-warning">Override.</span>{" "}
+                    <span className="text-muted-foreground">
+                      Was {(quote.rate_bp / 100).toFixed(2)}% from {quote.source} · indicative.
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">
+                    from <span className="font-medium text-foreground">{quote.source}</span> · {quote.quality} · as of {quote.as_of} <span className="italic">· stubbed</span>
+                  </span>
+                )}
+              </p>
+            ) : null}
             {fields ? (
               <p className="text-[10px] text-muted-foreground">
                 {perCent(fields.rate_bp)} as basis points

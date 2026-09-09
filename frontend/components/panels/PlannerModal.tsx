@@ -824,6 +824,9 @@ function CandidateCard({
                 {perCent(a.rate_bp)} · leaves the counterparty at{" "}
                 {perCent(a.resulting_utilisation_bp)}
               </p>
+              <p className="text-[9px] italic text-muted-foreground/80">
+                rate from Bloomberg BGN composite · indicative · stubbed
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <span className="num text-[11px]">

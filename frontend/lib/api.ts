@@ -354,6 +354,34 @@ export function getCounterpartySources(
   return get<CounterpartySourcesView>("/counterparties/sources", signal);
 }
 
+// -- Rate quote (Bloomberg BGN pre-fill) ---------------------------------
+
+export type RateQuote = {
+  counterparty_id: string;
+  instrument: string;
+  tenor_months: number;
+  rate_bp: number;
+  rating_used: string;
+  source: string;
+  quality: string;
+  as_of: string;
+  notice: string;
+};
+
+export function getRateQuote(
+  counterpartyId: string,
+  instrument: string,
+  tenorMonths: number,
+  signal?: AbortSignal,
+): Promise<RateQuote> {
+  const q = new URLSearchParams({
+    counterparty_id: counterpartyId,
+    instrument,
+    tenor_months: String(tenorMonths),
+  });
+  return get<RateQuote>(`/rates/quote?${q.toString()}`, signal);
+}
+
 // -- the advisory layer ----------------------------------------------------
 
 /** Null is a valid answer, not a 404. */

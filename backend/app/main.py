@@ -31,6 +31,7 @@ from app.api import (
     jobs,
     performance,
     planner,
+    rates,
     scenarios,
     state,
 )
@@ -87,6 +88,7 @@ for router in (
     scenarios.router,
     planner.router,
     performance.router,
+    rates.router,
     admin.router,
 ):
     app.include_router(router, prefix="/api/v1")
