@@ -25,6 +25,7 @@ import { PlannerModal } from "@/components/panels/PlannerModal";
 import { PlannerSettingsPanel } from "@/components/panels/PlannerSettingsPanel";
 import { AccountingEventsPanel } from "@/components/panels/AccountingEventsPanel";
 import { ControlPanel } from "@/components/panels/ControlPanel";
+import { FxPolicyPanel } from "@/components/panels/FxPolicyPanel";
 import { HedgingPanel } from "@/components/panels/HedgingPanel";
 import { InitiateHedgeModal } from "@/components/panels/InitiateHedgeModal";
 import { PerformancePanel } from "@/components/panels/PerformancePanel";
@@ -108,6 +109,7 @@ export default function Surface() {
     | null
   >(null);
   const [hedgingRefresh, setHedgingRefresh] = useState(0);
+  const [fxPolicyOpen, setFxPolicyOpen] = useState(false);
 
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [breaches, setBreaches] = useState<BreachView[]>([]);
@@ -446,6 +448,7 @@ export default function Surface() {
             onOpenAccountingEvents={() => setAccountingEventsOpen(true)}
             onOpenSystemPolicy={() => setSystemPolicyOpen(true)}
             onOpenReferenceSources={() => setReferenceOpen(true)}
+            onOpenFxPolicy={() => setFxPolicyOpen(true)}
           />
           <PerformancePanel
             open={panel.kind === "performance"}
@@ -484,6 +487,14 @@ export default function Surface() {
           <ReferenceSourcesPanel
             open={referenceOpen}
             onClose={() => setReferenceOpen(false)}
+          />
+          <FxPolicyPanel
+            open={fxPolicyOpen}
+            onClose={() => setFxPolicyOpen(false)}
+            onSaved={() => {
+              setToast("FX hedge policy saved.");
+              setHedgingRefresh((n) => n + 1);
+            }}
           />
           <OnboardingPanel
             open={panel.kind === "onboarding"}

@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Cog, Landmark, Settings2, ShieldCheck, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, BookOpen, Cog, Landmark, Settings2, ShieldCheck, type LucideIcon } from "lucide-react";
 
 import { PanelShell } from "@/components/PanelShell";
 
@@ -19,6 +19,7 @@ export function ControlPanel({
   onOpenAccountingEvents,
   onOpenSystemPolicy,
   onOpenReferenceSources,
+  onOpenFxPolicy,
 }: {
   open: boolean;
   onClose: () => void;
@@ -26,6 +27,7 @@ export function ControlPanel({
   onOpenAccountingEvents: () => void;
   onOpenSystemPolicy: () => void;
   onOpenReferenceSources: () => void;
+  onOpenFxPolicy: () => void;
 }) {
   return (
     <PanelShell
@@ -43,6 +45,15 @@ export function ControlPanel({
           onClick={() => {
             onClose();
             onOpenPrinciples();
+          }}
+        />
+        <ControlTile
+          icon={ArrowLeftRight}
+          label="FX hedge policy"
+          description="Per-currency target hedge ratios (EUR / USD / CHF) with horizon. The Hedging panel reads these to compute the gap it shows."
+          onClick={() => {
+            onClose();
+            onOpenFxPolicy();
           }}
         />
         <ControlTile

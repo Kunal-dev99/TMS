@@ -80,6 +80,10 @@ SYSTEM_PROMPT = (
     "    the book looks healthy. Reference actual dates and counterparties.\n\n"
     "Hard rules:\n"
     "  1. Every number you quote must be present in the input.\n"
+    "     For monetary amounts, USE THE display strings from the input\n"
+    "     verbatim (e.g. '€10m', '$21m', 'CHF 7.2m', '£800k') — NEVER\n"
+    "     write out full digit strings like '21,000,000 USD' or '10000000 EUR'.\n"
+    "     Match the panel cards exactly.\n"
     "  2. Never predict, forecast, or comment on where FX rates will go.\n"
     "     Rate quotes are indicative only.\n"
     "  3. Never say a rate is 'attractive', 'favourable', 'expensive',\n"
@@ -257,6 +261,26 @@ def _maturity_clusters(session: Session, tenant_id: str) -> list[str]:
     return flags
 
 
+_CURRENCY_SYMBOL: dict[str, str] = {
+    "GBP": "£",
+    "EUR": "€",
+    "USD": "$",
+    "CHF": "CHF ",
+}
+
+
+def _format_money(amount_minor: int, currency: str) -> str:
+    """'€10m', '$21m', 'CHF 7.2m', '£800k' — matches the panel cards."""
+    symbol = _CURRENCY_SYMBOL.get(currency.upper(), "")
+    major = amount_minor / 100
+    if abs(major) >= 1_000_000:
+        m = major / 1_000_000
+        return f"{symbol}{m:.1f}m" if abs(m) < 10 else f"{symbol}{m:.0f}m"
+    if abs(major) >= 1_000:
+        return f"{symbol}{major / 1_000:.0f}k"
+    return f"{symbol}{major:.0f}"
+
+
 def _suggested_amount(gap_minor: int) -> list[int]:
     """A short menu of round amounts the LLM can pick from.
 
@@ -284,6 +308,7 @@ def _snapshot(
     currencies = []
     for row in summary:
         gap = row.gap_to_target_minor
+        suggestions = _suggested_amount(gap)
         currencies.append(
             {
                 "currency": row.currency,
@@ -293,7 +318,15 @@ def _snapshot(
                 "hedge_ratio_pct": row.hedge_ratio_bp / 100,
                 "target_pct": row.target_cover_bp / 100,
                 "gap_to_target_minor": gap,
-                "suggested_amounts": _suggested_amount(gap),
+                "suggested_amounts": suggestions,
+                # Human-readable versions the LLM MUST echo verbatim so
+                # its prose matches the numbers on the panel cards.
+                "gross_display": _format_money(row.gross_minor, row.currency),
+                "unhedged_display": _format_money(row.unhedged_minor, row.currency),
+                "gap_display": _format_money(gap, row.currency),
+                "suggested_amounts_display": [
+                    _format_money(a, row.currency) for a in suggestions
+                ],
             }
         )
 
@@ -327,20 +360,19 @@ def _deterministic_briefing(snap: dict, eligible_by_id: dict) -> FxBriefing:
         briefing = "Every currency meets or exceeds its policy target. Nothing to hedge today."
     else:
         priority = gapped[0]
-        # Lead with the biggest gap, then contextualise.
+        # Lead with the biggest gap, then contextualise. Numbers use
+        # the same short-form (€10m, $21m) as the panel cards.
         lead = (
             f"Your biggest coverage gap is {priority['currency']} — "
             f"only {priority['hedge_ratio_pct']:.0f}% hedged against a "
             f"{priority['target_pct']:.0f}% target, "
-            f"{priority['gap_to_target_minor'] // 100:,.0f} {priority['currency']} short "
-            f"over the next 12 months."
+            f"{priority['gap_display']} short over the next 12 months."
         )
         follow_parts: list[str] = []
         for c in gapped[1:]:
             follow_parts.append(
                 f"{c['currency']} is {c['hedge_ratio_pct']:.0f}% hedged and needs another "
-                f"{c['gap_to_target_minor'] // 100:,.0f} {c['currency']} to reach "
-                f"{c['target_pct']:.0f}%"
+                f"{c['gap_display']} to reach {c['target_pct']:.0f}%"
             )
         follow = ""
         if follow_parts:
@@ -376,6 +408,7 @@ def _deterministic_briefing(snap: dict, eligible_by_id: dict) -> FxBriefing:
         chosen = candidates[0] if candidates else None
         if chosen is None:
             continue
+        headroom_display = _format_money(chosen["entity_headroom_pence"], "GBP")
         recs.append(
             RecommendedAction(
                 currency=c["currency"],
@@ -386,7 +419,7 @@ def _deterministic_briefing(snap: dict, eligible_by_id: dict) -> FxBriefing:
                 reason=(
                     f"Closes half the {c['currency']} policy gap. "
                     f"{chosen['name']} is the highest-rated FX-approved "
-                    f"bank ({chosen['rating']}) with £{chosen['entity_headroom_pence'] // 100:,} headroom."
+                    f"bank ({chosen['rating']}) with {headroom_display} headroom."
                 ),
             )
         )

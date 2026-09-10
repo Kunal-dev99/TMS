@@ -73,7 +73,25 @@ class FxExposureService:
         return sorted({r for r in rows})
 
     def summary(self) -> list[CurrencySummary]:
-        return [self._summary_for(ccy) for ccy in self.supported_currencies()]
+        # Sort by policy-gap severity: biggest coverage gap first (in
+        # GBP-equivalent terms so the comparison is currency-neutral).
+        # Ties break on gross GBP exposure. Currencies fully at target
+        # sit at the end. The AI briefing ranks by the same order.
+        rows = [self._summary_for(ccy) for ccy in self.supported_currencies()]
+        rows.sort(
+            key=lambda r: (
+                self._gap_gbp_pence(r),
+                r.gross_gbp_pence,
+            ),
+            reverse=True,
+        )
+        return rows
+
+    def _gap_gbp_pence(self, row: "CurrencySummary") -> int:
+        """The policy gap in GBP pence, for cross-currency ranking."""
+        from app.services.fx_rate_service import gbp_equivalent_pence
+
+        return gbp_equivalent_pence(row.currency, row.gap_to_target_minor)
 
     def _summary_for(self, currency: str) -> CurrencySummary:
         exposures = [

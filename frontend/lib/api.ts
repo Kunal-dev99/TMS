@@ -1003,6 +1003,26 @@ export function narrateFx(): Promise<FxBriefing> {
   return post("/fx/narrate", {});
 }
 
+export type FxPolicyTarget = {
+  currency: string;
+  target_cover_bp: number;
+  horizon_days: number;
+};
+
+export type FxPolicy = {
+  policy_id: string;
+  as_of_date: string;
+  targets: FxPolicyTarget[];
+};
+
+export function getFxPolicy(): Promise<FxPolicy> {
+  return get("/fx/policy");
+}
+
+export function putFxPolicy(targets: FxPolicyTarget[]): Promise<FxPolicy> {
+  return put("/fx/policy", { targets });
+}
+
 export function adviseHedge(
   body: {
     currency: string;

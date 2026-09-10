@@ -24,7 +24,15 @@ from sqlalchemy import select
 from app.api.deps import Caller, Ctx
 from app.errors import ErrorCode, TreasuryError
 from app.ids import new_id, now
-from app.models import Counterparty, CounterpartyInstrument, CpGroup, Deal, HedgeLink
+from app.models import (
+    Counterparty,
+    CounterpartyInstrument,
+    CpGroup,
+    CurrencyCoverTarget,
+    Deal,
+    HedgeLink,
+    InvestmentPolicy,
+)
 from app.repo import counterparties as cp_repo
 from app.schemas.models import CheckResult
 from app.services.check_engine import CheckEngine
@@ -530,6 +538,105 @@ def advise_hedge(
         counterparty_id=body.counterparty_id,
     )
     return HedgeAdviseView(observations=obs)
+
+
+class FxPolicyTargetView(BaseModel):
+    currency: str
+    target_cover_bp: int
+    horizon_days: int
+
+
+class FxPolicyView(BaseModel):
+    policy_id: str
+    as_of_date: str
+    targets: list[FxPolicyTargetView]
+
+
+class FxPolicyPatch(BaseModel):
+    """Upsert a single currency's cover target."""
+
+    currency: str
+    target_cover_bp: int = Field(..., ge=0, le=10000)
+    horizon_days: int = Field(180, ge=30, le=1095)
+
+
+class FxPolicyPatchBatch(BaseModel):
+    targets: list[FxPolicyPatch]
+
+
+def _active_policy(session, tenant_id: str) -> InvestmentPolicy | None:
+    return session.scalars(
+        select(InvestmentPolicy)
+        .where(InvestmentPolicy.tenant_id == tenant_id)
+        .where(InvestmentPolicy.superseded_at.is_(None))
+    ).one_or_none()
+
+
+@router.get("/policy", response_model=FxPolicyView)
+def get_fx_policy(ctx: Ctx, caller: Caller) -> FxPolicyView:
+    """Current per-currency hedge policy targets.
+
+    The row this reads and writes is `currency_cover_target` on the
+    active investment policy version. In production a change would
+    supersede the policy; the prototype mutates in place so a demo can
+    show "raise USD from 75% to 90%, watch the gap grow" without a
+    policy-versioning ceremony.
+    """
+    policy = _active_policy(ctx.session, ctx.tenant_id)
+    if policy is None:
+        raise TreasuryError(ErrorCode.NO_INVESTMENT_POLICY)
+    rows = list(
+        ctx.session.scalars(
+            select(CurrencyCoverTarget).where(
+                CurrencyCoverTarget.policy_id == policy.id
+            )
+        )
+    )
+    return FxPolicyView(
+        policy_id=policy.id,
+        as_of_date=ctx.as_of_date,
+        targets=[
+            FxPolicyTargetView(
+                currency=r.currency,
+                target_cover_bp=r.target_cover_bp,
+                horizon_days=r.horizon_days,
+            )
+            for r in rows
+        ],
+    )
+
+
+@router.put("/policy", response_model=FxPolicyView)
+def put_fx_policy(
+    body: FxPolicyPatchBatch, ctx: Ctx, caller: Caller
+) -> FxPolicyView:
+    """Update per-currency hedge policy targets in place.
+
+    Any currency not in the patch keeps its current row. A new currency
+    creates a new row. Zero is a valid target and means "no policy
+    requires hedging this currency" — the panel then shows no gap arrow
+    for it.
+    """
+    policy = _active_policy(ctx.session, ctx.tenant_id)
+    if policy is None:
+        raise TreasuryError(ErrorCode.NO_INVESTMENT_POLICY)
+
+    for patch in body.targets:
+        currency = patch.currency.upper()
+        row = ctx.session.get(CurrencyCoverTarget, (policy.id, currency))
+        if row is None:
+            row = CurrencyCoverTarget(
+                policy_id=policy.id,
+                currency=currency,
+                target_cover_bp=patch.target_cover_bp,
+                horizon_days=patch.horizon_days,
+            )
+            ctx.session.add(row)
+        else:
+            row.target_cover_bp = patch.target_cover_bp
+            row.horizon_days = patch.horizon_days
+    ctx.session.commit()
+    return get_fx_policy(ctx, caller)
 
 
 @router.post("/narrate", response_model=FxBriefingView)

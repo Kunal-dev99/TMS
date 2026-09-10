@@ -139,11 +139,17 @@ export function HedgingPanel({
                 as of {summary.as_of_date} · base {summary.base_currency}
               </span>
             </div>
+            <p className="mb-1.5 text-[10px] text-muted-foreground">
+              <span className="font-semibold">Sorted by policy-gap severity</span>{" "}
+              — the currency with the biggest gap to its hedge target sits first
+              (GBP-equivalent, currency-neutral). AI briefing ranks the same way.
+            </p>
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-              {currencies.map((c) => (
+              {currencies.map((c, idx) => (
                 <CurrencyCard
                   key={c.currency}
                   data={c}
+                  rank={idx + 1}
                   active={c.currency === selected}
                   onClick={() => setSelected(c.currency)}
                 />
@@ -324,17 +330,38 @@ export function HedgingPanel({
             ) : null}
           </div>
 
-          {/* Sources */}
+          {/* Sources — every figure on the panel is one of these three inputs.
+              Kept explicit so the treasurer can see who owns each number. */}
           <div className="rounded border border-dashed border-border bg-surface-2/30 p-3 text-[10px] text-muted-foreground">
-            <div className="mb-1 flex items-center gap-1.5 font-semibold text-foreground/80">
-              <Info className="h-3 w-3" /> Sources & policy
+            <div className="mb-1.5 flex items-center gap-1.5 font-semibold text-foreground/80">
+              <Info className="h-3 w-3" /> Where these numbers come from
             </div>
-            <ul className="space-y-0.5">
-              <li>Forecast: {summary.sources.forecast}</li>
-              <li>Rates: {summary.sources.rates}</li>
+            <ul className="space-y-1">
               <li>
-                Policy targets (hedge ratio per currency): {summary.sources.policy} —
-                editable in Control ▸ System policy
+                <span className="font-semibold text-foreground/80">Forecast exposure</span>{" "}
+                (e.g. €100m, $60m, CHF 12m) — from {summary.sources.forecast}, stored in
+                the <code>currency_exposure</code> table. In production these arrive from
+                Oracle EPM / OM / ERP or a file interface.
+              </li>
+              <li>
+                <span className="font-semibold text-foreground/80">Policy target</span>{" "}
+                (e.g. EUR 80%, USD 75%, CHF 60%) — from {summary.sources.policy} on the
+                active investment policy version. Owned by CFO / treasurer, policy-versioned
+                for audit. Not editable in the demo yet.
+              </li>
+              <li>
+                <span className="font-semibold text-foreground/80">Hedged amount</span>{" "}
+                — sum of live <code>hedge_link</code> rows against each exposure. Updates
+                immediately whenever a hedge is initiated through the panel.
+              </li>
+              <li>
+                <span className="font-semibold text-foreground/80">Gap to target</span>{" "}
+                = forecast × target − hedged. Shown on each currency card and used by the
+                AI briefing to rank priority.
+              </li>
+              <li>
+                <span className="font-semibold text-foreground/80">Rates</span> — {summary.sources.rates}.
+                Only used to show GBP equivalent and forward-rate quotes on the ticket.
               </li>
             </ul>
           </div>
@@ -348,13 +375,21 @@ export function HedgingPanel({
 
 function CurrencyCard({
   data,
+  rank,
   active,
   onClick,
 }: {
   data: FxCurrencySummary;
+  rank: number;
   active: boolean;
   onClick: () => void;
 }) {
+  const rankLabel =
+    rank === 1
+      ? "Biggest gap"
+      : rank === 2
+        ? "2nd priority"
+        : "3rd priority";
   const ratioPct = Math.round(data.hedge_ratio_bp / 100);
   const targetPct = Math.round(data.target_cover_bp / 100);
   const isFullyCovered = data.unhedged_minor <= 0;
@@ -371,6 +406,17 @@ function CurrencyCard({
           : "border-border bg-surface-2/40 hover:border-primary/40 hover:bg-surface-2/60"
       }`}
     >
+      <div className="mb-1 flex items-center justify-between">
+        <span
+          className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider ${
+            rank === 1
+              ? "border-warning/40 bg-warning/10 text-warning"
+              : "border-border bg-surface-2/60 text-muted-foreground"
+          }`}
+        >
+          #{rank} · {rankLabel}
+        </span>
+      </div>
       <div className="flex items-baseline justify-between">
         <div className="flex items-baseline gap-1.5">
           <span className="text-xs font-bold text-foreground tracking-tight">
@@ -430,6 +476,20 @@ function CurrencyCard({
           />
         </div>
       </div>
+
+      {/* Derivation footer — makes the gap arithmetic visible.
+          Forecast × target − hedged = unhedged risk relative to policy. */}
+      {data.target_cover_bp > 0 ? (
+        <div className="mt-2 border-t border-border/40 pt-1.5 text-[9.5px] font-mono text-muted-foreground leading-snug">
+          {formatMoney(data.gross_minor, data.currency)} × {targetPct}%
+          {" − "}
+          {formatMoney(data.hedged_minor, data.currency)}
+          {" = "}
+          <span className={data.gap_to_target_minor > 0 ? "font-semibold text-warning" : "font-semibold text-success"}>
+            {formatMoney(data.gap_to_target_minor, data.currency)} gap
+          </span>
+        </div>
+      ) : null}
     </button>
   );
 }
