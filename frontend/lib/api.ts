@@ -723,6 +723,14 @@ export type PlannerCandidate = {
   undeployed_pence: number;
 };
 
+export type PlannerSettingsInUse = {
+  min_rating: string;
+  max_tenor_months: number;
+  per_name_cap_pct: number;
+  group_concentration_cap_pct: number;
+  buckets: Record<string, number>;
+};
+
 export type DeploymentPlan = {
   idle_cash_pence: number;
   portfolio_total_pence: number;
@@ -731,6 +739,7 @@ export type DeploymentPlan = {
   recommendation_kind: string;
   recommendation_reason: string;
   per_candidate_labels: Record<string, string>;
+  settings_in_use: PlannerSettingsInUse | null;
 };
 
 export function deployCash(): Promise<DeploymentPlan> {

@@ -235,6 +235,49 @@ function PlanBody({
         />
       </div>
 
+      {/* Investment principles the planner ran against — visible so
+          the treasurer can confirm changes in the drawer flowed through. */}
+      {plan.settings_in_use ? (
+        <div className="rounded-lg border border-border/60 bg-surface-2/20 p-2.5">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Investment principles in use
+            </span>
+            <span className="text-[9.5px] italic text-muted-foreground">
+              editable in Control ▸ Investment principles
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <ConfigChip
+              label="Min rating"
+              value={plan.settings_in_use.min_rating}
+            />
+            <ConfigChip
+              label="Max tenor"
+              value={`${plan.settings_in_use.max_tenor_months}m`}
+            />
+            <ConfigChip
+              label="Per-name cap"
+              value={`${plan.settings_in_use.per_name_cap_pct}%`}
+            />
+            <ConfigChip
+              label="Group cap"
+              value={`${plan.settings_in_use.group_concentration_cap_pct}%`}
+            />
+            {Object.entries(plan.settings_in_use.buckets)
+              .filter(([, v]) => v > 0)
+              .map(([band, pct]) => (
+                <ConfigChip
+                  key={band}
+                  label={band}
+                  value={`≤${pct}%`}
+                  accent
+                />
+              ))}
+          </div>
+        </div>
+      ) : null}
+
       {/* AI Hero - one-line recommendation + a short paragraph.
           Full 4-bullet analysis behind "See full analysis". */}
       {plan.recommendation_kind && recommendedCandidate ? (
@@ -570,6 +613,29 @@ function Stat({ label, value }: { label: string; value: string }) {
       </p>
       <p className="num mt-0.5 text-sm font-semibold">{value}</p>
     </div>
+  );
+}
+
+function ConfigChip({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+        accent
+          ? "border-primary/40 bg-primary/[.08] text-primary"
+          : "border-border bg-background text-foreground"
+      }`}
+    >
+      <span className="text-muted-foreground">{label}</span>
+      <span className="num font-semibold">{value}</span>
+    </span>
   );
 }
 

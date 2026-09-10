@@ -88,6 +88,22 @@ class Candidate:
 
 
 @dataclass
+class SettingsInUse:
+    """A snapshot of the Investment Principles the planner ran with.
+
+    Rendered on the modal so the treasurer can see, at a glance, which
+    configuration produced these plans — the answer to "does what I
+    changed actually reflect?" without having to re-open the drawer.
+    """
+
+    min_rating: str
+    max_tenor_months: int
+    per_name_cap_pct: int
+    group_concentration_cap_pct: int
+    buckets: dict[str, int] = field(default_factory=dict)
+
+
+@dataclass
 class DeploymentPlan:
     """The whole modal's contents."""
 
@@ -99,6 +115,8 @@ class DeploymentPlan:
     recommendation_kind: str = ""
     recommendation_reason: str = ""
     per_candidate_labels: dict[str, str] = field(default_factory=dict)
+    #: The Investment Principles snapshot this plan was computed against.
+    settings_in_use: SettingsInUse | None = None
 
 
 # --------------------------------------------------------------------------
@@ -167,6 +185,9 @@ class PlannerService:
 
     def deploy_cash(self) -> DeploymentPlan:
         settings = get_settings()
+        # Stashed on the service so every candidate builder honours the
+        # same group concentration cap without re-plumbing the signature.
+        self._group_cap_pct = settings.group_concentration_cap_pct
 
         state = StateService(
             self.session, self.tenant_id, self.as_of_date, self.policy,
@@ -287,14 +308,39 @@ class PlannerService:
         for candidate in candidates:
             candidate.allocations = self._only_bookable(candidate.allocations)
             self._recompute_totals(candidate, portfolio)
+            candidate.undeployed_pence = max(0, idle - candidate.deployed_pence)
 
         candidates = [c for c in candidates if c.allocations]
+
+        # Dedup — two variants that produce the same set of allocations
+        # are the same plan, and rendering both makes the modal look
+        # broken. Preserve the first occurrence (Blended wins over its
+        # variants). This is why the treasurer sometimes sees only one
+        # or two cards rather than three: the seeded book plus the
+        # active investment principles collapse the alternatives back
+        # onto the primary plan.
+        seen: set[tuple] = set()
+        deduped: list[Candidate] = []
+        for c in candidates:
+            sig = self._signature(c)
+            if sig in seen:
+                continue
+            seen.add(sig)
+            deduped.append(c)
+        candidates = deduped
 
         return DeploymentPlan(
             idle_cash_pence=idle,
             portfolio_total_pence=portfolio,
             concentration_cap_bp=self.policy.concentration_cap_bp,
             candidates=candidates,
+            settings_in_use=SettingsInUse(
+                min_rating=settings.min_rating,
+                max_tenor_months=settings.max_tenor_months,
+                per_name_cap_pct=settings.per_name_cap_pct,
+                group_concentration_cap_pct=settings.group_concentration_cap_pct,
+                buckets=dict(settings.buckets),
+            ),
         )
 
     # ---------------------------------------------------------- archetypes
@@ -409,8 +455,10 @@ class PlannerService:
         placements: list[Allocation],
         band_caps_pct: dict[str, int],
         per_name_cap: int,
+        group_cap_pct: int = 100,
     ) -> list[Allocation]:
-        """Greedy yield-first fill inside per-band caps and per-name caps.
+        """Greedy yield-first fill inside per-band caps, per-name caps,
+        and per-group concentration caps.
 
         Each counterparty appears in `placements` at short and long
         tenor. We keep the placement with the higher rate per
@@ -418,7 +466,8 @@ class PlannerService:
         not counted twice against its own headroom.
 
         Then rate-desc through the pool and place until either the
-        cash runs out or every band is at its cap.
+        cash runs out, every band is at its cap, or every group is at
+        its concentration cap.
         """
         if idle <= 0 or not placements:
             return []
@@ -436,6 +485,12 @@ class PlannerService:
             for band in RATING_BANDS
         }
         used_by_band = {band: 0 for band in RATING_BANDS}
+        # Group concentration cap — no single group may hold more than
+        # this % of idle cash across the plan. Anil's Sep-8 rule for a
+        # blended plan: the drawer's group-concentration setting has to
+        # bite here, not just on the six-check gate.
+        group_cap_pence = int(idle * max(0, min(100, group_cap_pct)) / 100)
+        used_by_group: dict[str, int] = {}
         cash_left = idle
 
         allocations: list[Allocation] = []
@@ -446,15 +501,97 @@ class PlannerService:
             band_remaining = band_cap_pence.get(band, 0) - used_by_band.get(band, 0)
             if band_remaining <= 0:
                 continue
-            # min of: what the name can take, what's left in the band cap,
-            # what's left in the pot, the per-name cap the treasurer set.
-            place = min(pick.principal_pence, band_remaining, cash_left, per_name_cap)
+            group_used = used_by_group.get(pick.group_name, 0)
+            group_remaining = group_cap_pence - group_used
+            if group_remaining <= 0:
+                continue
+            # min of: what the name can take, band cap remaining, group
+            # concentration remaining, cash left, per-name cap.
+            place = min(
+                pick.principal_pence,
+                band_remaining,
+                group_remaining,
+                cash_left,
+                per_name_cap,
+            )
             place = (place // 100_000) * 100_000  # £1,000 rounding
             if place <= 0:
                 continue
             allocations.append(self._retime(pick, place))
             used_by_band[band] = used_by_band.get(band, 0) + place
+            used_by_group[pick.group_name] = group_used + place
             cash_left -= place
+        return allocations
+
+    def _fill_by_band_order(
+        self,
+        idle: int,
+        placements: list[Allocation],
+        band_order: tuple[str, ...],
+        band_caps_pct: dict[str, int],
+        per_name_cap: int,
+        group_cap_pct: int,
+    ) -> list[Allocation]:
+        """Fill named bands FIRST in the given order, then move on.
+
+        Same guardrails as _optimize (band cap, per-name cap, group
+        concentration cap) but the outer loop iterates bands in the
+        requested order rather than rate-desc across the whole pool.
+        Used for the Higher-yield variant to force BBB/A allocation
+        even when AAA/AA names would out-yield them in the greedy sort.
+        """
+        if idle <= 0 or not placements:
+            return []
+
+        best_per_cp: dict[str, Allocation] = {}
+        for p in placements:
+            existing = best_per_cp.get(p.counterparty_id)
+            if existing is None or p.rate_bp > existing.rate_bp:
+                best_per_cp[p.counterparty_id] = p
+
+        by_band: dict[str, list[Allocation]] = {b: [] for b in RATING_BANDS}
+        for p in best_per_cp.values():
+            by_band[band_of(p.counterparty_rating)].append(p)
+        for b in by_band:
+            by_band[b].sort(key=lambda p: -p.rate_bp)
+
+        band_cap_pence = {
+            b: int(idle * band_caps_pct.get(b, 0) / 100) for b in RATING_BANDS
+        }
+        group_cap_pence = int(idle * max(0, min(100, group_cap_pct)) / 100)
+        used_by_band: dict[str, int] = {b: 0 for b in RATING_BANDS}
+        used_by_group: dict[str, int] = {}
+        cash_left = idle
+        allocations: list[Allocation] = []
+
+        for band in band_order:
+            if cash_left <= 0:
+                break
+            for pick in by_band.get(band, []):
+                band_remaining = band_cap_pence[band] - used_by_band[band]
+                if band_remaining <= 0:
+                    break
+                group_remaining = group_cap_pence - used_by_group.get(pick.group_name, 0)
+                if group_remaining <= 0:
+                    continue
+                place = min(
+                    pick.principal_pence,
+                    band_remaining,
+                    group_remaining,
+                    cash_left,
+                    per_name_cap,
+                )
+                place = (place // 100_000) * 100_000
+                if place <= 0:
+                    continue
+                allocations.append(self._retime(pick, place))
+                used_by_band[band] += place
+                used_by_group[pick.group_name] = (
+                    used_by_group.get(pick.group_name, 0) + place
+                )
+                cash_left -= place
+                if cash_left <= 0:
+                    break
         return allocations
 
     def _build_blended(
@@ -464,7 +601,9 @@ class PlannerService:
         band_caps_pct: dict[str, int],
         per_name_cap: int,
     ) -> Candidate | None:
-        allocations = self._optimize(idle, placements, band_caps_pct, per_name_cap)
+        allocations = self._optimize(
+            idle, placements, band_caps_pct, per_name_cap, self._group_cap_pct
+        )
         if not allocations:
             return None
         caps_desc = " · ".join(
@@ -486,25 +625,38 @@ class PlannerService:
         band_caps_pct: dict[str, int],
         per_name_cap: int,
     ) -> Candidate | None:
-        """Widen the lower-rated caps by 15 pts each — invites more
-        higher-yielding names in without changing what the treasurer
-        deemed safe at the top."""
+        """Yield-chasing shape: fill BBB and A bands FIRST, then work up.
+
+        Not a nudge — a genuine tilt. Treasurer's own caps still cap
+        each band (widened by 25 pts on A/BBB to make room), but the
+        FILL ORDER inverts: BBB → A → AA → AAA. Result: mostly lower-
+        rated / higher-yielding names, tiny or zero AAA slot. Visually
+        distinct from Blended.
+        """
         loosened = dict(band_caps_pct)
         touched = False
         for band in ("A", "BBB"):
             current = loosened.get(band, 0)
-            loosened[band] = min(100, current + 15)
+            loosened[band] = min(100, current + 25)
             if loosened[band] > current:
                 touched = True
         if not touched:
             return None
-        allocations = self._optimize(idle, placements, loosened, per_name_cap)
+
+        allocations = self._fill_by_band_order(
+            idle,
+            placements,
+            band_order=("BBB", "A", "AA", "AAA"),
+            band_caps_pct=loosened,
+            per_name_cap=per_name_cap,
+            group_cap_pct=self._group_cap_pct,
+        )
         if not allocations:
             return None
         return Candidate(
             kind="HIGHER_YIELD",
             label="Higher yield",
-            tagline="Same principles, A / BBB caps loosened by 15 pts each.",
+            tagline="Fills BBB/A first — mostly lower-rated names, minimal AAA.",
             allocations=allocations,
         )
 
@@ -515,17 +667,101 @@ class PlannerService:
         band_caps_pct: dict[str, int],
         per_name_cap: int,
     ) -> Candidate | None:
-        """Same caps, but halves the per-name cap so the plan spreads
-        further across names."""
-        tighter_cap = max(100_000, per_name_cap // 2)
-        allocations = self._optimize(idle, placements, band_caps_pct, tighter_cap)
+        """Equal-share round-robin across as many eligible names as
+        possible. Visually distinctive: 6+ names all with similar-sized
+        slices, no single-name dominance.
+
+        Algorithm: pick the top-N highest-rated eligible names inside
+        the band caps, then split the cash equally across them. Any
+        remainder is round-robined to top up the highest-rated ones.
+        """
+        # One best placement per counterparty inside the band caps
+        # (the treasurer's rules still apply — this is a spread, not a
+        # policy override).
+        best_per_cp: dict[str, Allocation] = {}
+        for p in placements:
+            existing = best_per_cp.get(p.counterparty_id)
+            if existing is None or p.rate_bp > existing.rate_bp:
+                best_per_cp[p.counterparty_id] = p
+
+        # Filter to names whose band still has any cap at all — a band
+        # with 0% cap in the treasurer's principles is out even in the
+        # spread variant.
+        eligible = [
+            p for p in best_per_cp.values()
+            if band_caps_pct.get(band_of(p.counterparty_rating), 0) > 0
+        ]
+        if not eligible:
+            return None
+
+        # Rate-desc order for the take, so if we can't fit all of them
+        # the higher-yielding survivors win. Aim for at least 6 slices
+        # or all eligible, whichever is smaller.
+        eligible.sort(key=lambda p: -p.rate_bp)
+        target_names = min(len(eligible), max(6, len(eligible)))
+        picks = eligible[:target_names]
+        if not picks:
+            return None
+
+        equal_share = (idle // len(picks) // 100_000) * 100_000
+        if equal_share <= 0:
+            return None
+        equal_share = min(equal_share, per_name_cap)
+
+        # Track band + group caps so the round-robin still respects
+        # the treasurer's principles.
+        band_cap_pence = {
+            band: int(idle * band_caps_pct.get(band, 0) / 100)
+            for band in RATING_BANDS
+        }
+        group_cap_pence = int(idle * max(0, min(100, self._group_cap_pct)) / 100)
+        used_by_band: dict[str, int] = {b: 0 for b in RATING_BANDS}
+        used_by_group: dict[str, int] = {}
+
+        allocations: list[Allocation] = []
+        for pick in picks:
+            band = band_of(pick.counterparty_rating)
+            band_remaining = band_cap_pence.get(band, 0) - used_by_band.get(band, 0)
+            group_remaining = group_cap_pence - used_by_group.get(pick.group_name, 0)
+            place = min(
+                equal_share,
+                pick.principal_pence,
+                band_remaining,
+                group_remaining,
+            )
+            place = (place // 100_000) * 100_000
+            if place <= 0:
+                continue
+            allocations.append(self._retime(pick, place))
+            used_by_band[band] += place
+            used_by_group[pick.group_name] = (
+                used_by_group.get(pick.group_name, 0) + place
+            )
+
         if not allocations:
             return None
         return Candidate(
             kind="TIGHTER_CONCENTRATION",
             label="Tighter concentration",
-            tagline="Same caps, each name limited to half its standard share.",
+            tagline=f"Equal-share across {len(allocations)} names — no single-name dominance.",
             allocations=allocations,
+        )
+
+    # ------------------------------------------------------ dedup
+
+    @staticmethod
+    def _signature(candidate: Candidate) -> tuple:
+        """A stable identity for a candidate's set of allocations.
+
+        Two variants that end up placing the same amount with the same
+        counterparties at the same tenors are the same plan. The modal
+        should not render duplicates.
+        """
+        return tuple(
+            sorted(
+                (a.counterparty_id, a.principal_pence, a.tenor_months)
+                for a in candidate.allocations
+            )
         )
 
     # ----------------------------------------------------------- dispatch
