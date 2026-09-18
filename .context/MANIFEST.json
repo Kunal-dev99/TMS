@@ -29,8 +29,8 @@
     },
     "api.json": {
       "bytes": 31498,
-      "mtime": "2026-09-18T17:28:47+00:00",
-      "sha": "5b5dd2415806"
+      "mtime": "2026-09-18T17:36:46+00:00",
+      "sha": "c4c8e66ca091"
     },
     "architecture.json": {
       "bytes": 3329,
@@ -43,9 +43,9 @@
       "sha": "434a479770e7"
     },
     "changes/2026-09-18.json": {
-      "bytes": 40084,
-      "mtime": "2026-09-18T17:25:22+00:00",
-      "sha": "c9bb6e1769b3"
+      "bytes": 41492,
+      "mtime": "2026-09-18T17:28:59+00:00",
+      "sha": "c57fdb357190"
     },
     "conventions.json": {
       "bytes": 2845,
@@ -54,8 +54,8 @@
     },
     "data-model.json": {
       "bytes": 125908,
-      "mtime": "2026-09-18T17:28:47+00:00",
-      "sha": "d7d87c973468"
+      "mtime": "2026-09-18T17:36:46+00:00",
+      "sha": "4fb4cad26795"
     },
     "decisions/0001-one-surface-one-panel.json": {
       "bytes": 1059,
@@ -163,7 +163,7 @@
       "sha": "1b3d5cb1fd7a"
     }
   },
-  "generated_at": "2026-09-18T17:28:47+00:00",
+  "generated_at": "2026-09-18T17:36:46+00:00",
   "open_questions_file": "open-questions.json",
   "project": "treasury-register",
   "read_order_for_new_chats": [

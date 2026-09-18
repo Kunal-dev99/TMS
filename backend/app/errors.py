@@ -80,6 +80,8 @@ class ErrorCode(str, Enum):
     NOT_AUTHENTICATED = "NOT_AUTHENTICATED"
     ROLE_NOT_HELD = "ROLE_NOT_HELD"
     SEGREGATION_OF_DUTIES = "SEGREGATION_OF_DUTIES"
+    # P0-04. Not in document 2 either.
+    RATE_LIMITED = "RATE_LIMITED"
 
 
 #: Status and default message per code. The message is a fallback; a service
@@ -210,13 +212,18 @@ CATALOGUE: dict[ErrorCode, tuple[int, str]] = {
         403,
         "A deal cannot be approved by the person who proposed it.",
     ),
+    ErrorCode.RATE_LIMITED: (
+        429,
+        "Too many requests. Wait a moment and try again.",
+    ),
 }
 
 #: Thirty-eight from document 2, plus the three identity codes added in
 #: phase 1.5. The documents describe a system with no identity, so those
 #: three have no entry to reconcile against.
 DOCUMENTED_CODES = 38
-IDENTITY_CODES = 3
+# Identity codes + RATE_LIMITED (P0-04): all outside document 2.
+IDENTITY_CODES = 4
 
 #: Two more, for the amendment gate. Document 2 has no code for an amendment
 #: that fails the checks because the documents do not gate an amendment at

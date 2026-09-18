@@ -15,12 +15,13 @@ itself). ADR-0014 covers the shape.
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from app.api.deps import Ctx
 from app.security import issue_token
 from app.services import activation_service
+from app.services import rate_limit as rl
 
 router = APIRouter(tags=["Activation"], prefix="/activate")
 
@@ -43,7 +44,11 @@ class ConsumeResponse(BaseModel):
     user: dict
 
 
-@router.get("/{raw_token}", response_model=ResolveResponse)
+@router.get(
+    "/{raw_token}",
+    response_model=ResolveResponse,
+    dependencies=[Depends(rl.limit_by_ip(rl.ACTIVATION_RESOLVE))],
+)
 def resolve(raw_token: str, ctx: Ctx) -> ResolveResponse:
     resolved = activation_service.resolve_token(ctx.session, raw_token)
     return ResolveResponse(
@@ -54,7 +59,11 @@ def resolve(raw_token: str, ctx: Ctx) -> ResolveResponse:
     )
 
 
-@router.post("", response_model=ConsumeResponse)
+@router.post(
+    "",
+    response_model=ConsumeResponse,
+    dependencies=[Depends(rl.limit_by_ip(rl.ACTIVATION_CONSUME))],
+)
 def consume(body: ConsumeRequest, ctx: Ctx) -> ConsumeResponse:
     from app.services.permissions import permissions_for_roles
     from app.repo import users as user_repo

@@ -35,6 +35,19 @@ def no_model_calls(monkeypatch):
     monkeypatch.delenv("TREASURY_MODEL_API_KEY", raising=False)
 
 
+@pytest.fixture(autouse=True)
+def no_rate_limits(monkeypatch):
+    """Rate limits are off by default in tests (P0-04).
+
+    Tests that exercise the limiter itself flip the env back on and
+    call `reset()` between cases.
+    """
+    monkeypatch.setenv("TREASURY_RATE_LIMITS", "off")
+    from app.services import rate_limit
+
+    rate_limit.reset()
+
+
 @pytest.fixture
 def session(tmp_path) -> Session:
     engine = create_engine(f"sqlite:///{tmp_path / 'test.db'}", future=True)

@@ -12,9 +12,10 @@ One transaction per write endpoint. The check run, the deal and every queue
 item commit together or not at all.
 """
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Depends, Response
 
 from app.api.deps import Caller, Ctx
+from app.services import rate_limit as rl
 from app.errors import ErrorCode, TreasuryError
 from app.repo import counterparties as cp_repo
 from app.repo import deals as deal_repo
@@ -28,7 +29,11 @@ from app.services.state_service import StateService
 router = APIRouter(tags=["Deals"])
 
 
-@router.post("/deals/check", response_model=CheckResult)
+@router.post(
+    "/deals/check",
+    response_model=CheckResult,
+    dependencies=[Depends(rl.limit_by_user(rl.DEAL_CHECK))],
+)
 def check_deal(body: rq.CheckRequest, ctx: Ctx, caller: Caller) -> CheckResult:
     """Run the six checks. Persists nothing."""
     return _deals(ctx).check(

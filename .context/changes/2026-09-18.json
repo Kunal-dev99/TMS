@@ -574,6 +574,35 @@
         "expose_headers rides on the ACTUAL response, not on preflight — the test asserts against a live GET /health, not the OPTIONS."
       ],
       "related_roadmap": "P0-03"
+    },
+    {
+      "time": "night",
+      "author": "assistant",
+      "kind": "infrastructure",
+      "summary": "P0-04 rate limiting — in-process token buckets on the sensitive endpoints",
+      "backend": {
+        "new_files": [
+          "backend/app/services/rate_limit.py — LimitPolicy dataclass + sliding-window in-memory bucket + limit_by_ip() / limit_by_user() FastAPI dependency factories; TREASURY_RATE_LIMITS=off disables (per-request env check so conftest monkeypatch works cleanly); 6 policies as a single source of truth"
+        ],
+        "changed": [
+          "backend/app/errors.py — new ErrorCode.RATE_LIMITED (429) with a plain-English default message; IDENTITY_CODES bumped to 4 so the len(CATALOGUE) assertion still balances",
+          "backend/app/api/auth.py — /auth/token now gated by limit_by_ip(SIGN_IN) — 10/min per IP",
+          "backend/app/api/activation.py — /activate/{token} gated by ACTIVATION_RESOLVE (30/min per IP); POST /activate gated by ACTIVATION_CONSUME (10/min per IP)",
+          "backend/app/api/deals.py — /deals/check gated by DEAL_CHECK (60/min per user; falls back to IP if the token is malformed/expired)",
+          "backend/app/api/planner.py — /planner/deploy-cash gated by PLANNER_DEPLOY (30/min per user)",
+          "backend/app/api/advisory.py — POST /advisory/runs gated by ADVISORY_RUN (30/min per user)",
+          "backend/tests/conftest.py — autouse fixture sets TREASURY_RATE_LIMITS=off + resets the bucket store so the rest of the 286 tests never trip a limit"
+        ],
+        "new_tests": [
+          "backend/tests/test_rate_limit.py — 3 tests, all pass: sign-in trips at 11th call from same IP with error code RATE_LIMITED (verified even on WRONG creds — limiter fires before the endpoint body); /deals/check per-user limit trips after tightening the policy for the test; TREASURY_RATE_LIMITS=off bypasses everything"
+        ]
+      },
+      "notes": [
+        "In-process store is deliberate. Single-process FastAPI on one VM today; when we go multi-instance we'll swap the store for Redis and keep the same LimitPolicy / dependency API. Called out as a follow-up in the roadmap.",
+        "IP resolution honours X-Forwarded-For (set by Caddy on the VM); clients cannot spoof it directly because Caddy strips inbound X-Forwarded-* and sets it to the real remote.",
+        "Per-user resolution reads the bearer token via app.security.read_token — no DB hit, no cycle with the auth dependency. Malformed/expired token silently falls back to per-IP so the limit still protects the endpoint even before auth refuses it."
+      ],
+      "related_roadmap": "P0-04"
     }
   ]
 }

@@ -9,11 +9,12 @@ That is the whole of the guardrail, expressed as an API shape rather than as
 a policy somebody has to remember.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.api.deps import Caller, Ctx
 from app.schemas import requests as rq
 from app.schemas.models import AdvisoryCard, AdvisoryRun
+from app.services import rate_limit as rl
 from app.services.advisory_service import AdvisoryService
 from app.services.advisory_view import card_for, run_for
 
@@ -42,7 +43,10 @@ def advisory_run(run_id: str, ctx: Ctx, caller: Caller) -> AdvisoryRun:
     return run_for(ctx.session, _service(ctx).load_run(run_id))
 
 
-@router.post("/advisory/runs")
+@router.post(
+    "/advisory/runs",
+    dependencies=[Depends(rl.limit_by_user(rl.ADVISORY_RUN))],
+)
 def trigger_advisory_run(body: rq.RunAdvisoryRequest, ctx: Ctx, caller: Caller) -> dict:
     """Called by the scheduler nightly, and by hand during a demonstration."""
     outcome = _service(ctx).run(as_of=body.as_of, force=body.force)

@@ -15,17 +15,21 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.api.deps import Caller, Ctx
 from app.services import planner_settings
+from app.services import rate_limit as rl
 from app.services.planner_narrator import narrate
 from app.services.planner_service import PlannerService
 
 router = APIRouter(tags=["Planner"])
 
 
-@router.post("/planner/deploy-cash")
+@router.post(
+    "/planner/deploy-cash",
+    dependencies=[Depends(rl.limit_by_user(rl.PLANNER_DEPLOY))],
+)
 def deploy_cash(ctx: Ctx, caller: Caller) -> dict:
     planner = PlannerService(
         ctx.session, ctx.tenant_id, ctx.as_of_date, ctx.policy

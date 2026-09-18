@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-18T17:28:47+00:00",
+  "generated_at": "2026-09-18T17:36:46+00:00",
   "source": "app.models.Base.metadata",
   "table_count": 41,
   "tables": {
@@ -1997,14 +1997,19 @@
           "sqltext": ""
         },
         {
+          "kind": "CheckConstraint",
+          "name": "ck_counterparty_status",
+          "sqltext": "status in ('DRAFT','VERIFIED','APPROVED','ACTIVE','SUSPENDED')"
+        },
+        {
           "kind": "ForeignKeyConstraint",
           "name": null,
           "sqltext": ""
         },
         {
-          "kind": "CheckConstraint",
-          "name": "ck_counterparty_status",
-          "sqltext": "status in ('DRAFT','VERIFIED','APPROVED','ACTIVE','SUSPENDED')"
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
         },
         {
           "kind": "ForeignKeyConstraint",
@@ -2015,11 +2020,6 @@
           "kind": "CheckConstraint",
           "name": "ck_counterparty_rating_status",
           "sqltext": "rating_status in ('STABLE','WATCH','NEGATIVE','POSITIVE')"
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
         }
       ],
       "indices": [
@@ -2314,11 +2314,6 @@
           "sqltext": ""
         },
         {
-          "kind": "CheckConstraint",
-          "name": "ck_limit_source",
-          "sqltext": "source in ('BAND','MANUAL')"
-        },
-        {
           "kind": "ForeignKeyConstraint",
           "name": "fk_cp_limit_recorded_by_user",
           "sqltext": ""
@@ -2332,6 +2327,11 @@
           "kind": "ForeignKeyConstraint",
           "name": null,
           "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_limit_source",
+          "sqltext": "source in ('BAND','MANUAL')"
         }
       ],
       "indices": [
@@ -3947,6 +3947,11 @@
       ],
       "constraints": [
         {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
           "kind": "CheckConstraint",
           "name": "ck_membership_role",
           "sqltext": "role in ('ANALYST','HEAD_OF_TREASURY','CFO','OPERATOR','AUDITOR','ADMIN','COMPLIANCE_OFFICER')"
@@ -3954,11 +3959,6 @@
         {
           "kind": "ForeignKeyConstraint",
           "name": "fk_membership_user",
-          "sqltext": ""
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
           "sqltext": ""
         }
       ],

@@ -8,16 +8,20 @@ smallest thing that closes the gap rather than an identity system in its own
 right.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.api.deps import Caller, Ctx
 from app.schemas import requests as rq
+from app.services import rate_limit as rl
 from app.services.identity_service import IdentityService
 
 router = APIRouter(tags=["Identity"])
 
 
-@router.post("/auth/token")
+@router.post(
+    "/auth/token",
+    dependencies=[Depends(rl.limit_by_ip(rl.SIGN_IN))],
+)
 def sign_in(body: rq.SignInRequest, ctx: Ctx) -> dict:
     """Exchange an email address and a password for a bearer token."""
     from app.services.permissions import permissions_for_roles
