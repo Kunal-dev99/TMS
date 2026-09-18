@@ -1,0 +1,30 @@
+# Local Postgres for enterprise-target dev + smoke.
+#
+#   docker compose up -d postgres
+#   export TREASURY_DATABASE_URL=postgresql+psycopg://treasury:treasury@localhost:5432/treasury
+#   cd backend && alembic upgrade head && python -m seed.seed
+#
+# The default TREASURY_DATABASE_URL is still sqlite:///backend/treasury.db,
+# so no dev has to run this — it's only for verifying enterprise parity
+# before a real deploy. CI runs the same image (P0-01, ADR-0018).
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: treasury-postgres
+    environment:
+      POSTGRES_USER: treasury
+      POSTGRES_PASSWORD: treasury
+      POSTGRES_DB: treasury
+    ports:
+      - "5432:5432"
+    volumes:
+      - treasury-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "treasury"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  treasury-pgdata:

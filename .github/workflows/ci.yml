@@ -44,6 +44,56 @@ jobs:
           TREASURY_MODEL_API_KEY: ""
         run: pytest -q
 
+  postgres:
+    name: Backend — migrations against Postgres
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: treasury
+          POSTGRES_PASSWORD: treasury
+          POSTGRES_DB: treasury
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # Drive both alembic and the seeder through a Postgres URL —
+      # proves the migrations replay cleanly on the enterprise target.
+      TREASURY_DATABASE_URL: postgresql+psycopg://treasury:treasury@localhost:5432/treasury
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Apply migrations end-to-end
+        run: alembic upgrade head
+
+      - name: Seed and boot smoke
+        # If the seeder + FastAPI startup both work on Postgres, we're
+        # confident enough to promote the URL in a real deployment.
+        # Full pytest is still SQLite; parity for that lands separately.
+        run: |
+          python -m seed.seed
+          python -c "from app.main import app; print('ok', len(app.routes), 'routes')"
+
   frontend:
     name: Frontend — typecheck
     runs-on: ubuntu-latest

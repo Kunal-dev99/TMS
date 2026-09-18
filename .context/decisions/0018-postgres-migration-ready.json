@@ -1,0 +1,33 @@
+{
+  "id": "ADR-0018",
+  "date": "2026-09-18",
+  "status": "accepted",
+  "title": "Postgres-migration-ready — code + migrations work on both SQLite and Postgres",
+  "context": "P0-01 in the roadmap. Enterprise buyers won't accept a SQLite-backed prod. We don't want to force everyone off SQLite for local dev, though — the current test suite spins a fresh SQLite per test file, which is fast and hermetic. The change is to make the code dialect-portable and prove it in CI, then flip TREASURY_DATABASE_URL in each real deployment.",
+  "decision": "Keep SQLite as the default for local dev + the existing pytest suite. Make every migration and every SQLAlchemy model portable to Postgres, add psycopg[binary] as an unconditional dependency (only used when the URL says so), and add a CI job that runs alembic upgrade head + seed against a real Postgres 16 service container.",
+  "scope_in": [
+    "All Index() sites now carry BOTH sqlite_where= AND postgresql_where= with matching predicates. 8 in models.py, 16 in migrations — a partial unique index on SQLite silently degrades to a full unique index on Postgres without this, which would then reject legitimate rows.",
+    "alembic env.py: render_as_batch is now dialect-conditional (SQLite only). batch_alter_table calls inside migrations still work on Postgres (Alembic falls through to direct DDL).",
+    "backend/requirements.txt: psycopg[binary]==3.2.3 added.",
+    ".github/workflows/ci.yml: new job 'postgres-migrations' — postgres:16 service, alembic upgrade head, python -m seed.seed, FastAPI boot smoke.",
+    "docker-compose.yml at repo root: one-liner for a dev to smoke Postgres locally."
+  ],
+  "scope_out_deferred": [
+    "Running the full pytest suite against Postgres — parametrising conftest across dialects is a follow-up. The migrations-and-seed job in CI already catches the class of dialect breaks (partial indexes, batch mode, constraint syntax) that would silently ship otherwise.",
+    "Removing SQLite as a supported dialect. It stays: dev is fast, tests are hermetic, the demo VM already runs it. Every real customer deployment sets TREASURY_DATABASE_URL to Postgres.",
+    "Read replicas, connection pooling tuning, PgBouncer — future work when we know the load shape."
+  ],
+  "invariants": [
+    "Partial unique indexes carry both dialect kwargs. A future Index() that adds only sqlite_where will trip the CI Postgres job the moment a real user hits the 'only one current row' invariant.",
+    "The default TREASURY_DATABASE_URL stays SQLite; a real deploy overrides it via env or the vault (see P0-06).",
+    "psycopg is bundled in the requirements file even for SQLite installs. It's tiny and installs from a wheel; the alternative — a separate requirements-postgres.txt — was rejected as a footgun in production."
+  ],
+  "consequences": [
+    "backend/app/models.py — every partial Index() now dual-dialect",
+    "backend/alembic/env.py — render_as_batch flipped off on Postgres",
+    "backend/alembic/versions/*.py — every create_index/drop_index sqlite_where gained a postgresql_where sibling",
+    "backend/requirements.txt — psycopg[binary]==3.2.3",
+    ".github/workflows/ci.yml — postgres-migrations job",
+    "docker-compose.yml — new file for local Postgres"
+  ]
+}

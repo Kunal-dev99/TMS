@@ -108,7 +108,7 @@ class PolicyVersion(Base):
             "ux_policy_current",
             "tenant_id",
             unique=True,
-            sqlite_where=text("superseded_at IS NULL"),
+            sqlite_where=text("superseded_at IS NULL"), postgresql_where=text("superseded_at IS NULL"),
         ),
     )
 
@@ -251,7 +251,7 @@ class CpLimit(Base):
             "ux_limit_current",
             "counterparty_id",
             unique=True,
-            sqlite_where=text("superseded_at IS NULL"),
+            sqlite_where=text("superseded_at IS NULL"), postgresql_where=text("superseded_at IS NULL"),
         ),
     )
 
@@ -632,7 +632,7 @@ class Membership(Base):
             "user_id",
             "role",
             unique=True,
-            sqlite_where=text("revoked_at IS NULL"),
+            sqlite_where=text("revoked_at IS NULL"), postgresql_where=text("revoked_at IS NULL"),
         ),
     )
 
@@ -691,7 +691,7 @@ class Accrual(Base):
             "deal_id",
             "accrual_date",
             unique=True,
-            sqlite_where=text("reversal_of IS NULL AND amendment_id IS NULL"),
+            sqlite_where=text("reversal_of IS NULL AND amendment_id IS NULL"), postgresql_where=text("reversal_of IS NULL AND amendment_id IS NULL"),
         ),
         Index("ix_accrual_date", "tenant_id", "accrual_date"),
     )
@@ -782,7 +782,7 @@ class InvestmentPolicy(Base):
             "ux_investment_policy_current",
             "tenant_id",
             unique=True,
-            sqlite_where=text("superseded_at IS NULL"),
+            sqlite_where=text("superseded_at IS NULL"), postgresql_where=text("superseded_at IS NULL"),
         ),
     )
 
@@ -1050,7 +1050,7 @@ class Confirmation(Base):
             "ix_confirmation_unmatched",
             "tenant_id",
             "match_status",
-            sqlite_where=text("deal_id IS NULL"),
+            sqlite_where=text("deal_id IS NULL"), postgresql_where=text("deal_id IS NULL"),
         ),
     )
 
@@ -1296,7 +1296,7 @@ class HedgeLink(Base):
         Index(
             "ix_hedge_live",
             "currency_exposure_id",
-            sqlite_where=text("unlinked_at IS NULL"),
+            sqlite_where=text("unlinked_at IS NULL"), postgresql_where=text("unlinked_at IS NULL"),
         ),
     )
 
@@ -1407,7 +1407,7 @@ class UserEntityScope(Base):
             "user_id",
             "legal_entity_id",
             unique=True,
-            sqlite_where=text("revoked_at IS NULL"),
+            sqlite_where=text("revoked_at IS NULL"), postgresql_where=text("revoked_at IS NULL"),
         ),
     )
 

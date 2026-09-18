@@ -124,7 +124,7 @@ def upgrade() -> None:
     )
     with op.batch_alter_table('confirmation', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_confirmation_tenant_id'), ['tenant_id'], unique=False)
-        batch_op.create_index('ix_confirmation_unmatched', ['tenant_id', 'match_status'], unique=False, sqlite_where=sa.text('deal_id IS NULL'))
+        batch_op.create_index('ix_confirmation_unmatched', ['tenant_id', 'match_status'], unique=False, sqlite_where=sa.text('deal_id IS NULL'), postgresql_where=sa.text('deal_id IS NULL'))
 
     op.create_table('hedge_link',
     sa.Column('id', sa.String(length=40), nullable=False),
@@ -145,7 +145,7 @@ def upgrade() -> None:
     )
     with op.batch_alter_table('hedge_link', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_hedge_link_tenant_id'), ['tenant_id'], unique=False)
-        batch_op.create_index('ix_hedge_live', ['currency_exposure_id'], unique=False, sqlite_where=sa.text('unlinked_at IS NULL'))
+        batch_op.create_index('ix_hedge_live', ['currency_exposure_id'], unique=False, sqlite_where=sa.text('unlinked_at IS NULL'), postgresql_where=sa.text('unlinked_at IS NULL'))
 
     op.create_table('settlement',
     sa.Column('id', sa.String(length=40), nullable=False),
@@ -198,12 +198,12 @@ def downgrade() -> None:
 
     op.drop_table('settlement')
     with op.batch_alter_table('hedge_link', schema=None) as batch_op:
-        batch_op.drop_index('ix_hedge_live', sqlite_where=sa.text('unlinked_at IS NULL'))
+        batch_op.drop_index('ix_hedge_live', sqlite_where=sa.text('unlinked_at IS NULL'), postgresql_where=sa.text('unlinked_at IS NULL'))
         batch_op.drop_index(batch_op.f('ix_hedge_link_tenant_id'))
 
     op.drop_table('hedge_link')
     with op.batch_alter_table('confirmation', schema=None) as batch_op:
-        batch_op.drop_index('ix_confirmation_unmatched', sqlite_where=sa.text('deal_id IS NULL'))
+        batch_op.drop_index('ix_confirmation_unmatched', sqlite_where=sa.text('deal_id IS NULL'), postgresql_where=sa.text('deal_id IS NULL'))
         batch_op.drop_index(batch_op.f('ix_confirmation_tenant_id'))
 
     op.drop_table('confirmation')

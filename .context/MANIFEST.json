@@ -19,7 +19,8 @@
     "0014-activation-links-replace-temp-passwords",
     "0015-four-eye-control-on-sensitive-access-grants",
     "0016-compliance-and-approvals-pages",
-    "0017-policy-history-change-metadata"
+    "0017-policy-history-change-metadata",
+    "0018-postgres-migration-ready"
   ],
   "files": {
     "ai.json": {
@@ -29,8 +30,8 @@
     },
     "api.json": {
       "bytes": 31498,
-      "mtime": "2026-09-18T17:36:46+00:00",
-      "sha": "c4c8e66ca091"
+      "mtime": "2026-09-18T17:44:04+00:00",
+      "sha": "782c97746efc"
     },
     "architecture.json": {
       "bytes": 3329,
@@ -43,9 +44,9 @@
       "sha": "434a479770e7"
     },
     "changes/2026-09-18.json": {
-      "bytes": 41492,
-      "mtime": "2026-09-18T17:28:59+00:00",
-      "sha": "c57fdb357190"
+      "bytes": 44156,
+      "mtime": "2026-09-18T17:37:04+00:00",
+      "sha": "7e08239a5b25"
     },
     "conventions.json": {
       "bytes": 2845,
@@ -54,8 +55,8 @@
     },
     "data-model.json": {
       "bytes": 125908,
-      "mtime": "2026-09-18T17:36:46+00:00",
-      "sha": "4fb4cad26795"
+      "mtime": "2026-09-18T17:44:04+00:00",
+      "sha": "0b08783748e7"
     },
     "decisions/0001-one-surface-one-panel.json": {
       "bytes": 1059,
@@ -142,6 +143,11 @@
       "mtime": "2026-09-18T17:10:12+00:00",
       "sha": "eabb5e32b770"
     },
+    "decisions/0018-postgres-migration-ready.json": {
+      "bytes": 3283,
+      "mtime": "2026-09-18T17:43:48+00:00",
+      "sha": "590cfbb54cb3"
+    },
     "frontend.json": {
       "bytes": 3597,
       "mtime": "2026-09-18T06:02:49+00:00",
@@ -163,7 +169,7 @@
       "sha": "1b3d5cb1fd7a"
     }
   },
-  "generated_at": "2026-09-18T17:36:46+00:00",
+  "generated_at": "2026-09-18T17:44:04+00:00",
   "open_questions_file": "open-questions.json",
   "project": "treasury-register",
   "read_order_for_new_chats": [

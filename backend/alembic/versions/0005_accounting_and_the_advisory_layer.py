@@ -52,7 +52,7 @@ def upgrade() -> None:
     )
     with op.batch_alter_table('investment_policy', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_investment_policy_tenant_id'), ['tenant_id'], unique=False)
-        batch_op.create_index('ux_investment_policy_current', ['tenant_id'], unique=True, sqlite_where=sa.text('superseded_at IS NULL'))
+        batch_op.create_index('ux_investment_policy_current', ['tenant_id'], unique=True, sqlite_where=sa.text('superseded_at IS NULL'), postgresql_where=sa.text('superseded_at IS NULL'))
 
     op.create_table('advisory_run',
     sa.Column('id', sa.String(length=40), nullable=False),
@@ -146,7 +146,7 @@ def upgrade() -> None:
         batch_op.create_index('ix_accrual_date', ['tenant_id', 'accrual_date'], unique=False)
         batch_op.create_index(batch_op.f('ix_accrual_deal_id'), ['deal_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_accrual_tenant_id'), ['tenant_id'], unique=False)
-        batch_op.create_index('ux_accrual_day', ['deal_id', 'accrual_date'], unique=True, sqlite_where=sa.text('reversal_of IS NULL'))
+        batch_op.create_index('ux_accrual_day', ['deal_id', 'accrual_date'], unique=True, sqlite_where=sa.text('reversal_of IS NULL'), postgresql_where=sa.text('reversal_of IS NULL'))
 
     op.create_table('recommendation',
     sa.Column('id', sa.String(length=40), nullable=False),
@@ -208,7 +208,7 @@ def downgrade() -> None:
     op.drop_table('journal')
     op.drop_table('recommendation')
     with op.batch_alter_table('accrual', schema=None) as batch_op:
-        batch_op.drop_index('ux_accrual_day', sqlite_where=sa.text('reversal_of IS NULL'))
+        batch_op.drop_index('ux_accrual_day', sqlite_where=sa.text('reversal_of IS NULL'), postgresql_where=sa.text('reversal_of IS NULL'))
         batch_op.drop_index(batch_op.f('ix_accrual_tenant_id'))
         batch_op.drop_index(batch_op.f('ix_accrual_deal_id'))
         batch_op.drop_index('ix_accrual_date')
@@ -227,7 +227,7 @@ def downgrade() -> None:
 
     op.drop_table('advisory_run')
     with op.batch_alter_table('investment_policy', schema=None) as batch_op:
-        batch_op.drop_index('ux_investment_policy_current', sqlite_where=sa.text('superseded_at IS NULL'))
+        batch_op.drop_index('ux_investment_policy_current', sqlite_where=sa.text('superseded_at IS NULL'), postgresql_where=sa.text('superseded_at IS NULL'))
         batch_op.drop_index(batch_op.f('ix_investment_policy_tenant_id'))
 
     op.drop_table('investment_policy')

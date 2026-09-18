@@ -603,6 +603,36 @@
         "Per-user resolution reads the bearer token via app.security.read_token — no DB hit, no cycle with the auth dependency. Malformed/expired token silently falls back to per-IP so the limit still protects the endpoint even before auth refuses it."
       ],
       "related_roadmap": "P0-04"
+    },
+    {
+      "time": "night",
+      "author": "assistant",
+      "kind": "infrastructure",
+      "summary": "P0-01 Postgres-migration-ready — code is now dialect-portable + Postgres CI job proves it",
+      "backend": {
+        "changed": [
+          "backend/app/models.py — every partial Index() now carries BOTH sqlite_where= AND postgresql_where= (8 sites). Without postgresql_where the partial index silently degrades to a full unique index on Postgres and rejects legitimate rows.",
+          "backend/alembic/versions/*.py — the 16 create_index/drop_index calls with sqlite_where= now have a postgresql_where sibling too (deterministic script under scratchpad/dual_where.py)",
+          "backend/alembic/env.py — render_as_batch is dialect-conditional (SQLite only). batch_alter_table calls in migrations still work on Postgres.",
+          "backend/requirements.txt — psycopg[binary]==3.2.3 (binary wheel; no C build). Only used when TREASURY_DATABASE_URL says so."
+        ],
+        "new_files": [
+          "docker-compose.yml — one-liner Postgres 16 for local smoke",
+          ".context/decisions/0018-postgres-migration-ready.json — ADR"
+        ]
+      },
+      "ci": {
+        "changed": [
+          ".github/workflows/ci.yml — new job 'postgres-migrations': postgres:16 service, alembic upgrade head, python -m seed.seed, FastAPI boot smoke. Guarantees the dialect breaks that would silently ship (partial indexes, batch mode, constraint syntax) trip in CI, not in customer prod."
+        ]
+      },
+      "notes": [
+        "Default TREASURY_DATABASE_URL stays SQLite. Local dev + the existing 289 tests are unchanged.",
+        "Running the full pytest suite against Postgres is deliberately deferred — parametrising conftest across dialects is a follow-up. The migrations + seed + boot job catches the class of dialect problems we most care about.",
+        "psycopg is bundled unconditionally rather than gated behind a separate requirements-postgres.txt — the alternative was a footgun in production."
+      ],
+      "related_roadmap": "P0-01",
+      "related_decision": "ADR-0018"
     }
   ]
 }

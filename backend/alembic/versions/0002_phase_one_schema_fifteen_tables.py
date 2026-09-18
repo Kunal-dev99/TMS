@@ -66,7 +66,7 @@ def upgrade() -> None:
     )
     with op.batch_alter_table('policy_version', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_policy_version_tenant_id'), ['tenant_id'], unique=False)
-        batch_op.create_index('ux_policy_current', ['tenant_id'], unique=True, sqlite_where=sa.text('superseded_at IS NULL'))
+        batch_op.create_index('ux_policy_current', ['tenant_id'], unique=True, sqlite_where=sa.text('superseded_at IS NULL'), postgresql_where=sa.text('superseded_at IS NULL'))
 
     op.create_table('rating_band',
     sa.Column('id', sa.String(length=40), nullable=False),
@@ -155,7 +155,7 @@ def upgrade() -> None:
     with op.batch_alter_table('cp_limit', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_cp_limit_counterparty_id'), ['counterparty_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_cp_limit_tenant_id'), ['tenant_id'], unique=False)
-        batch_op.create_index('ux_limit_current', ['counterparty_id'], unique=True, sqlite_where=sa.text('superseded_at IS NULL'))
+        batch_op.create_index('ux_limit_current', ['counterparty_id'], unique=True, sqlite_where=sa.text('superseded_at IS NULL'), postgresql_where=sa.text('superseded_at IS NULL'))
 
     op.create_table('rating_event',
     sa.Column('id', sa.String(length=40), nullable=False),
@@ -378,7 +378,7 @@ def downgrade() -> None:
 
     op.drop_table('rating_event')
     with op.batch_alter_table('cp_limit', schema=None) as batch_op:
-        batch_op.drop_index('ux_limit_current', sqlite_where=sa.text('superseded_at IS NULL'))
+        batch_op.drop_index('ux_limit_current', sqlite_where=sa.text('superseded_at IS NULL'), postgresql_where=sa.text('superseded_at IS NULL'))
         batch_op.drop_index(batch_op.f('ix_cp_limit_tenant_id'))
         batch_op.drop_index(batch_op.f('ix_cp_limit_counterparty_id'))
 
@@ -399,7 +399,7 @@ def downgrade() -> None:
 
     op.drop_table('rating_band')
     with op.batch_alter_table('policy_version', schema=None) as batch_op:
-        batch_op.drop_index('ux_policy_current', sqlite_where=sa.text('superseded_at IS NULL'))
+        batch_op.drop_index('ux_policy_current', sqlite_where=sa.text('superseded_at IS NULL'), postgresql_where=sa.text('superseded_at IS NULL'))
         batch_op.drop_index(batch_op.f('ix_policy_version_tenant_id'))
 
     op.drop_table('policy_version')
