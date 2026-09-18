@@ -210,14 +210,69 @@ def test_compliance_overview_counts(client, signer):
         "overrides_ytd",
         "resolved_ytd",
         "events_last_7d",
+        "events_prior_7d",
+        "open_breaches_prior_period",
         "deals_missing_evidence",
+        "top_actors_7d",
+        "top_actions_7d",
         "generated_at",
     ):
-        assert field in ov
+        assert field in ov, f"missing: {field}"
     assert isinstance(ov["events_last_7d"], int)
+    assert isinstance(ov["events_prior_7d"], int)
+    assert isinstance(ov["top_actors_7d"], list)
+    assert isinstance(ov["top_actions_7d"], list)
     # deals_missing_evidence >= 0 is the invariant we care about. Seed
     # data plants historical deals directly (bypassing the engine) so
     # the KPI can be > 0 for that reason — the metric legitimately
     # flags them, and we don't want a hard-zero here.
     assert isinstance(ov["deals_missing_evidence"], int)
     assert ov["deals_missing_evidence"] >= 0
+    # Every leader-board row carries key/label/count.
+    for group in (ov["top_actors_7d"], ov["top_actions_7d"]):
+        for row in group:
+            for f in ("key", "label", "count"):
+                assert f in row
+            assert isinstance(row["count"], int)
+
+
+def test_compliance_recent_deals_feeds_the_picker(signer):
+    r = signer.get("/api/v1/compliance/deals/recent?limit=5")
+    assert r.status_code == 200, r.text
+    rows = r.json()
+    assert isinstance(rows, list)
+    for row in rows:
+        for f in (
+            "deal_id",
+            "counterparty_name",
+            "counterparty_id",
+            "principal_pence",
+            "currency",
+            "trade_date",
+            "status",
+        ):
+            assert f in row
+
+
+def test_compliance_breaches_filters_and_csv(signer):
+    # JSON filter — a bogus counterparty returns zero rows without
+    # 500-ing.
+    r = signer.get(
+        "/api/v1/compliance/breaches-overrides",
+        params={"counterparty": "no-such-counterparty-name-xxxxx"},
+    )
+    assert r.status_code == 200, r.text
+    reg = r.json()
+    assert reg["items"] == []
+
+    # CSV peer — metadata header names the filters and the caps.
+    r = signer.get(
+        "/api/v1/compliance/breaches-overrides.csv",
+        params={"status": "OPEN"},
+    )
+    assert r.status_code == 200, r.text
+    body = r.text
+    assert body.startswith("# Treasury Register breach + override register export")
+    assert "status=OPEN" in body
+    assert "rows_exported=" in body
+    assert r.headers.get("X-Rows-Matching") is not None

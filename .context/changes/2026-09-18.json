@@ -469,6 +469,36 @@
         "'Evidence at booking' uses check_run.policy_version_id which IS the version in force at booking. If a deal ever lacks a check_run, the endpoint falls back to CURRENT policy AND names that fact in policy_version_note — so the officer can never mistake a fallback for a snapshot."
       ],
       "related_decision": "ADR-0016"
+    },
+    {
+      "time": "night",
+      "author": "assistant",
+      "kind": "enhancement",
+      "summary": "Compliance tabs iteration 5: trend deltas + leaderboards + value/limit bars + evidence-pack copy + breach filters/CSV",
+      "backend": {
+        "changed": [
+          "backend/app/api/compliance.py — OverviewCounts extended with events_prior_7d + open_breaches_prior_period + top_actors_7d + top_actions_7d (SQL GROUP BY, top-5 each); GET /compliance/deals/recent (autocomplete feed for the picker); breaches-overrides accepts counterparty + date_from + date_to; GET /compliance/breaches-overrides.csv (metadata header + response headers matching the audit-activity CSV pattern)"
+        ],
+        "new_tests": [
+          "test_compliance_overview_counts asserts every new field including top_*_7d row schema",
+          "test_compliance_recent_deals_feeds_the_picker asserts recent-deals shape",
+          "test_compliance_breaches_filters_and_csv covers counterparty filter zero-match + CSV metadata header + X-Rows-* response headers"
+        ]
+      },
+      "frontend": {
+        "changed": [
+          "frontend/app/compliance/_overview.tsx — TrendChip on Events + Open-breaches KPI tiles ('vs prior 7 days', good/bad tone follows what compliance wants — fewer breaches is good); LeaderCard component renders top actors + top actions with a mini progress bar",
+          "frontend/app/compliance/_deal_evidence.tsx — dropdown datalist bound to /compliance/deals/recent for typeahead; recent-deals chip row (top 8); Copy evidence pack button with clipboard + execCommand fallback (renders the whole pack as plain text); per-check ValueLimitBar visualising value vs limit with a coloured bar (green passed, amber under 100% but failed, red over the cap)",
+          "frontend/app/compliance/_breaches.tsx — counterparty search + datetime-local From/To + Reset + CSV button in one filter card; expandable rows showing full override reason + failed_checks list + resolution detail; footer shows generated_at + row count + timezone",
+          "frontend/lib/api.ts — new types (ComplianceTopEntry, ComplianceRecentDeal) + getComplianceRecentDeals fetcher + complianceBreachesCsvUrl helper + getComplianceBreaches accepts counterparty/date_from/date_to"
+        ]
+      },
+      "user_visible_gains": [
+        "Overview strip now answers 'is this better or worse than last week?' with a trend chip and shows who was busy + what they did.",
+        "Deal evidence has a recent-deals picker (no more copy-paste of ids), each check shows a value/limit bar so you see the breach visually, and one click copies a plain-text evidence pack for a workpaper.",
+        "Breaches register can now search by counterparty and date range, expand a row for the full override reason and failed_checks, and export the filtered slice to CSV."
+      ],
+      "related_decision": "ADR-0016"
     }
   ]
 }

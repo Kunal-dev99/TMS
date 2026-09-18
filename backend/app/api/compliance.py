@@ -598,23 +598,15 @@ class BreachRegister(BaseModel):
     generated_at: str
 
 
-@router.get("/breaches-overrides", response_model=BreachRegister)
-def breaches_overrides(
+def _collect_breach_rows(
     ctx: Ctx,
-    _: ComplianceGuard,
-    status: str | None = Query(None, description="OPEN | RESOLVED | OVERRIDDEN | REJECTED"),
-    limit: int = Query(200, ge=1, le=2000),
-) -> BreachRegister:
-    """Every breach and every override, one register.
-
-    Two feeds joined:
-      * exception_item — the six-check gate raised a failure.
-      * audit_event with outcome=OVERRIDDEN — a signer forced the deal
-        through with a written reason.
-
-    Compliance can filter by status; a signer can then jump to the
-    operational page from the deal reference.
-    """
+    *,
+    status: str | None,
+    counterparty: str | None,
+    date_from: str | None,
+    date_to: str | None,
+) -> list[BreachRow]:
+    """Assemble the register once so the JSON view and CSV agree."""
     exceptions = list(
         ctx.session.scalars(
             select(ExceptionItem).where(ExceptionItem.tenant_id == ctx.tenant_id)
@@ -630,8 +622,6 @@ def breaches_overrides(
     )
 
     rows: list[BreachRow] = []
-
-    # Cache counterparty lookups across both feeds.
     cp_cache: dict[str, Counterparty | None] = {}
 
     def cp_of(cp_id: str | None) -> Counterparty | None:
@@ -693,7 +683,48 @@ def breaches_overrides(
 
     if status:
         rows = [r for r in rows if r.status == status]
+    if counterparty:
+        needle = counterparty.lower()
+        rows = [
+            r
+            for r in rows
+            if (r.counterparty_name and needle in r.counterparty_name.lower())
+            or (r.counterparty_id and needle in r.counterparty_id.lower())
+        ]
+    if date_from:
+        rows = [r for r in rows if r.occurred_at >= date_from]
+    if date_to:
+        rows = [r for r in rows if r.occurred_at <= date_to]
+    return rows
 
+
+@router.get("/breaches-overrides", response_model=BreachRegister)
+def breaches_overrides(
+    ctx: Ctx,
+    _: ComplianceGuard,
+    status: str | None = Query(None, description="OPEN | RESOLVED | OVERRIDDEN | REJECTED"),
+    counterparty: str | None = Query(None, description="Substring of counterparty name or id"),
+    date_from: str | None = Query(None, description="ISO date/timestamp lower bound"),
+    date_to: str | None = Query(None, description="ISO date/timestamp upper bound"),
+    limit: int = Query(200, ge=1, le=2000),
+) -> BreachRegister:
+    """Every breach and every override, one register.
+
+    Two feeds joined:
+      * exception_item — the six-check gate raised a failure.
+      * audit_event with outcome=OVERRIDDEN — a signer forced the deal
+        through with a written reason.
+
+    Compliance can filter by status, counterparty and date; a signer
+    can then jump to the operational page from the deal reference.
+    """
+    rows = _collect_breach_rows(
+        ctx,
+        status=status,
+        counterparty=counterparty,
+        date_from=date_from,
+        date_to=date_to,
+    )
     total_open = sum(1 for r in rows if r.status == "OPEN")
     total_overridden_ytd = sum(1 for r in rows if r.status == "OVERRIDDEN")
     total_resolved_ytd = sum(1 for r in rows if r.status == "RESOLVED")
@@ -707,7 +738,98 @@ def breaches_overrides(
     )
 
 
+@router.get("/breaches-overrides.csv")
+def breaches_overrides_csv(
+    ctx: Ctx,
+    _: ComplianceGuard,
+    status: str | None = None,
+    counterparty: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    limit: int = Query(10000, ge=1, le=100000),
+):
+    """CSV peer of the breaches register."""
+    rows = _collect_breach_rows(
+        ctx,
+        status=status,
+        counterparty=counterparty,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    total_matching = len(rows)
+    rows = rows[:limit]
+    generated_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["# Treasury Register breach + override register export"])
+    writer.writerow([f"# generated_at={generated_at}"])
+    writer.writerow([f"# tenant_id={ctx.tenant_id}"])
+    writer.writerow(
+        [
+            f"# filters: status={status or '-'}; counterparty={counterparty or '-'}; "
+            f"date_from={date_from or '-'}; date_to={date_to or '-'}"
+        ]
+    )
+    writer.writerow(
+        [f"# rows_exported={len(rows)}; rows_matching_filters={total_matching}; "
+         f"truncated={'yes' if total_matching > len(rows) else 'no'}"]
+    )
+    writer.writerow([])
+    writer.writerow(
+        [
+            "kind",
+            "occurred_at",
+            "deal_id",
+            "counterparty_id",
+            "counterparty_name",
+            "rule",
+            "reason",
+            "status",
+            "actor_display",
+            "authoriser_display",
+            "resolution",
+            "resolution_reason",
+            "resolved_at",
+        ]
+    )
+    for r in rows:
+        writer.writerow(
+            [
+                r.kind,
+                r.occurred_at,
+                r.deal_id or "",
+                r.counterparty_id or "",
+                r.counterparty_name or "",
+                r.rule,
+                r.reason or "",
+                r.status,
+                r.actor_display or "",
+                r.authoriser_display or "",
+                r.resolution or "",
+                r.resolution_reason or "",
+                r.resolved_at or "",
+            ]
+        )
+    stamp = generated_at.replace(":", "").replace("-", "")[:15]
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename=breaches-overrides-{stamp}.csv",
+            "X-Rows-Matching": str(total_matching),
+            "X-Rows-Exported": str(len(rows)),
+        },
+    )
+
+
 # ---------------------------------------------------------- overview strip
+
+
+class TopEntry(BaseModel):
+    key: str
+    label: str
+    count: int
 
 
 class OverviewCounts(BaseModel):
@@ -715,7 +837,11 @@ class OverviewCounts(BaseModel):
     overrides_ytd: int
     resolved_ytd: int
     events_last_7d: int
+    events_prior_7d: int
+    open_breaches_prior_period: int
     deals_missing_evidence: int
+    top_actors_7d: list[TopEntry]
+    top_actions_7d: list[TopEntry]
     generated_at: str
 
 
@@ -753,9 +879,10 @@ def overview(ctx: Ctx, _: ComplianceGuard) -> OverviewCounts:
     # are stored as ISO already so lexicographic order works.
     from datetime import timedelta
 
-    seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat(
-        timespec="seconds"
-    )
+    now = datetime.now(timezone.utc)
+    seven_days_ago = (now - timedelta(days=7)).isoformat(timespec="seconds")
+    fourteen_days_ago = (now - timedelta(days=14)).isoformat(timespec="seconds")
+
     events_last_7d = int(
         ctx.session.scalar(
             select(func.count(AuditEvent.id)).where(
@@ -765,6 +892,60 @@ def overview(ctx: Ctx, _: ComplianceGuard) -> OverviewCounts:
         )
         or 0
     )
+    events_prior_7d = int(
+        ctx.session.scalar(
+            select(func.count(AuditEvent.id)).where(
+                AuditEvent.tenant_id == ctx.tenant_id,
+                AuditEvent.occurred_at >= fourteen_days_ago,
+                AuditEvent.occurred_at < seven_days_ago,
+            )
+        )
+        or 0
+    )
+    open_breaches_prior_period = int(
+        ctx.session.scalar(
+            select(func.count(ExceptionItem.id)).where(
+                ExceptionItem.tenant_id == ctx.tenant_id,
+                ExceptionItem.status == "OPEN",
+                ExceptionItem.raised_at < seven_days_ago,
+            )
+        )
+        or 0
+    )
+    # Top actors + actions in the last 7 days. Grouped and ordered
+    # server-side — the reader wants the leader board, not the raw feed.
+    actor_rows = ctx.session.execute(
+        select(
+            AuditEvent.actor_user_id,
+            AuditEvent.actor_display,
+            func.count(AuditEvent.id).label("n"),
+        )
+        .where(
+            AuditEvent.tenant_id == ctx.tenant_id,
+            AuditEvent.occurred_at >= seven_days_ago,
+            AuditEvent.actor_user_id.is_not(None),
+        )
+        .group_by(AuditEvent.actor_user_id, AuditEvent.actor_display)
+        .order_by(func.count(AuditEvent.id).desc())
+        .limit(5)
+    ).all()
+    top_actors_7d = [
+        TopEntry(key=r[0] or "", label=r[1] or r[0] or "unknown", count=int(r[2]))
+        for r in actor_rows
+    ]
+    action_rows = ctx.session.execute(
+        select(AuditEvent.action, func.count(AuditEvent.id).label("n"))
+        .where(
+            AuditEvent.tenant_id == ctx.tenant_id,
+            AuditEvent.occurred_at >= seven_days_ago,
+        )
+        .group_by(AuditEvent.action)
+        .order_by(func.count(AuditEvent.id).desc())
+        .limit(5)
+    ).all()
+    top_actions_7d = [
+        TopEntry(key=r[0], label=_label(r[0]), count=int(r[1])) for r in action_rows
+    ]
     # A deal is "missing evidence" if it has no check_run row. That
     # should be zero on this codebase (every write goes through the
     # engine) so a non-zero value flags a real data-integrity issue.
@@ -787,6 +968,62 @@ def overview(ctx: Ctx, _: ComplianceGuard) -> OverviewCounts:
         overrides_ytd=overrides_ytd,
         resolved_ytd=resolved_ytd,
         events_last_7d=events_last_7d,
+        events_prior_7d=events_prior_7d,
+        open_breaches_prior_period=open_breaches_prior_period,
         deals_missing_evidence=deals_missing_evidence,
+        top_actors_7d=top_actors_7d,
+        top_actions_7d=top_actions_7d,
         generated_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
     )
+
+
+# ---------------------------------------------------------- recent deals
+
+
+class RecentDeal(BaseModel):
+    deal_id: str
+    counterparty_name: str
+    counterparty_id: str
+    principal_pence: int
+    currency: str
+    trade_date: str
+    status: str
+
+
+@router.get("/deals/recent", response_model=list[RecentDeal])
+def recent_deals(
+    ctx: Ctx, _: ComplianceGuard, limit: int = Query(20, ge=1, le=100)
+) -> list[RecentDeal]:
+    """Autocomplete feed for the deal-evidence picker.
+
+    Cheapest useful shape — recent deals with the name a compliance
+    officer would recognise. Sorted by trade_date descending.
+    """
+    rows = list(
+        ctx.session.scalars(
+            select(Deal)
+            .where(Deal.tenant_id == ctx.tenant_id)
+            .order_by(Deal.trade_date.desc(), Deal.id.desc())
+            .limit(limit)
+        )
+    )
+    cp_cache: dict[str, Counterparty | None] = {}
+
+    def cp_name(cp_id: str) -> str:
+        if cp_id not in cp_cache:
+            cp_cache[cp_id] = ctx.session.get(Counterparty, cp_id)
+        cp = cp_cache[cp_id]
+        return cp.name if cp else cp_id
+
+    return [
+        RecentDeal(
+            deal_id=d.id,
+            counterparty_name=cp_name(d.counterparty_id),
+            counterparty_id=d.counterparty_id,
+            principal_pence=d.principal_pence,
+            currency=d.currency,
+            trade_date=d.trade_date,
+            status=d.status,
+        )
+        for d in rows
+    ]

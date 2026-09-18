@@ -1174,7 +1174,13 @@ export type ComplianceBreachRegister = {
 };
 
 export function getComplianceBreaches(
-  params: { status?: string; limit?: number } = {},
+  params: {
+    status?: string;
+    counterparty?: string;
+    date_from?: string;
+    date_to?: string;
+    limit?: number;
+  } = {},
 ): Promise<ComplianceBreachRegister> {
   const q = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {
@@ -1186,17 +1192,54 @@ export function getComplianceBreaches(
 
 // -- Compliance: overview strip -----------------------------------------
 
+export type ComplianceTopEntry = {
+  key: string;
+  label: string;
+  count: number;
+};
+
 export type ComplianceOverview = {
   open_breaches: number;
   overrides_ytd: number;
   resolved_ytd: number;
   events_last_7d: number;
+  events_prior_7d: number;
+  open_breaches_prior_period: number;
   deals_missing_evidence: number;
+  top_actors_7d: ComplianceTopEntry[];
+  top_actions_7d: ComplianceTopEntry[];
   generated_at: string;
 };
 
 export function getComplianceOverview(): Promise<ComplianceOverview> {
   return get(`/compliance/overview`);
+}
+
+export type ComplianceRecentDeal = {
+  deal_id: string;
+  counterparty_name: string;
+  counterparty_id: string;
+  principal_pence: number;
+  currency: string;
+  trade_date: string;
+  status: string;
+};
+
+export function getComplianceRecentDeals(
+  limit = 20,
+): Promise<ComplianceRecentDeal[]> {
+  return get(`/compliance/deals/recent?limit=${limit}`);
+}
+
+export function complianceBreachesCsvUrl(
+  params: Record<string, string | undefined> = {},
+): string {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== "") q.set(k, v);
+  });
+  const qs = q.toString();
+  return `/api/v1/compliance/breaches-overrides.csv${qs ? `?${qs}` : ""}`;
 }
 
 // -- Approvals (signer's queue) ------------------------------------------
