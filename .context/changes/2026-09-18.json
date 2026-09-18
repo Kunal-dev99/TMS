@@ -535,6 +535,25 @@
         "audit_event on policy write lands with that same policy editor."
       ],
       "related_decision": "ADR-0017"
+    },
+    {
+      "time": "night",
+      "author": "assistant",
+      "kind": "infrastructure",
+      "summary": "P0-02 CI on GitHub Actions — first workflow",
+      "new_files": [
+        ".github/workflows/ci.yml — two jobs: backend runs pytest on Python 3.13 with pip cache; frontend runs tsc --noEmit on Node 22 with npm cache; concurrency group cancels superseded runs on the same ref"
+      ],
+      "changed": [
+        "frontend/package.json — added `typecheck` npm script (tsc --noEmit)"
+      ],
+      "notes": [
+        "npm install uses --legacy-peer-deps (lucide-react peer-dep vs React 19, established during VM deployment).",
+        "Frontend build (next build) intentionally NOT wired into CI yet — Next 16 prerender path had unresolved issues in an earlier attempt (see deployment story). Type-check catches the class of issues we most care about; build guard can land after Track 2 auth stabilises.",
+        "Backend suite runs offline (TREASURY_MODEL_API_KEY forced empty even though conftest also strips it — belt and braces).",
+        "Local typecheck of the frontend was clean before the workflow was written."
+      ],
+      "related_roadmap": "P0-02"
     }
   ]
 }
