@@ -28,8 +28,8 @@
     },
     "api.json": {
       "bytes": 29573,
-      "mtime": "2026-09-18T08:48:34+00:00",
-      "sha": "630054e28836"
+      "mtime": "2026-09-18T09:07:43+00:00",
+      "sha": "ee37a4a777e9"
     },
     "architecture.json": {
       "bytes": 3329,
@@ -53,8 +53,8 @@
     },
     "data-model.json": {
       "bytes": 124709,
-      "mtime": "2026-09-18T08:48:34+00:00",
-      "sha": "9d2559a01610"
+      "mtime": "2026-09-18T09:07:43+00:00",
+      "sha": "431a8ac09b09"
     },
     "decisions/0001-one-surface-one-panel.json": {
       "bytes": 1059,
@@ -152,7 +152,7 @@
       "sha": "a9ef131b21ff"
     }
   },
-  "generated_at": "2026-09-18T08:48:34+00:00",
+  "generated_at": "2026-09-18T09:07:43+00:00",
   "open_questions_file": "open-questions.json",
   "project": "treasury-register",
   "read_order_for_new_chats": [

@@ -1035,17 +1035,34 @@ export type ComplianceActivityRow = {
   occurred_at: string;
   actor_display: string | null;
   action: string;
+  action_label: string;
   subject_type: string;
   subject_id: string | null;
   outcome: string | null;
   payload: Record<string, unknown> | null;
 };
 
+export type ComplianceFiltersApplied = {
+  actor: string | null;
+  action: string | null;
+  subject_type: string | null;
+  subject_id: string | null;
+  date_from: string | null;
+  date_to: string | null;
+  limit: number;
+  offset: number;
+};
+
 export type ComplianceActivityView = {
   items: ComplianceActivityRow[];
-  total: number;
+  page_size: number;
+  offset: number;
+  total_matching: number;
+  total_all: number;
   actions_seen: string[];
   subject_types_seen: string[];
+  filters: ComplianceFiltersApplied;
+  generated_at: string;
 };
 
 export function listComplianceActivity(
@@ -1057,6 +1074,7 @@ export function listComplianceActivity(
     date_from?: string;
     date_to?: string;
     limit?: number;
+    offset?: number;
   } = {},
 ): Promise<ComplianceActivityView> {
   const q = new URLSearchParams();

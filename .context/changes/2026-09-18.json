@@ -338,6 +338,35 @@
         "Initiate a hedge -> action=hedge.initiated row with counterparty + hedge_link_ids"
       ],
       "related_decision": "ADR-0016"
+    },
+    {
+      "time": "evening",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "Compliance page iteration 2: search + UX overhaul + expandable event details",
+      "backend": {
+        "changed": [
+          "backend/app/api/compliance.py — ActivityView adds page_size/offset/total_matching/total_all/filters/generated_at; ActivityRow adds action_label (human name via ACTION_LABELS map); real COUNT via func.count() (previously returned a single id, not a total); pagination via offset; CSV export prepends metadata header rows (filters, tenant_id, rows_matching, truncated flag, generated_at) and sets X-Rows-Matching / X-Rows-Exported response headers; filename now includes timestamp"
+        ]
+      },
+      "frontend": {
+        "changed": [
+          "frontend/lib/api.ts — ComplianceActivityRow.action_label; ComplianceActivityView shape rewritten with pagination + filters echo + generated_at; listComplianceActivity accepts offset",
+          "frontend/app/compliance/page.tsx — full rewrite: date preset chips (Today / 7d / 30d / All / Custom), default range is last 7 days (was empty and defaulted to a one-minute window in the browser), human action labels in table + technical code as sublabel, expandable rows showing payload details with before/after diff columns when present + deep links to /?deal= or /admin?user=, ResultsHeader with 'Showing X-Y of N matching (of M total)', empty state with Clear filters + Expand to 30 days actions, real pagination controls (First/Prev/Next/Last), CSV disclosure line explaining scope"
+        ]
+      },
+      "user_visible_fixes": [
+        "Opening the page now shows something: Last 7 days across All activity, not user.signed_in in a one-minute window.",
+        "Row labels read 'Deal recorded' / 'User signed in' etc.; the audit code is still visible in a subline for auditors.",
+        "Empty results never look like 'no compliance issues' — the panel names the tenant's total event count and offers to expand the search.",
+        "CSV export names its filters + row count in the file itself and puts a timestamp in the filename."
+      ],
+      "deferred_for_phase_e": [
+        "Actor's roles/scope at time of event (needs role snapshot on audit_event or reconstructable history)",
+        "Deal evidence view (/compliance/deals/{id}) — needs policy_version + deal_evidence_snapshot substrate",
+        "Policy version diff and override register — needs policy_version history table"
+      ],
+      "related_decision": "ADR-0016"
     }
   ]
 }
