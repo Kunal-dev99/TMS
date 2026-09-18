@@ -1,0 +1,233 @@
+{
+  "schema_version": 1,
+  "created": "2026-09-18",
+  "purpose": "Enterprise loose-ends captured after Track 1 (Admin, Compliance, Approvals) shipped. Ranked by what would actually block a real customer POC, not by what's easy to build.",
+  "priority_order": [
+    "P0_blockers_for_a_customer_sale",
+    "P1_compliance_integrity_gaps",
+    "P2_product_persona_gaps",
+    "P3_operational",
+    "P4_product_polish"
+  ],
+  "P0_blockers_for_a_customer_sale": [
+    {
+      "id": "P0-01",
+      "title": "Postgres migration",
+      "problem": "SQLite in prod — single file, no HA, no replication, sensitive to concurrent writes.",
+      "location": "backend/app/db.py:19",
+      "impact": "Lose the disk, lose everything. Won't clear a security review at a bank.",
+      "next_step": "Add a Postgres URL to config, run the existing Alembic migrations against a Postgres instance, verify test_phase0 still passes end-to-end.",
+      "rough_effort": "3-5 days including a real backup story"
+    },
+    {
+      "id": "P0-02",
+      "title": "CI on GitHub Actions",
+      "problem": "No .github/workflows/. The 282 tests only run when someone remembers.",
+      "location": "repo root",
+      "impact": "A regression can land on master unnoticed.",
+      "next_step": "One workflow: pytest (backend), tsc + next build (frontend), on every PR + push to master.",
+      "rough_effort": "1 day"
+    },
+    {
+      "id": "P0-03",
+      "title": "CORS middleware on FastAPI",
+      "problem": "No CORSMiddleware. Works today only because of the Next.js proxy rewrite.",
+      "location": "backend/app/main.py",
+      "impact": "Split frontend origin -> browsers block everything. Blocks partner integrations.",
+      "next_step": "Add starlette.middleware.cors.CORSMiddleware with an explicit allow_origins list from config.",
+      "rough_effort": "half a day"
+    },
+    {
+      "id": "P0-04",
+      "title": "Rate limiting",
+      "problem": "/auth/token, /activate, /deals/check are all uncapped.",
+      "location": "backend routers",
+      "impact": "Password brute force, activation-token spraying, DoS on the expensive planner.",
+      "next_step": "slowapi with an IP-based limit on /auth/token + /activate; a per-user quota on /deals/check + /planner + /advisory.",
+      "rough_effort": "1 day"
+    },
+    {
+      "id": "P0-05",
+      "title": "SSO / MFA",
+      "problem": "Passwords + bearer tokens only.",
+      "location": "Track 2 (already deferred)",
+      "impact": "Enterprise buyers ask on the first call; won't clear a bank security review.",
+      "next_step": "OIDC via a hosted IdP (Auth0 / Azure AD / Entra) — TR keeps role mapping; IdP owns credentials.",
+      "rough_effort": "1-2 weeks"
+    },
+    {
+      "id": "P0-06",
+      "title": "Secrets management",
+      "problem": "Groq API key + DB paths live in VM env vars.",
+      "location": "VM",
+      "impact": "Rotation is manual. Audit trail on secret access = 0.",
+      "next_step": "Azure Key Vault (matches the VM host) with SDK integration on start-up.",
+      "rough_effort": "2 days"
+    }
+  ],
+  "P1_compliance_integrity_gaps": [
+    {
+      "id": "P1-01",
+      "title": "Policy editor + four-eye write enforcement",
+      "problem": "policy_version has changed_by / authorised_by columns (ADR-0017) but no write surface; they stay null forever.",
+      "impact": "Policy history tab reads 'not recorded' for authoriser on every row today.",
+      "next_step": "Admin page 'Policy' section that writes a new policy_version behind an access_change_request (ADR-0015 pattern), enforcing requester != authoriser."
+    },
+    {
+      "id": "P1-02",
+      "title": "AI activity log — closes Q-004",
+      "problem": "No ai_run table. Can't answer 'what did the model say on 3 Aug and did the user accept?'",
+      "next_step": "ai_run table (prompt, response, model, tokens, endpoint, subject_id, outcome). Compliance tab reads it."
+    },
+    {
+      "id": "P1-03",
+      "title": "Override reason quality",
+      "problem": "A signer can override with 'yes'. No min length, no reason code.",
+      "location": "backend/app/schemas/requests.py",
+      "next_step": "Pydantic validator: min 20 chars + a reason_code from a small catalogue."
+    },
+    {
+      "id": "P1-04",
+      "title": "deals_missing_evidence KPI pollution",
+      "problem": "Overview permanently shows 4 because seed plants historical deals bypassing the engine.",
+      "next_step": "Either backfill check_run rows on seed, or scope the KPI to deals with trade_date >= policy_version.effective_from of the earliest recorded policy."
+    },
+    {
+      "id": "P1-05",
+      "title": "audit_event retention + index",
+      "problem": "Unbounded growth; only actor + subject indexes exist. No (tenant_id, occurred_at) index.",
+      "location": "backend/app/models.py:1525",
+      "next_step": "Add composite index; add a nightly archive job for events > 7y (regulator floor). Retention policy noted in an ADR."
+    },
+    {
+      "id": "P1-06",
+      "title": "Point-in-time replay",
+      "problem": "check_run captures the policy + limit version, but limits/exposures elsewhere don't snapshot 'as-of'.",
+      "impact": "Auditor asks 'what did we see on 12 May?' — only part-answer available.",
+      "next_step": "Extend cp_limit + currency_exposure with an 'as_of' snapshot table; state_service accepts as_of_date."
+    },
+    {
+      "id": "P1-07",
+      "title": "Activation token rate limit + lockout",
+      "problem": "No cap on POST /activate; no failure lock-out. Noted as prototype in ADR-0014.",
+      "location": "backend/app/api/activation.py",
+      "next_step": "Bucket per token id + per source IP; lock after N invalid attempts."
+    },
+    {
+      "id": "P1-08",
+      "title": "Override in breaches: authoriser distinct from proposer",
+      "problem": "In the breaches feed, actor_display == authoriser_display for overrides. Doesn't prove two hands.",
+      "location": "backend/app/api/compliance.py (breach assembly)",
+      "next_step": "Deal.record now captures proposer; the override signer signs later. Store both on the audit_event payload or read Deal.approved_by and split the columns."
+    }
+  ],
+  "P2_product_persona_gaps": [
+    {
+      "id": "P2-01",
+      "title": "Approvals: reject with reason",
+      "problem": "One-click Approve only; no reject flow.",
+      "location": "frontend/app/approvals/page.tsx + backend /deals/{id}/reject",
+      "next_step": "Reject modal with a reason (min-len enforced), audit event action='deal.rejected'."
+    },
+    {
+      "id": "P2-02",
+      "title": "Approvals: bulk + delegation",
+      "problem": "No out-of-office reassignment; no multi-select approve.",
+      "next_step": "Small delegation table (user -> deputy, effective_from, effective_to); batch approve endpoint."
+    },
+    {
+      "id": "P2-03",
+      "title": "SMTP delivery — closes Q-001",
+      "problem": "Invite / breach / approval-request emails are console-only.",
+      "next_step": "SES or Azure Communication Services adapter behind a MailProvider port; retry with dead-letter."
+    },
+    {
+      "id": "P2-04",
+      "title": "Access-change queue notifications",
+      "problem": "Second admin has to notice on their own. The four-eye control works but has zero cadence.",
+      "depends_on": "P2-03",
+      "next_step": "On create_role_grant_request, email every user with MANAGE_USERS except the requester."
+    },
+    {
+      "id": "P2-05",
+      "title": "Admin: recent activity widget",
+      "problem": "Compliance has one, Admin doesn't — an admin needs to know 'what happened in my persona in the last 24h?'",
+      "next_step": "Small tile on /admin sourced from audit_event action LIKE 'user.%' OR 'access_change.%'."
+    }
+  ],
+  "P3_operational": [
+    {
+      "id": "P3-01",
+      "title": "Frontend not built for production",
+      "problem": "VM runs 'npm run dev'; source maps + Turbopack are shipping to users.",
+      "location": "VM",
+      "next_step": "next build && next start behind Caddy; NSSM service definition swap."
+    },
+    {
+      "id": "P3-02",
+      "title": "Error tracking + structured logs + metrics",
+      "problem": "No Sentry, no metrics, no structured logs. /health exists; nothing else.",
+      "next_step": "Sentry SDK + structlog + Prometheus /metrics behind admin auth. One dashboard: response time, 5xx rate, deal write rate, audit events/hour."
+    },
+    {
+      "id": "P3-03",
+      "title": "Backup + snapshot",
+      "problem": "SQLite file has no snapshot rotation. Ties into P0-01 (Postgres)."
+    },
+    {
+      "id": "P3-04",
+      "title": "Dependency scanning",
+      "problem": "No Dependabot, no SCA — you inherit every upstream CVE.",
+      "next_step": "Enable Dependabot; add pip-audit + npm audit to the CI workflow (P0-02)."
+    },
+    {
+      "id": "P3-05",
+      "title": "Frontend tests",
+      "problem": "All 282 tests are backend Python. Every .tsx ships untested.",
+      "next_step": "Vitest for component logic, Playwright for one golden e2e (propose -> approve -> compliance -> evidence)."
+    }
+  ],
+  "P4_product_polish": [
+    {
+      "id": "P4-01",
+      "title": "override_reason on hedges",
+      "problem": "Only deals capture override_reason today. Hedge audit event carries no equivalent when the six checks fail."
+    },
+    {
+      "id": "P4-02",
+      "title": "Approval queue: age column",
+      "problem": "No 'how long has this been sitting' — SLA blind."
+    },
+    {
+      "id": "P4-03",
+      "title": "Print stylesheet on Deal evidence",
+      "problem": "Copy evidence pack is plain text; a print/PDF view would be nicer for a workpaper."
+    },
+    {
+      "id": "P4-04",
+      "title": "Timezone selector",
+      "problem": "Every timestamp is browser-local; a global team disagrees.",
+      "next_step": "User profile timezone; server sends UTC; frontend formats with a persisted preference."
+    },
+    {
+      "id": "P4-05",
+      "title": "Compliance tab consistency in treasurer page",
+      "problem": "Compliance has a tabbed shell; the operational treasurer page doesn't. Inconsistent UX."
+    }
+  ],
+  "first_two_weeks_if_heading_to_a_customer_POC": [
+    "P0-01 Postgres migration + backup",
+    "P0-02 GitHub Actions CI",
+    "P0-03 CORS",
+    "P0-04 Rate limiting",
+    "P0-06 Secrets in a vault",
+    "P2-03 SMTP delivery",
+    "P2-04 Access-change notifications",
+    "P2-01 Reject-with-reason on approvals",
+    "P3-02 Structured logs + Sentry",
+    "P1-02 ai_run table (closes Q-004)"
+  ],
+  "still_open_questions_this_roadmap_does_not_answer": [
+    "Q-002 tenancy model when we go multi-tenant — shared schema vs schema-per-tenant"
+  ]
+}

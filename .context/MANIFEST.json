@@ -29,8 +29,8 @@
     },
     "api.json": {
       "bytes": 31498,
-      "mtime": "2026-09-18T17:10:19+00:00",
-      "sha": "4eb088c2fd36"
+      "mtime": "2026-09-18T17:20:45+00:00",
+      "sha": "8c4a047f8b8d"
     },
     "architecture.json": {
       "bytes": 3329,
@@ -43,9 +43,9 @@
       "sha": "434a479770e7"
     },
     "changes/2026-09-18.json": {
-      "bytes": 36262,
-      "mtime": "2026-09-18T17:05:23+00:00",
-      "sha": "189888305fb1"
+      "bytes": 38895,
+      "mtime": "2026-09-18T17:10:39+00:00",
+      "sha": "0e8a839df728"
     },
     "conventions.json": {
       "bytes": 2845,
@@ -54,8 +54,8 @@
     },
     "data-model.json": {
       "bytes": 125908,
-      "mtime": "2026-09-18T17:10:19+00:00",
-      "sha": "e187897a5c42"
+      "mtime": "2026-09-18T17:20:45+00:00",
+      "sha": "885053417ae4"
     },
     "decisions/0001-one-surface-one-panel.json": {
       "bytes": 1059,
@@ -156,9 +156,14 @@
       "bytes": 2991,
       "mtime": "2026-09-18T06:01:22+00:00",
       "sha": "a9ef131b21ff"
+    },
+    "roadmap.json": {
+      "bytes": 10672,
+      "mtime": "2026-09-18T17:20:12+00:00",
+      "sha": "1b3d5cb1fd7a"
     }
   },
-  "generated_at": "2026-09-18T17:10:19+00:00",
+  "generated_at": "2026-09-18T17:20:45+00:00",
   "open_questions_file": "open-questions.json",
   "project": "treasury-register",
   "read_order_for_new_chats": [
@@ -169,7 +174,8 @@
     "frontend.json",
     "data-model.json",
     "api.json",
-    "ai.json"
+    "ai.json",
+    "roadmap.json"
   ],
   "schema_version": 1
 }

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-18T17:10:19+00:00",
+  "generated_at": "2026-09-18T17:20:45+00:00",
   "source": "app.models.Base.metadata",
   "table_count": 41,
   "tables": {
@@ -842,11 +842,6 @@
       ],
       "constraints": [
         {
-          "kind": "UniqueConstraint",
-          "name": "ux_user_email",
-          "sqltext": ""
-        },
-        {
           "kind": "ForeignKeyConstraint",
           "name": null,
           "sqltext": ""
@@ -855,6 +850,11 @@
           "kind": "CheckConstraint",
           "name": "ck_user_status",
           "sqltext": "status in ('ACTIVE','DISABLED')"
+        },
+        {
+          "kind": "UniqueConstraint",
+          "name": "ux_user_email",
+          "sqltext": ""
         }
       ],
       "indices": [
@@ -1396,19 +1396,19 @@
       ],
       "constraints": [
         {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
           "kind": "CheckConstraint",
           "name": "ck_candidate_excluded",
           "sqltext": "excluded in (0,1)"
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
         }
       ],
       "indices": [
@@ -5263,6 +5263,11 @@
       ],
       "constraints": [
         {
+          "kind": "CheckConstraint",
+          "name": "ck_validation_passed",
+          "sqltext": "passed in (0,1)"
+        },
+        {
           "kind": "ForeignKeyConstraint",
           "name": null,
           "sqltext": ""
@@ -5271,11 +5276,6 @@
           "kind": "CheckConstraint",
           "name": "ck_validation_test",
           "sqltext": "test in ('ID_IS_REAL','CHECKS_RERUN_CLEAN','FIGURES_AGREE')"
-        },
-        {
-          "kind": "CheckConstraint",
-          "name": "ck_validation_passed",
-          "sqltext": "passed in (0,1)"
         }
       ],
       "indices": []

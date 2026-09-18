@@ -157,6 +157,7 @@ def dump_manifest() -> None:
             "data-model.json",
             "api.json",
             "ai.json",
+            "roadmap.json",
         ],
         "files": files,
         "decisions": decisions_index,
