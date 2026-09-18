@@ -367,6 +367,108 @@
         "Policy version diff and override register — needs policy_version history table"
       ],
       "related_decision": "ADR-0016"
+    },
+    {
+      "time": "evening",
+      "author": "assistant",
+      "kind": "fix+feature",
+      "summary": "Compliance iteration 3: robust rendering + actor/record search + saved views + explicit outcomes",
+      "context": "Iteration 2 rendered 'Showing NaN-NaN of matching' and 'Generated Invalid Date' when the running backend was stale and missed the new fields. Fixed by making the frontend safe against missing fields AND by re-surfacing the new fields (previous commit already added them, this one guards against future partial responses).",
+      "backend": {
+        "changed": [
+          "backend/app/api/compliance.py — actor filter now matches user_id OR case-insensitive substring of actor_display (compliance officers type names, not uuids); new action_prefix param + FiltersApplied.action_prefix + CSV metadata line for it — powers the client-side saved views without shipping the enumeration in URLs manually"
+        ]
+      },
+      "frontend": {
+        "changed": [
+          "frontend/lib/api.ts — action_prefix on ComplianceFiltersApplied + listComplianceActivity",
+          "frontend/app/compliance/page.tsx — safeDate() guards every timestamp so nothing renders 'Invalid Date'; ResultsHeader safely defaults total_matching/total_all/offset (never NaN); OUTCOME_LABEL map converts PASS/FAIL/BLOCKED/OVERRIDDEN/APPROVED/BOOKED/SETTLED/… to Succeeded/Failed/Blocked/Overridden/… with colour tone, missing values read 'Not recorded' (never inferred as success); Actor + Record-ID text inputs added to the filter bar; SavedViews chip row (All / Deal decisions / Hedges / Access changes / Policy changes / Sign-ins) applies action or action_prefix behind the scenes; Today preset now sets both From (midnight) and To (now) and the range label reads 'Today, midnight to now'; ResultsHeader footer reads 'Last refreshed …' with the safe timestamp; CSV export shows an amber 'Incomplete export' warning when total_matching > 10 000"
+        ]
+      },
+      "user_visible_fixes": [
+        "Never 'NaN-NaN' or 'Invalid Date' again — frontend defaults every numeric/date to a sensible value.",
+        "Outcome column reads plain English (Succeeded / Failed / Blocked / Overridden / …); the raw code stays visible in the expanded event detail.",
+        "Today preset explicitly names its range (midnight to now, in the local timezone) and the query uses that range end-to-end.",
+        "Actor search accepts a name substring (case-insensitive) not just a user id; Record ID search finds every event on a deal/user.",
+        "Saved views turn 'show me all deal decisions' from a manual filter dance into a single chip.",
+        "CSV export flags itself as incomplete when the match count exceeds 10 000."
+      ],
+      "still_deferred_for_phase_e": [
+        "Deal evidence view — six-check results + policy/limit versions + approval authority at booking",
+        "Policy version diff, override register",
+        "Roles-at-time snapshot on the event"
+      ],
+      "related_decision": "ADR-0016"
+    },
+    {
+      "time": "evening",
+      "author": "assistant",
+      "kind": "fix",
+      "summary": "Compliance iteration 4: fix '0 matching but 4 rows shown' + missing vs zero distinction + View details affordance + end-to-end regression test",
+      "context": "The subquery-based COUNT could return 0 while the SELECT returned rows, and the frontend was rendering 0 as 'the answer' rather than 'unknown'. Fixed at both layers, plus a real integration test that walks propose -> approve -> compliance search -> CSV export so the invariant can never silently break again.",
+      "backend": {
+        "changed": [
+          "backend/app/api/compliance.py — _apply_filters(stmt, ...) helper shares the exact same WHERE across SELECT and COUNT (previously the COUNT used base.subquery() which was fragile); COUNT now uses select(func.count(AuditEvent.id)) — no subquery"
+        ],
+        "new_tests": [
+          "backend/tests/test_compliance_e2e.py — propose+approve chain: subject_id search returns both events; total_matching == len(items); generated_at is valid ISO; outcomes captured on every row; CSV metadata header names filters and row counts; actor substring search finds by display name; action_prefix returns only deal.* rows"
+        ]
+      },
+      "frontend": {
+        "changed": [
+          "frontend/app/compliance/page.tsx — ResultsHeader distinguishes MISSING (null) from ZERO — a missing total_matching now reads 'count unavailable' rather than fabricating '0 matching' next to 4 visible rows; lastRefreshedFallback (Date after each successful fetch) fills 'Last refreshed' when the server didn't return generated_at (never renders '—' after a green load); action_label duplication collapsed — if action_label === action (i.e. no human label for that code) the row shows a single '(no human label)' sublabel instead of the raw code twice; Custom range with no dates now labels itself 'Open-ended (no date restriction)' rather than a bare 'Custom range'; Outcome cell gains a visible 'View details' / 'Hide details' button in addition to the row-click chevron"
+        ]
+      },
+      "user_visible_fixes": [
+        "Count and row count agree — server-side invariant enforced by the new test.",
+        "Missing fields say 'count unavailable' or default to the client-side refresh time, never silently render 0 or '—' during a successful load.",
+        "The audit code appears only when there is no human label; the pretty label is the primary reading.",
+        "Custom range with empty dates announces itself as open-ended so the query is never ambiguous.",
+        "'View details' is a labelled button, not just a chevron the eye may miss."
+      ],
+      "not_fixed_here": [
+        "'All outcomes show Not recorded' on the user's screenshot was likely against a stale backend (before deal/hedge audit hooks landed). The new test confirms outcome is populated on every event the current backend writes; a page against the running server will populate once redeployed."
+      ],
+      "related_decision": "ADR-0016"
+    },
+    {
+      "time": "night",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "Compliance page becomes a tabbed workspace: Overview + Audit trail + Deal evidence + Breaches & overrides + Policy history (stub)",
+      "context": "Track 1 spec called for five compliance surfaces on top of the audit log. Two ship now on existing substrate (check_run and exception_item already carry the six-check evidence + resolution status). Policy history is the only one that needs a small schema addition and is stubbed with a clear note. Overview reads counts from the two live tabs so the strip up top is meaningful.",
+      "backend": {
+        "changed": [
+          "backend/app/api/compliance.py — three new endpoints: GET /compliance/deals/{id}/evidence assembles proposer + approver + booking check_run (six checks, values, measured, basis) + policy_version at booking + limit at booking + full event history; GET /compliance/breaches-overrides joins exception_item (breaches) with audit_event.outcome=OVERRIDDEN (overrides) with a status filter; GET /compliance/overview returns open_breaches / overrides_ytd / resolved_ytd / events_last_7d / deals_missing_evidence"
+        ],
+        "new_tests": [
+          "backend/tests/test_compliance_e2e.py — deal evidence returns proposer + approver + policy_version + non-empty six_checks + full event timeline; 404 on unknown deal; breaches register returns the schema (items + totals + generated_at) and every row carries kind/occurred_at/rule/status; overview returns all five counts as ints, deals_missing_evidence non-negative"
+        ]
+      },
+      "frontend": {
+        "new_files": [
+          "frontend/app/compliance/_overview.tsx — Overview tab: 5 KPI tiles (Open breaches / Overrides YTD / Resolved YTD / Events 7d / Deals missing evidence) with click-through to the relevant tab; amber 'needs attention' callout when open_breaches+missing_evidence > 0, emerald 'clean register' when zero",
+          "frontend/app/compliance/_breaches.tsx — Register table: kind badge (breach / override), when, deal + counterparty, rule, reason, status, authoriser; status chip filter; Evidence button jumps to the Deal evidence tab pre-filled with that deal id",
+          "frontend/app/compliance/_deal_evidence.tsx — Evidence view: deal terms header + status badge; Authority card (proposer/approver/required role + override callout); Policy & limit card with 'in force at booking' note; Six-checks list with pass/fail icons + per-check detail + value dict rendered as key/value grid; Event history timeline",
+          "frontend/app/compliance/_audit_trail.tsx — the previous compliance page body, refactored to a tab component (no PageShell wrapper, auth check moved to parent)"
+        ],
+        "changed": [
+          "frontend/app/compliance/page.tsx — thin tab shell: five-tab picker with lucide icons, auth check + role gate, pinnedDealId state so Breaches -> Evidence deep-links carry the deal id",
+          "frontend/lib/api.ts — new types (ComplianceDealEvidence + ComplianceCheckLine, ComplianceBreachRegister + ComplianceBreachRow, ComplianceOverview) and fetchers (getComplianceDealEvidence, getComplianceBreaches, getComplianceOverview)"
+        ]
+      },
+      "user_visible_gains": [
+        "Overview strip answers 'what needs attention today' in one glance — clean-register message when nothing is open, amber callout when there is.",
+        "Deal evidence answers 'why was this deal allowed?' in one screen: six checks, policy version, limit, both actors, override reason, full timeline.",
+        "Breaches register combines the two feeds compliance actually cares about (breaches + overrides) with a status filter; every row has an Evidence button that jumps to the deal evidence tab.",
+        "Existing Audit trail preserved intact, now a tab under a shared page shell."
+      ],
+      "explicitly_deferred": [
+        "Policy history tab is stubbed with a clear message naming the schema work needed (policy_version.changed_by / authorised_by / superseded_by + diff endpoint).",
+        "AI activity tab remains Q-004 (ai_run table).",
+        "'Evidence at booking' uses check_run.policy_version_id which IS the version in force at booking. If a deal ever lacks a check_run, the endpoint falls back to CURRENT policy AND names that fact in policy_version_note — so the officer can never mistake a fallback for a snapshot."
+      ],
+      "related_decision": "ADR-0016"
     }
   ]
 }

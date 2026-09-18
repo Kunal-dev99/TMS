@@ -1045,6 +1045,7 @@ export type ComplianceActivityRow = {
 export type ComplianceFiltersApplied = {
   actor: string | null;
   action: string | null;
+  action_prefix: string | null;
   subject_type: string | null;
   subject_id: string | null;
   date_from: string | null;
@@ -1069,6 +1070,7 @@ export function listComplianceActivity(
   params: {
     actor?: string;
     action?: string;
+    action_prefix?: string;
     subject_type?: string;
     subject_id?: string;
     date_from?: string;
@@ -1094,6 +1096,107 @@ export function complianceActivityCsvUrl(
   });
   const qs = q.toString();
   return `/api/v1/compliance/activity.csv${qs ? `?${qs}` : ""}`;
+}
+
+// -- Compliance: deal evidence -------------------------------------------
+
+export type ComplianceCheckLine = {
+  key: string;
+  passed: boolean;
+  detail: string | null;
+  value: Record<string, unknown> | null;
+};
+
+export type ComplianceDealEvidence = {
+  deal_id: string;
+  counterparty_id: string;
+  counterparty_name: string;
+  counterparty_rating: string | null;
+  instrument: string;
+  currency: string;
+  principal_pence: number;
+  rate_bp: number;
+  tenor_months: number;
+  trade_date: string;
+  value_date: string;
+  maturity_date: string | null;
+  legal_entity_id: string | null;
+  status: string;
+  proposer_display: string | null;
+  proposer_user_id: string | null;
+  approver_display: string | null;
+  approver_user_id: string | null;
+  required_approver: string | null;
+  override_reason: string | null;
+  check_run_id: string | null;
+  booking_outcome: string | null;
+  six_checks: ComplianceCheckLine[];
+  measured_pence: number | null;
+  measurement_basis: string | null;
+  policy_version_id: string | null;
+  policy_version_effective_from: string | null;
+  policy_version_note: string;
+  limit_id: string | null;
+  limit_amount_pence: number | null;
+  events: ComplianceActivityRow[];
+};
+
+export function getComplianceDealEvidence(
+  dealId: string,
+): Promise<ComplianceDealEvidence> {
+  return get(`/compliance/deals/${encodeURIComponent(dealId)}/evidence`);
+}
+
+// -- Compliance: breaches + overrides register --------------------------
+
+export type ComplianceBreachRow = {
+  kind: "breach" | "override";
+  occurred_at: string;
+  deal_id: string | null;
+  counterparty_id: string | null;
+  counterparty_name: string | null;
+  rule: string;
+  reason: string | null;
+  actor_display: string | null;
+  authoriser_display: string | null;
+  status: string;
+  resolution: string | null;
+  resolution_reason: string | null;
+  resolved_at: string | null;
+};
+
+export type ComplianceBreachRegister = {
+  items: ComplianceBreachRow[];
+  total_open: number;
+  total_overridden_ytd: number;
+  total_resolved_ytd: number;
+  generated_at: string;
+};
+
+export function getComplianceBreaches(
+  params: { status?: string; limit?: number } = {},
+): Promise<ComplianceBreachRegister> {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") q.set(k, String(v));
+  });
+  const qs = q.toString();
+  return get(`/compliance/breaches-overrides${qs ? `?${qs}` : ""}`);
+}
+
+// -- Compliance: overview strip -----------------------------------------
+
+export type ComplianceOverview = {
+  open_breaches: number;
+  overrides_ytd: number;
+  resolved_ytd: number;
+  events_last_7d: number;
+  deals_missing_evidence: number;
+  generated_at: string;
+};
+
+export function getComplianceOverview(): Promise<ComplianceOverview> {
+  return get(`/compliance/overview`);
 }
 
 // -- Approvals (signer's queue) ------------------------------------------

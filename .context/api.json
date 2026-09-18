@@ -1,6 +1,6 @@
 {
   "base_prefix": "/api/v1",
-  "count": 95,
+  "count": 98,
   "endpoints_by_tag": {
     "Accounting and settlement": [
       {
@@ -287,6 +287,39 @@
           "422"
         ],
         "summary": "Activity Csv"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "breaches_overrides_api_v1_compliance_breaches_overrides_get",
+        "path": "/api/v1/compliance/breaches-overrides",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Breaches Overrides"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "deal_evidence_api_v1_compliance_deals__deal_id__evidence_get",
+        "path": "/api/v1/compliance/deals/{deal_id}/evidence",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Deal Evidence"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "overview_api_v1_compliance_overview_get",
+        "path": "/api/v1/compliance/overview",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Overview"
       }
     ],
     "Confirmations and matching": [
@@ -1091,6 +1124,6 @@
       }
     ]
   },
-  "generated_at": "2026-09-18T09:07:43+00:00",
+  "generated_at": "2026-09-18T09:55:55+00:00",
   "source": "fastapi.openapi()"
 }
