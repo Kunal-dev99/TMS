@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "name": "Treasury Register",
+  "internal_codename": "treasury-register",
+  "one_liner": "Treasury management for corporate treasurers — deposit planner + FX exposure & hedging, gated by a deterministic six-check control engine, narrated by policy-aware AI.",
+  "audience_primary": "corporate treasurer",
+  "audience_secondary": ["cfo", "head_of_treasury", "compliance_officer", "analyst"],
+  "product_pillars": [
+    "one surface, one URL, one panel at a time",
+    "every path into the book runs the same six-check gate",
+    "AI proposes, deterministic disposes",
+    "every figure is sourced or editable"
+  ],
+  "current_stage": "advanced prototype; publicly hosted for demos; not yet multi-tenant, not yet SOC2, not yet transactable",
+  "delivery_targets": {
+    "next_demo": "Anil / Goutham Sridharan (Fusion Practices)",
+    "future": "Azure Marketplace (parked until IT/DevOps bandwidth available)"
+  },
+  "public_url": "https://treasury-management-system.fusionpractices.com",
+  "stack": {
+    "backend": {
+      "language": "python",
+      "version": "3.13",
+      "framework": "fastapi==0.115.6",
+      "orm": "sqlalchemy==2.0.36",
+      "migrations": "alembic==1.14.0",
+      "db_dev": "sqlite (bundled)",
+      "server": "uvicorn[standard]==0.34.0",
+      "llm_client": "groq==0.13.0",
+      "test": "pytest==8.3.4"
+    },
+    "frontend": {
+      "framework": "next==16.3.4 (Turbopack)",
+      "react": "19.2.8",
+      "styling": "tailwindcss==3.4.19",
+      "typescript": "5.7.2",
+      "primitives": "@radix-ui/*",
+      "charts": "recharts",
+      "icons": "lucide-react"
+    },
+    "ai": {
+      "provider": "Groq",
+      "default_model": "openai/gpt-oss-120b",
+      "env": ["TREASURY_MODEL_API_KEY", "TREASURY_MODEL_NAME"],
+      "posture": "optional — every AI path has a deterministic fallback"
+    },
+    "infra": {
+      "vm": "Azure VM (Windows Server)",
+      "tls": "Caddy 2.x (Let's Encrypt automatic)",
+      "reverse_proxy": "Caddy → 127.0.0.1:3000 (frontend) → 127.0.0.1:8000 (backend, via Next rewrites)",
+      "process_manager": "manual (three PowerShell windows) — service install planned via NSSM"
+    }
+  },
+  "tenancy": {
+    "model": "single-tenant hard-coded (ten_demo)",
+    "schema_supports": "multi (tenant_id on every operational table)",
+    "roadmap": "multi-tenant provisioning is future work"
+  },
+  "authentication": {
+    "current": "email + password (seed hashes) → bearer JWT",
+    "seed_password": "treasury",
+    "roadmap": ["Entra ID SSO", "MFA (delegated to IdP)", "SCIM provisioning"]
+  },
+  "environment_variables": {
+    "SEED_FX_DEMO": "set to 1 to include FX exposures + hedge deals in the seed",
+    "TREASURY_MODEL_API_KEY": "Groq API key; empty = deterministic fallbacks only",
+    "TREASURY_MODEL_NAME": "override the default LLM (openai/gpt-oss-120b)",
+    "TREASURY_API_ORIGIN": "frontend uses this as the backend upstream for /api/* rewrites (default http://127.0.0.1:8001 mock)"
+  }
+}

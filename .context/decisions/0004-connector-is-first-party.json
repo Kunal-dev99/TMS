@@ -1,0 +1,15 @@
+{
+  "id": "ADR-0004",
+  "date": "2026-09",
+  "status": "accepted",
+  "title": "The integration surface is 'Treasury Register Connector' — first-party, never OIC",
+  "context": "Early copy referenced Oracle Integration Cloud (OIC). Product positioning: this is Fusion Practices' own connector into destination systems, not a rebrand of OIC.",
+  "decision": "Every integration surface — accounting events, GL posting, ERP round-trip — names 'Treasury Register Connector'. Never 'Oracle Integration Cloud' anywhere in code, seed, panel copy, or docs. Supported destinations: Fusion AHCS, Fusion GL, Oracle EBS, Custom REST.",
+  "consequences": [
+    "backend/app/services/accounting_events.py: CONNECTOR_NAME = 'Treasury Register Connector'",
+    "Reference & Sources panel names it as the destination",
+    "Accounting Events panel shows the four supported destinations",
+    "Any new integration lands under this brand"
+  ],
+  "audit_notes": "There is a project-memory file documenting this: ~/.claude/projects/.../memory/project_connector_first_party.md"
+}

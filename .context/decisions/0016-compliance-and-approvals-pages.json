@@ -1,0 +1,44 @@
+{
+  "id": "ADR-0016",
+  "date": "2026-09-18",
+  "status": "accepted",
+  "title": "Compliance and Approvals persona pages — minimal MVPs on top of what Phases A-D built",
+  "context": "Phases A-D built the substrate (audit_event, permissions, scope, activation, four-eye) but only surfaced Admin. Track 1 originally called for two more persona pages: Compliance (read the audit trail + policy history + AI activity log) and Approvals (signer's queue + delegation + bulk). Both are here as minimum-viable versions.",
+  "compliance_scope_in": [
+    "GET /compliance/activity — filterable audit_event feed (actor, action, subject_type, date range, limit)",
+    "GET /compliance/activity.csv — CSV export peer, streams from the same query",
+    "/compliance page with a filter bar + activity table + CSV download button",
+    "Guarded by VIEW_AUDIT (COMPLIANCE_OFFICER, CFO, AUDITOR) or MANAGE_USERS (ADMIN)"
+  ],
+  "compliance_scope_out_deferred": [
+    "Policy version history + diff — needs richer policy_version reads first",
+    "Override register as a dedicated tab — already visible via action filter",
+    "AI activity log — needs an ai_run table (not built yet, Q-004 open)",
+    "As-of-date replay — needs point-in-time query support across services"
+  ],
+  "approvals_scope_in": [
+    "GET /approvals/queue — deals with status=PROPOSED, joined to counterparty; each row carries can_approve (role match + not proposer)",
+    "/approvals page — table + one-click Approve for eligible rows, 'Not eligible' label otherwise",
+    "Reuses existing POST /deals/{id}/approve — server-side segregation-of-duties still enforced",
+    "Guarded by APPROVE_DEAL or MANAGE_USERS"
+  ],
+  "approvals_scope_out_deferred": [
+    "Delegation flow (out-of-office reassignment) — needs delegation table",
+    "Bulk approvals — batch endpoint + multi-select UI",
+    "Reason codes catalogue for reject",
+    "History tab (my past decisions) — reads existing check_run + deal audit already"
+  ],
+  "invariants": [
+    "Compliance is READ-ONLY. Every endpoint under /compliance is a GET; no writes.",
+    "Approvals still runs the six-check gate on approve — the persona page is a surface, not a bypass.",
+    "SEGREGATION_OF_DUTIES enforcement is server-side; the queue's can_approve hint is UI only."
+  ],
+  "consequences": [
+    "backend/app/api/compliance.py — /compliance/activity + /compliance/activity.csv",
+    "backend/app/api/approvals.py — /approvals/queue (approve stays on /deals/{id}/approve)",
+    "backend/app/main.py — both routers registered",
+    "frontend/lib/api.ts — listComplianceActivity/complianceActivityCsvUrl + getApprovalQueue types + fetchers",
+    "frontend/app/compliance/page.tsx — filter bar + table + CSV export",
+    "frontend/app/approvals/page.tsx — queue table + one-click Approve for eligible rows"
+  ]
+}

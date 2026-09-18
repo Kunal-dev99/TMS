@@ -1,0 +1,23 @@
+{
+  "id": "ADR-0003",
+  "date": "2026-09-09",
+  "status": "accepted",
+  "title": "Rating buckets are CAPS, not targets",
+  "context": "Anil's Sep-9 feedback via WhatsApp: 'For the ratings I would like to see the option to pick a limit of each bucket ie 80% AAA and 10% AA and then have the AI calculate the best spread to get maximum income.'",
+  "decision": "planner_settings.buckets = { AAA:%, AA:%, A:%, BBB:% } are ceilings. There is no sum-to-100 requirement. The planner greedy-fills highest-yielding first within each cap. If caps sum below 100%, the leftover cash stays uninvested until caps rise.",
+  "alternatives_rejected": [
+    "Equal-share targets (rejected — treasurer wants an upper bound, not a mandated split)",
+    "Min+max range per band (rejected — one dial is simpler; a treasurer sets the max risk they'll accept)"
+  ],
+  "consequences": [
+    "PlannerService._optimize does greedy yield-first within band caps + per-name cap + group cap",
+    "PlannerSettingsPanel labels controls as '% max' and the row header 'Rating caps' (not 'Rating targets')",
+    "Save is enabled whenever any cap > 0 — sum-check removed",
+    "The Blended candidate's tagline reads '≤50% AAA · ≤30% AA · ≤20% A' — never '50/30/20'"
+  ],
+  "files_touched": [
+    "backend/app/services/planner_settings.py",
+    "backend/app/services/planner_service.py",
+    "frontend/components/panels/PlannerSettingsPanel.tsx"
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "provider": "Groq",
+  "default_model": "openai/gpt-oss-120b",
+  "env_vars": {
+    "TREASURY_MODEL_API_KEY": "Groq key; when empty, every AI path falls back to deterministic prose",
+    "TREASURY_MODEL_NAME": "override default model id"
+  },
+  "global_safety_rails": [
+    "Never predict, forecast, or comment on where FX rates will move.",
+    "Never invent counterparties — the id must be in the whitelist passed in the input.",
+    "Never invent monetary amounts — must be present in the input.",
+    "Use display strings verbatim ('€10m', '$21m') — never raw digit strings ('21,000,000 USD').",
+    "Every AI path has a deterministic fallback that runs on no-key, timeout, or validation failure.",
+    "The LLM never books a deal. It writes prose, ranks candidates, picks from whitelists."
+  ],
+  "paths": [
+    {
+      "id": "planner_narrator",
+      "file": "backend/app/services/planner_narrator.py",
+      "endpoint": "POST /api/v1/planner/deploy-cash (post-processing)",
+      "purpose": "Rank the 3 planner candidates and write the AI Quick Summary + per-candidate labels.",
+      "shape_out": {
+        "recommendation_kind": "string (must match a candidate.kind)",
+        "recommendation_reason": "4 point-wise bullets, double-newline separated",
+        "labels": "map of candidate.kind → one-sentence trade-off label"
+      },
+      "validators": ["kind is in VALID_KINDS", "kind matches a real candidate in the plan"],
+      "fallback": "deterministic 4-bullet summary picking the highest expected-interest candidate"
+    },
+    {
+      "id": "fx_narrator_briefing",
+      "file": "backend/app/services/fx_narrator.py",
+      "endpoint": "POST /api/v1/fx/narrate",
+      "purpose": "Cross-currency policy-gap briefing + a recommended action per currency + watch callouts.",
+      "shape_out": {
+        "briefing": "paragraph ranking currencies by gap-to-target severity",
+        "recommendations": "one per currency with a gap; {currency, amount_minor, tenor_months, counterparty_id, reason}",
+        "watch": "list of one-liner concentration/maturity/refinance flags"
+      },
+      "validators": [
+        "currency in allowed set",
+        "counterparty_id in eligible_counterparties whitelist",
+        "amount_minor in suggested_amounts for that currency",
+        "tenor_months in (3, 6, 9, 12)"
+      ],
+      "fallback": "deterministic priority-first briefing + a recommendation per gapped currency picking the highest-rated FX-approved counterparty with headroom"
+    },
+    {
+      "id": "fx_hedge_advise",
+      "file": "backend/app/services/fx_narrator.py::advise_on_hedge",
+      "endpoint": "POST /api/v1/fx/hedges/advise",
+      "purpose": "Contextual governance observations for the Initiate Hedge modal — concentration, headroom, ladder, policy movement.",
+      "inputs_deterministic": ["counterparty share of the FX book after the trade", "entity headroom after the trade", "same-month maturity cluster count", "policy gap % movement"],
+      "llm_role": "rewrite deterministic bullets in tighter English, preserving every number and name",
+      "explicitly_removed": ["cost-of-carry / forward-vs-spot commentary (removed 2026-09-11 to keep this pure governance narration)"],
+      "validators": ["bullet count must match the deterministic input"],
+      "fallback": "return the deterministic bullets verbatim"
+    },
+    {
+      "id": "credit_signal_scanner",
+      "file": "backend/app/services/credit_signal_scanner.py",
+      "endpoint": "POST /api/v1/credit-signals/scan",
+      "purpose": "Read seeded NewsItems, classify materiality, surface per-counterparty severity + suggested action.",
+      "labels_out": ["MATERIAL", "WATCH", "IMMATERIAL", "QUIET"],
+      "actions_out": ["PUT_ON_WATCH", "REDUCE", "ROLL_OFF", "MONITOR", "IGNORE"]
+    },
+    {
+      "id": "confirmation_parser",
+      "file": "backend/app/services/confirmation_parser.py",
+      "purpose": "Parse a pasted SWIFT-like confirmation into a structured proposal for matching."
+    }
+  ],
+  "audit_log": {
+    "status": "not implemented yet",
+    "planned_table": "ai_run { id, tenant_id, endpoint, prompt_json, response_json, model, tokens, created_by_user_id, created_at }",
+    "surfaced_in": "Compliance page (Track 1, phase 2)"
+  }
+}

@@ -47,6 +47,13 @@ def create_deal(body: rq.CreateDealRequest, ctx: Ctx, caller: Caller) -> dict:
     A blocked deal is a 201 with status BLOCKED, not an error. The record was
     created and the exception was raised, so the control worked.
     """
+    # Pre-flight scope guard (ADR-0012 Phase B.2). The person must be
+    # authorised for the entity before the six-check gate is even asked.
+    from app.services import scope_service
+
+    if body.legal_entity_id:
+        scope_service.require_scope(ctx.session, caller, body.legal_entity_id)
+
     service = _deals(ctx)
     booking = service.record(
         counterparty_id=body.counterparty_id,
@@ -57,6 +64,7 @@ def create_deal(body: rq.CreateDealRequest, ctx: Ctx, caller: Caller) -> dict:
         proposer=caller,
         override_reason=body.override_reason,
         recommendation_id=body.recommendation_id,
+        legal_entity_id=body.legal_entity_id,
     )
     ctx.session.commit()
 
@@ -101,7 +109,20 @@ def approve_deal(
     deal_id: str, body: rq.ApproveDealRequest, ctx: Ctx, caller: Caller
 ) -> dict:
     """Record the signature and put the deal on the book."""
+    from app.services import audit_service
+
     deal = _deals(ctx).approve(deal_id, caller, body.role)
+    audit_service.record(
+        ctx.session,
+        tenant_id=ctx.tenant_id,
+        actor_user_id=caller.user_id,
+        actor_display=caller.display_name,
+        action="deal.approved",
+        subject_type="deal",
+        subject_id=deal.id,
+        outcome=deal.status,
+        payload={"approved_role": body.role, "required_approver": deal.required_approver},
+    )
     ctx.session.commit()
     return {
         "deal_id": deal.id,

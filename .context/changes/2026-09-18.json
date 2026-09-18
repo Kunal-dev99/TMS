@@ -1,0 +1,343 @@
+{
+  "date": "2026-09-18",
+  "entries": [
+    {
+      "time": "morning",
+      "author": "assistant",
+      "kind": "infrastructure-doc",
+      "summary": "Introduced .context/ Project Context Matrix — MANIFEST + 8 core JSON files + 10 initial ADRs + update.py auto-regeneration script",
+      "files_added": [
+        ".context/MANIFEST.json",
+        ".context/project.json",
+        ".context/architecture.json",
+        ".context/backend.json",
+        ".context/frontend.json",
+        ".context/ai.json",
+        ".context/conventions.json",
+        ".context/api.json (auto-generated from FastAPI OpenAPI)",
+        ".context/data-model.json (auto-generated from SQLAlchemy metadata)",
+        ".context/open-questions.json",
+        ".context/decisions/0001-one-surface-one-panel.json",
+        ".context/decisions/0002-every-path-runs-the-six-checks.json",
+        ".context/decisions/0003-buckets-are-caps-not-targets.json",
+        ".context/decisions/0004-connector-is-first-party.json",
+        ".context/decisions/0005-ai-proposes-deterministic-disposes.json",
+        ".context/decisions/0006-counterparty-and-currency-exposure-are-separate.json",
+        ".context/decisions/0007-hedging-cards-sort-by-policy-gap.json",
+        ".context/decisions/0008-fx-hedge-advisor-is-governance-not-market.json",
+        ".context/decisions/0009-persona-pages-behind-role-nav.json",
+        ".context/decisions/0010-project-context-matrix.json",
+        ".context/update.py",
+        ".context/README.md"
+      ],
+      "related_decision": "ADR-0010"
+    },
+    {
+      "time": "morning",
+      "author": "user",
+      "kind": "decision",
+      "summary": "Track 1 chosen: build Admin, Compliance, Approvals persona pages next (all code-only, no IT/DevOps)",
+      "related_decision": "ADR-0009"
+    },
+    {
+      "time": "morning",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "Admin page (Track 1, Week 1-2): user + role + tenant management",
+      "backend": {
+        "migration": "0009 -> 29704f3ee889 — adds audit_event table, app_user.{last_signed_in_at, invited_by_user_id, invited_at}, widens membership.role check to admit ADMIN + COMPLIANCE_OFFICER",
+        "new_files": [
+          "backend/app/services/audit_service.py (single writer for AuditEvent rows)",
+          "backend/app/api/admin_users.py (GET/PATCH/POST /admin/users, /admin/roles, /admin/tenant, /admin/users/{id}/reset-password)"
+        ],
+        "changed": [
+          "backend/app/models.py — AuditEvent model + app_user metadata columns + widened role check",
+          "backend/app/api/deps.py — require_role() dependency factory",
+          "backend/app/services/identity_service.py — sign_in writes last_signed_in_at + audit event",
+          "backend/app/api/main.py — register admin_users router",
+          "backend/app/seed_data.py — usr_sethi granted ADMIN + COMPLIANCE_OFFICER"
+        ]
+      },
+      "frontend": {
+        "new_files": [
+          "frontend/app/admin/page.tsx (Admin page: users table, invite modal, edit-user panel, roles catalogue, tenant card)",
+          "frontend/components/PageShell.tsx (shared shell for persona routes)",
+          "frontend/components/PersonaNav.tsx (role-gated top-nav)"
+        ],
+        "changed": [
+          "frontend/lib/session.ts — hasRole() helper",
+          "frontend/lib/api.ts — AdminUserRow, AdminRoleRow, AdminTenantView types + 6 admin fetchers",
+          "frontend/app/page.tsx — mount PersonaNav above Header on treasurer view"
+        ]
+      },
+      "sign_in_credentials_admin": "r.sethi@northgate.example / treasury (roles: ADMIN, CFO, COMPLIANCE_OFFICER)",
+      "prototype_notes": [
+        "Invite emails are logged to console + returned in response; SMTP integration deferred per Q-001.",
+        "audit_event is the substrate for the Compliance page (Week 3-4); already being written on sign-in + user.* actions."
+      ],
+      "related_decision": "ADR-0009"
+    },
+    {
+      "time": "afternoon",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "Admin Phase A: permission matrix + plain-English effective access",
+      "backend": {
+        "new_files": [
+          "backend/app/services/permissions.py — Permission enum, ROLE_PERMISSIONS matrix, PERMISSION_LABEL, summarise_permissions()"
+        ],
+        "changed": [
+          "backend/app/services/identity_service.py — Principal.can(permission) helper",
+          "backend/app/api/deps.py — require_permission(*permissions) dependency factory",
+          "backend/app/api/admin_users.py — RoleRow gains permissions+can; UserRow gains effective_access",
+          "backend/app/api/auth.py — /auth/token and /auth/me now return permissions[] alongside roles[]"
+        ]
+      },
+      "frontend": {
+        "changed": [
+          "frontend/lib/session.ts — SignedInUser.permissions; can(...permissions) helper",
+          "frontend/lib/api.ts — AdminEffectiveAccess type; AdminUserRow.effective_access; AdminRoleRow.permissions+can",
+          "frontend/app/admin/page.tsx — RolesCard bullets per role; EffectiveAccessSummary under each user's roles; RoleChangePreview in the edit panel showing gains/losses before Save"
+        ]
+      },
+      "invariant_established": "ADMIN role does NOT grant automatic dealing or approval authority — administration is separate from financial authority. Matches Treasury Systems / Nomentia pattern.",
+      "related_decision": "ADR-0011"
+    },
+    {
+      "time": "afternoon",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "Admin Phase B: legal entities + per-user company scope",
+      "backend": {
+        "migration": "29704f3ee889 -> a7958fe8d700 — adds legal_entity + user_entity_scope tables",
+        "new_files": [
+          "backend/app/services/scope_service.py — scope_for_user, replace_scope, may_act_for"
+        ],
+        "changed": [
+          "backend/app/models.py — LegalEntity + UserEntityScope tables",
+          "backend/app/seed_data.py — 3 Northgate subsidiaries seeded + per-user USER_SCOPES (Sethi group-wide; Doran UK+DE; Whitfield UK only)",
+          "backend/seed/seed.py — loader wires LegalEntity + UserEntityScope rows",
+          "backend/app/api/admin_users.py — GET /admin/legal-entities, PATCH /admin/users/{id}/scope, UserRow now includes scope, ScopePatch schema"
+        ]
+      },
+      "frontend": {
+        "changed": [
+          "frontend/lib/api.ts — AdminScope, AdminLegalEntity types + listAdminLegalEntities, updateAdminUserScope fetchers",
+          "frontend/app/admin/page.tsx — LegalEntitiesCard, ScopeCell column in users table, Company access editor in the edit panel (separate Save-scope button so revoke applies immediately)"
+        ]
+      },
+      "seed_verification": {
+        "entities": ["NG_DE (EUR)", "NG_UK (GBP)", "NG_US (USD)"],
+        "scopes": {
+          "r.sethi": "Group-wide access to every subsidiary",
+          "m.doran": "2 of 3 entities: NG_DE, NG_UK",
+          "a.whitfield": "1 of 3 entities: NG_UK"
+        }
+      },
+      "not_done_yet": [
+        "Scope enforcement on dealing/hedging endpoints (Phase B.2) — the UI shows scope but the CheckEngine does not yet refuse to book on an unscoped entity.",
+        "Deal/CurrencyExposure/HedgeLink rows are not yet tagged with legal_entity_id."
+      ],
+      "related_decision": "ADR-0012"
+    },
+    {
+      "time": "afternoon",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "Admin Phase B.2: scope enforced on writes via a pre-flight guard",
+      "backend": {
+        "migration": "a7958fe8d700 -> 967550612047 — adds deal.legal_entity_id + currency_exposure.legal_entity_id",
+        "changed": [
+          "backend/app/models.py — legal_entity_id on Deal + CurrencyExposure",
+          "backend/app/seed_data.py — DEFAULT_LEGAL_ENTITY + LEGAL_ENTITY_BY_CURRENCY (GBP->NG_UK, EUR->NG_DE, USD->NG_US, CHF->NG_UK)",
+          "backend/seed/seed.py — backfills legal_entity_id on all seeded Deal + CurrencyExposure rows",
+          "backend/app/services/scope_service.py — new require_scope(session, caller, entity_id) helper (raises TreasuryError on refusal)",
+          "backend/app/services/deal_service.py — record() accepts + persists legal_entity_id",
+          "backend/app/schemas/requests.py — CreateDealRequest.legal_entity_id",
+          "backend/app/api/deals.py — POST /deals calls require_scope pre-flight before deal_service.record",
+          "backend/app/api/fx.py — POST /fx/hedges calls require_scope pre-flight; InitiateHedgeRequest.legal_entity_id",
+          "backend/app/api/auth.py — /auth/me now returns scope.entities (the caller's authorised entities)"
+        ]
+      },
+      "frontend": {
+        "changed": [
+          "frontend/lib/session.ts — SignedInUser.scope { group_wide, entities[] }",
+          "frontend/lib/api.ts — initiateHedge accepts legal_entity_id",
+          "frontend/components/panels/InitiateHedgeModal.tsx — new 'Book under legal entity' dropdown, defaults to currency-matching scoped entity"
+        ]
+      },
+      "smoke_verified": [
+        "Whitfield (UK-only) POST /fx/hedges with legal_entity_id=le_ng_de -> 403 ROLE_NOT_HELD ('You do not have scope for NG_DE')",
+        "Whitfield POST /fx/hedges with le_ng_uk -> scope passes, downstream error fires (unrelated)",
+        "Sethi (group-wide) POST /fx/hedges with le_ng_de -> scope passes"
+      ],
+      "not_done_yet": [
+        "Deposit Ticket UI does not yet send legal_entity_id (backend accepts, front-end doesn't populate) — Phase B.3.",
+        "PlannerService allocations are not yet scope-filtered — a UK-only user still sees group-wide planner output.",
+        "HedgeLink rows carry no legal_entity_id (derived from the exposure)."
+      ],
+      "related_decision": "ADR-0013"
+    },
+    {
+      "time": "afternoon",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "Admin Phase B.3: deposit Ticket now sends legal_entity_id; entity picker on the ticket surface",
+      "frontend": {
+        "changed": [
+          "frontend/lib/types.ts — TicketFields.legal_entity_id (optional)",
+          "frontend/components/Ticket.tsx — TicketState.legalEntityId + toFields() propagates it; new LegalEntityRow component renders a picker for scoped users, auto-defaults to the first scoped entity",
+          "frontend/app/page.tsx — setTicket callers (advisory-accept + planner-pick) now use functional updates (...prev, ...) so the legalEntityId set by LegalEntityRow's auto-default isn't clobbered"
+        ]
+      },
+      "considered_but_skipped": [
+        "PlannerService scope-filter — counterparties are shared across the group, so filtering the planner pool by user scope isn't the right shape; enforcement happens downstream when the treasurer picks a plan, the ticket loads it, and the entity picker defaults from user scope. POST /deals then runs require_scope before the six-check gate.",
+        "HedgeLink.legal_entity_id column — the exposure the link points at is already tagged; no denormalisation needed."
+      ],
+      "phase_b_complete": true,
+      "related_decision": "ADR-0013"
+    },
+    {
+      "time": "afternoon",
+      "author": "assistant",
+      "kind": "ux-fix",
+      "summary": "Admin edit-user modal: consolidate two Save buttons into one",
+      "context": "Original split (a small 'Save scope' + big 'Save') was a bad reading of the enterprise 'removals apply immediately' pattern from the research. In practice it created a footgun: changing both roles and scope, then clicking the big Save, silently lost the scope edit.",
+      "changed": [
+        "frontend/app/admin/page.tsx — EditUserPanel.save() now fires updateAdminUser + updateAdminUserScope in parallel via Promise.all. Small 'Save scope' button removed. savingScope state removed. The scope card footer is now a status line, not an action."
+      ]
+    },
+    {
+      "time": "afternoon",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "Admin Phase C: activation links replace temp passwords for invite + reset",
+      "backend": {
+        "migration": "967550612047 -> c2d259c21e3e — adds activation_token table (id, tenant_id, user_id, token_hash sha256, purpose INVITE|RESET, expires_at, consumed_at)",
+        "new_files": [
+          "backend/app/services/activation_service.py — issue_token, resolve_token, consume_token, has_pending_activation; UNUSABLE_PASSWORD_HASH sentinel",
+          "backend/app/api/activation.py — GET /activate/{token} + POST /activate (both public, no auth)"
+        ],
+        "changed": [
+          "backend/app/models.py — ActivationToken + registration in PHASE_ONE_TABLES",
+          "backend/app/main.py — register activation router",
+          "backend/app/api/admin_users.py — invite response is now {activation_url, expires_at}, reset endpoint is now activation-link based, UserRow gains pending_activation"
+        ]
+      },
+      "frontend": {
+        "new_files": [
+          "frontend/app/activate/page.tsx — public /activate?token=... page: resolves token, shows welcome + password form, consumes on submit, auto sign-in via startSession()"
+        ],
+        "changed": [
+          "frontend/lib/api.ts — AdminInviteResponse/AdminResetPasswordResponse now activation-link shape; new resolveActivationToken + consumeActivationToken; AdminUserRow.pending_activation",
+          "frontend/app/admin/page.tsx — InviteModal + reset flow now render an ActivationLinkCard (full URL + copy + expiry); users table adds a 'Pending activation' amber badge"
+        ]
+      },
+      "smoke_verified": [
+        "invite -> activation_url returned",
+        "GET /activate/{token} -> resolve returns invitee email/name/purpose",
+        "POST /activate with new password -> user activated, bearer token returned",
+        "sign in with the new password -> succeeds",
+        "reuse the same token -> 401 'not valid or has expired'"
+      ],
+      "invariants_established": [
+        "The admin never sees the chosen password; they see only the activation URL.",
+        "Only SHA-256 of the token is persisted; the raw token cannot be recovered from the DB.",
+        "Tokens are single-use, 24-hour, and one active per user.",
+        "Reset breaks the existing password immediately (before the invitee opens the link)."
+      ],
+      "prototype_notes": [
+        "Activation link is shared out of band (copy from admin UI). SMTP delivery is future work — Q-001 remains open.",
+        "No rate limiting on POST /activate yet."
+      ],
+      "related_decision": "ADR-0014"
+    },
+    {
+      "time": "afternoon",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "Admin Phase D: four-eye control on sensitive access grants",
+      "backend": {
+        "migration": "c2d259c21e3e -> 694ad4b80e75 — adds access_change_request table",
+        "new_files": [
+          "backend/app/services/access_change_service.py — SENSITIVE_ROLES = {ADMIN, CFO, COMPLIANCE_OFFICER}; create_role_grant_request, list_pending, approve, reject; enforces requester != reviewer via SEGREGATION_OF_DUTIES"
+        ],
+        "changed": [
+          "backend/app/models.py — AccessChangeRequest",
+          "backend/app/api/admin_users.py — _sync_roles now queues sensitive grants (returns list of queued roles); UserRow gains pending_role_grants; new /admin/access-changes/{approve,reject} + list endpoints",
+          "backend/app/seed_data.py — usr_price added as a second ADMIN so the demo can exercise the two-admin flow"
+        ]
+      },
+      "frontend": {
+        "changed": [
+          "frontend/lib/api.ts — AdminAccessChange type + listAdminAccessChanges + approveAdminAccessChange + rejectAdminAccessChange; AdminUserRow.pending_role_grants",
+          "frontend/app/admin/page.tsx — AccessChangesCard rendered above the users table (hides Approve/Reject on your own requests, requires reason on reject); amber 'Pending: {role}' chip in the users table; RoleChangePreview now warns 'Four-eye review: ROLE will not apply until another admin approves'"
+        ]
+      },
+      "smoke_verified": [
+        "PATCH /admin/users/whitfield with roles:[ANALYST,CFO] -> Whitfield remains ANALYST; response shows pending_role_grants:[CFO]",
+        "GET /admin/access-changes -> pending row with requested_by=R. Sethi",
+        "Sethi approving her own request -> 403 SEGREGATION_OF_DUTIES",
+        "Whitfield sign in -> roles still just ['ANALYST']; the pending CFO hasn't taken effect"
+      ],
+      "credentials_for_manual_demo": {
+        "sethi_admin_a": "r.sethi@northgate.example / treasury (CFO + ADMIN + COMPLIANCE_OFFICER)",
+        "price_admin_b": "l.price@northgate.example / treasury (ADMIN only — for the second-admin approval step)"
+      },
+      "related_decision": "ADR-0015"
+    },
+    {
+      "time": "evening",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "Compliance + Approvals persona pages — Track 1 Weeks 3-6 MVPs",
+      "backend": {
+        "new_files": [
+          "backend/app/api/compliance.py — GET /compliance/activity (filterable) + GET /compliance/activity.csv streaming export; gated by VIEW_AUDIT or MANAGE_USERS",
+          "backend/app/api/approvals.py — GET /approvals/queue (deals with status=PROPOSED + can_approve hint); gated by APPROVE_DEAL or MANAGE_USERS"
+        ],
+        "changed": [
+          "backend/app/main.py — register compliance + approvals routers"
+        ]
+      },
+      "frontend": {
+        "new_files": [
+          "frontend/app/compliance/page.tsx — filter bar (action/subject/date/limit) + activity table with pretty payload rendering + CSV download",
+          "frontend/app/approvals/page.tsx — queue table with one-click Approve for eligible rows"
+        ],
+        "changed": [
+          "frontend/lib/api.ts — Compliance and Approvals types + fetchers"
+        ]
+      },
+      "smoke_verified": [
+        "GET /compliance/activity?limit=5 -> 5 items across the actions written by Phases A-D (user.signed_in, user.updated, user.scope.updated, access_change.approved)",
+        "GET /approvals/queue -> returns caller's roles and any PROPOSED deals"
+      ],
+      "deferred_for_a_later_phase": [
+        "Compliance: policy version history + diff, AI activity log (needs ai_run table, Q-004 open), as-of-date replay",
+        "Approvals: delegation flow, bulk approvals, reason codes catalogue, my-past-decisions history tab"
+      ],
+      "related_decision": "ADR-0016"
+    },
+    {
+      "time": "evening",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "Compliance audit trail extended to deal + hedge write paths — Compliance page now shows business activity, not just admin actions",
+      "backend": {
+        "changed": [
+          "backend/app/services/deal_service.py — record() now writes audit_event action='deal.recorded' with counterparty_id, instrument, principal_pence, tenor_months, rate_bp, legal_entity_id, override_reason, failed_checks",
+          "backend/app/api/deals.py — approve_deal endpoint writes audit_event action='deal.approved' with approved_role + required_approver",
+          "backend/app/api/fx.py — initiate_hedge writes audit_event action='hedge.initiated' with counterparty, currency, sell_amount_minor, gbp_expected_pence, tenor_months, forward_rate, legal_entity_id, exposure_ids, hedge_link_ids"
+        ]
+      },
+      "rationale": "Phase A-D wrote audit_event for admin actions only. Compliance page (ADR-0016) is meant to be the full activity trail. Wiring deal.recorded / deal.approved / hedge.initiated closes the gap so a compliance officer can reconstruct the business day, not just the admin day.",
+      "smoke_target": [
+        "Propose a deal -> GET /compliance/activity?action=deal.recorded returns row with the failed_checks + override_reason",
+        "Approve that deal -> action=deal.approved row with approved_role",
+        "Initiate a hedge -> action=hedge.initiated row with counterparty + hedge_link_ids"
+      ],
+      "related_decision": "ADR-0016"
+    }
+  ]
+}

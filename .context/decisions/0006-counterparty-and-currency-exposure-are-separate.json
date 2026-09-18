@@ -1,0 +1,13 @@
+{
+  "id": "ADR-0006",
+  "date": "2026-08",
+  "status": "accepted",
+  "title": "Counterparty exposure and currency exposure are separate concerns",
+  "context": "A forward INCREASES counterparty exposure (credit to the bank) and REDUCES currency exposure (protects the foreign receivable). A combined figure would be meaningless in the best case and misleading in the worst.",
+  "decision": "Two distinct tables (deal-derived vs currency_exposure), two distinct units (GBP pence vs foreign minor units + explicit currency), two distinct services (ExposureCalculator vs HedgeService). No query in the repository layer joins them. currency_exposure has no counterparty_id column at all — an obligation to a supplier is not an obligation to a bank.",
+  "consequences": [
+    "backend/app/services/hedge_service.py file-level docstring is the canonical reference",
+    "There is no GET /exposure that returns 'total' — the API surface refuses to be asked",
+    "Exposure panel and Hedging panel are separate strip entries — never merged"
+  ]
+}

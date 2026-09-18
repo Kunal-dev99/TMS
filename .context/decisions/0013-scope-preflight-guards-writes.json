@@ -1,0 +1,38 @@
+{
+  "id": "ADR-0013",
+  "date": "2026-09-18",
+  "status": "accepted",
+  "title": "Scope is a pre-flight guard, not a seventh check",
+  "context": "Phase B introduced per-user scope (which legal entities of the corporate group a user may act for). Phase B.2 needed to enforce that on writes. The obvious option — adding SCOPE as a seventh CheckOutcome inside CheckEngine — would break the well-known 'six checks' product concept everywhere it's referenced (docs, deck, panel copy, tests).",
+  "decision": "Scope is a PRE-FLIGHT guard: `scope_service.require_scope(session, caller, entity_id)` runs BEFORE the six-check gate on every write endpoint. If the user has no scope for the entity, the request is refused with 403 ROLE_NOT_HELD and the CheckEngine is never invoked. This preserves the six-check semantics and matches the enterprise-treasury pattern that separates 'is this person authorised' from 'does this deal meet policy'.",
+  "shape": {
+    "guard_signature": "require_scope(session, caller, entity_id) -> None (raises TreasuryError on refusal)",
+    "error_message_shape": "You do not have scope for NG_DE. Ask an administrator to grant you access.",
+    "write_endpoints_guarded": [
+      "POST /api/v1/deals (accepts legal_entity_id on CreateDealRequest)",
+      "POST /api/v1/fx/hedges (accepts legal_entity_id on InitiateHedgeRequest)"
+    ]
+  },
+  "schema_changes": {
+    "migration": "a7958fe8d700 -> 967550612047",
+    "columns_added": [
+      "deal.legal_entity_id (nullable String(40))",
+      "currency_exposure.legal_entity_id (nullable String(40))"
+    ],
+    "backfill_strategy": "Seed backfills existing rows via LEGAL_ENTITY_BY_CURRENCY: GBP -> NG_UK, EUR -> NG_DE, USD -> NG_US, CHF -> NG_UK. Real production migrations would need a client-specific mapping table."
+  },
+  "frontend_surface": {
+    "auth_me": "GET /auth/me now returns scope.entities — the entities the caller may act for. This is the source the ticket + hedge modal read to render the entity picker.",
+    "hedge_modal": "New 'Book under legal entity' dropdown. Defaults to the currency-matching scoped entity, else the first scoped one. Only shown if the user has any scope."
+  },
+  "still_todo": [
+    "Thread legal_entity_id through the deposit Ticket (frontend) — currently the backend accepts it but the ticket UI doesn't send one; POST defaults to null and no scope guard fires. That's Phase B.3.",
+    "Thread scope through the PlannerService allocations so a user with UK-only scope only sees UK-eligible names.",
+    "Tag HedgeLink with legal_entity_id (currently derived from the linked exposure)."
+  ],
+  "invariants": [
+    "The six-check gate stays 'six checks'. Scope is a separate preflight.",
+    "A write endpoint that accepts legal_entity_id must call require_scope before its business logic.",
+    "The audit_event log records both the scope grant/revoke history (Phase B) and the failed-scope refusals (via ErrorCode logs)."
+  ]
+}

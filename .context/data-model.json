@@ -1,0 +1,5236 @@
+{
+  "generated_at": "2026-09-18T08:48:34+00:00",
+  "source": "app.models.Base.metadata",
+  "table_count": 41,
+  "tables": {
+    "access_change_request": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "subject_type",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(24)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "subject_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "change_type",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(24)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "payload_json",
+          "nullable": false,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "reason",
+          "nullable": true,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": "PENDING",
+          "fk": null,
+          "name": "status",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(16)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "requested_by_user_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "requested_by_display",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "requested_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "reviewed_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "reviewed_by_display",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "reviewed_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "review_reason",
+          "nullable": true,
+          "pk": false,
+          "type": "TEXT"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_access_req_requester",
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_access_req_status",
+          "sqltext": "status in ('PENDING','APPROVED','REJECTED','WITHDRAWN')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_access_req_reviewer",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "subject_id"
+          ],
+          "name": "ix_access_change_request_subject_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_access_change_request_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "accrual": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "deal.id"
+          ],
+          "name": "deal_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "accrual_date",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": "1",
+          "fk": null,
+          "name": "day_count",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "rate_bp",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "amount_pence",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "cumulative_pence",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "reversal_of",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "amendment_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id",
+            "accrual_date"
+          ],
+          "name": "ix_accrual_date",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_accrual_tenant_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "deal_id",
+            "accrual_date"
+          ],
+          "name": "ux_accrual_day",
+          "unique": true
+        },
+        {
+          "columns": [
+            "deal_id"
+          ],
+          "name": "ix_accrual_deal_id",
+          "unique": false
+        }
+      ]
+    },
+    "activation_token": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "user_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "token_hash",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(64)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "purpose",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(16)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "expires_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "consumed_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_by",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_activation_purpose",
+          "sqltext": "purpose in ('INVITE','RESET')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_activation_user",
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "user_id"
+          ],
+          "name": "ix_activation_token_user_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "token_hash"
+          ],
+          "name": "ix_activation_token_token_hash",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_activation_token_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "advisory_run": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "as_of",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "started_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "finished_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "investment_policy.id"
+          ],
+          "name": "policy_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "gap_type",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(24)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "gap_amount_minor",
+          "nullable": true,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "gap_currency",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(3)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "gap_date",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "model_enabled",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "model_name",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(60)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "outcome",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(28)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_run_outcome",
+          "sqltext": "outcome in ('NO_GAP','MODEL_ACCEPTED','MODEL_REJECTED_FALLBACK','RULE_ONLY','NO_CANDIDATES')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_run_gap_type",
+          "sqltext": "gap_type in ('CASH_SURPLUS','CASH_SHORTFALL','LADDER_GAP','CURRENCY_UNCOVERED','NONE')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_advisory_run_tenant_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id",
+            "as_of"
+          ],
+          "name": "ix_advisory_run_asof",
+          "unique": false
+        }
+      ]
+    },
+    "amendment": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "deal.id"
+          ],
+          "name": "deal_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "type",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(20)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "effective_date",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "new_principal_pence",
+          "nullable": true,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "new_rate_bp",
+          "nullable": true,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "new_maturity_date",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "reason",
+          "nullable": false,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "raised_by",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "raised_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "raised_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": "RAISED",
+          "fk": null,
+          "name": "status",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "applied_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_amendment_status",
+          "sqltext": "status in ('RAISED','APPLIED','REJECTED')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_amendment_raised_by",
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_amendment_type",
+          "sqltext": "type in ('BREAK','ROLL','PARTIAL_DRAWDOWN','CORRECTION')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_amendment_tenant_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "deal_id"
+          ],
+          "name": "ix_amendment_deal_id",
+          "unique": false
+        }
+      ]
+    },
+    "app_user": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "email",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(200)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "display_name",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "password_hash",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(200)"
+        },
+        {
+          "default": "ACTIVE",
+          "fk": null,
+          "name": "status",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "disabled_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "last_signed_in_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "invited_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "invited_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_user_status",
+          "sqltext": "status in ('ACTIVE','DISABLED')"
+        },
+        {
+          "kind": "UniqueConstraint",
+          "name": "ux_user_email",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_app_user_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "audit_event": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "occurred_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "actor_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "actor_display",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "action",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(48)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "subject_type",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(32)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "subject_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(60)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "outcome",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(16)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "payload_json",
+          "nullable": true,
+          "pk": false,
+          "type": "TEXT"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_audit_actor_user",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_audit_event_tenant_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "subject_type",
+            "subject_id"
+          ],
+          "name": "ix_audit_subject",
+          "unique": false
+        },
+        {
+          "columns": [
+            "occurred_at"
+          ],
+          "name": "ix_audit_event_occurred_at",
+          "unique": false
+        },
+        {
+          "columns": [
+            "actor_user_id",
+            "occurred_at"
+          ],
+          "name": "ix_audit_actor",
+          "unique": false
+        }
+      ]
+    },
+    "bank_statement_line": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "account_name",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "amount_pence",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "value_date",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "reference",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(60)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "received_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id",
+            "value_date"
+          ],
+          "name": "ix_statement_line",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_bank_statement_line_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "breach": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "counterparty.id"
+          ],
+          "name": "counterparty_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "deal.id"
+          ],
+          "name": "deal_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "type",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(20)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "detail",
+          "nullable": false,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": [
+            "cp_limit.id"
+          ],
+          "name": "limit_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "rating_event.id"
+          ],
+          "name": "rating_event_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "original_check_run_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": "OPEN",
+          "fk": null,
+          "name": "status",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "response",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(20)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "response_reason",
+          "nullable": true,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "responded_by",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "responded_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "responded_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "raised_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_breach_response",
+          "sqltext": "response is null or response in ('HOLD_TO_MATURITY','BREAK_EARLY','SEEK_RATIFICATION','REDUCE_ON_ROLL')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_breach_status",
+          "sqltext": "status in ('OPEN','RESPONDED')"
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_breach_type",
+          "sqltext": "type in ('AMOUNT','TENOR','GROUP','CONCENTRATION','RATING')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_breach_responded_by_user",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "counterparty_id"
+          ],
+          "name": "ix_breach_counterparty_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "deal_id"
+          ],
+          "name": "ix_breach_deal_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_breach_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "candidate": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "advisory_run.id"
+          ],
+          "name": "run_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "counterparty.id"
+          ],
+          "name": "counterparty_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "instrument",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(16)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "amount_pence",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "tenor_months",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "indicative_rate_bp",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "score_bp",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": "0",
+          "fk": null,
+          "name": "excluded",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "exclusion_reason",
+          "nullable": true,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "rank",
+          "nullable": true,
+          "pk": false,
+          "type": "INTEGER"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_candidate_excluded",
+          "sqltext": "excluded in (0,1)"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "run_id",
+            "excluded",
+            "rank"
+          ],
+          "name": "ix_candidate_run",
+          "unique": false
+        }
+      ]
+    },
+    "check_run": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "counterparty.id"
+          ],
+          "name": "counterparty_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "deal.id"
+          ],
+          "name": "deal_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "purpose",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(24)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "as_of_date",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "cp_limit.id"
+          ],
+          "name": "limit_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "policy_version.id"
+          ],
+          "name": "policy_version_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "outcome",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": "0",
+          "fk": null,
+          "name": "failed_count",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "measured_pence",
+          "nullable": true,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "measurement_basis",
+          "nullable": true,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "required_approver",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(24)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "inputs_json",
+          "nullable": false,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "results_json",
+          "nullable": false,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_by",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "created_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_check_run_outcome",
+          "sqltext": "outcome in ('PASS','FAIL','OVERRIDDEN')"
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_check_run_purpose",
+          "sqltext": "purpose in ('CHECK','BOOKING','RETEST','CORRECTION','AMENDMENT','ADVISORY_CANDIDATE','ADVISORY_VALIDATION')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_check_run_created_by_user",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "counterparty_id"
+          ],
+          "name": "ix_check_run_counterparty_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "deal_id"
+          ],
+          "name": "ix_check_run_deal_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_check_run_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "confirmation": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "deal.id"
+          ],
+          "name": "deal_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "counterparty.id"
+          ],
+          "name": "counterparty_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "message_type",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(16)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "reference",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(60)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "instrument",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(16)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "principal_pence",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "rate_bp",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "value_date",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "maturity_date",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "received_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "match_status",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "matched_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "raw_payload",
+          "nullable": true,
+          "pk": false,
+          "type": "TEXT"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_confirmation_match_status",
+          "sqltext": "match_status in ('UNMATCHED','MATCHED','MISMATCHED','DISPUTED')"
+        },
+        {
+          "kind": "UniqueConstraint",
+          "name": "ux_confirmation_reference",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_confirmation_message_type",
+          "sqltext": "message_type in ('MT300','MT320','MT535','MT536','BROKER_NOTE','DOCUMENT')"
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_confirmation_tenant_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id",
+            "match_status"
+          ],
+          "name": "ix_confirmation_unmatched",
+          "unique": false
+        }
+      ]
+    },
+    "counterparty": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "cp_group.id"
+          ],
+          "name": "group_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "name",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(200)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "legal_entity_identifier",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "group_parent_name",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(200)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "country",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(2)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "rating",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(8)"
+        },
+        {
+          "default": "STABLE",
+          "fk": null,
+          "name": "rating_status",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "status",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_by",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "created_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "verified_by",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "verified_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "approved_by",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "approved_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "activated_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "activated_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_counterparty_activated_by_user",
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_counterparty_rating_status",
+          "sqltext": "rating_status in ('STABLE','WATCH','NEGATIVE','POSITIVE')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_counterparty_created_by_user",
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_counterparty_status",
+          "sqltext": "status in ('DRAFT','VERIFIED','APPROVED','ACTIVE','SUSPENDED')"
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "group_id"
+          ],
+          "name": "ix_counterparty_group_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_counterparty_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "counterparty_instrument": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "counterparty.id"
+          ],
+          "name": "counterparty_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "instrument",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(16)"
+        },
+        {
+          "default": "1",
+          "fk": null,
+          "name": "enabled",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "UniqueConstraint",
+          "name": "ux_cp_instrument",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_cp_instrument_enabled",
+          "sqltext": "enabled in (0,1)"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_cp_instrument",
+          "sqltext": "instrument in ('DEPOSIT','FX_FORWARD','MMF','GILT')"
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_counterparty_instrument_tenant_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "counterparty_id"
+          ],
+          "name": "ix_counterparty_instrument_counterparty_id",
+          "unique": false
+        }
+      ]
+    },
+    "cp_group": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "name",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(200)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "group_limit_pence",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_cp_group_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "cp_limit": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "counterparty.id"
+          ],
+          "name": "counterparty_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "amount_pence",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "max_tenor_months",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "source",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "effective_from",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "superseded_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "superseded_by_event",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "reason",
+          "nullable": true,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "approved_by",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "approved_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "recorded_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "approved_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_cp_limit_approved_by_user",
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_limit_source",
+          "sqltext": "source in ('BAND','MANUAL')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_cp_limit_recorded_by_user",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "counterparty_id"
+          ],
+          "name": "ux_limit_current",
+          "unique": true
+        },
+        {
+          "columns": [
+            "counterparty_id"
+          ],
+          "name": "ix_cp_limit_counterparty_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_cp_limit_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "currency_cover_target": {
+      "columns": [
+        {
+          "default": null,
+          "fk": [
+            "investment_policy.id"
+          ],
+          "name": "policy_id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "currency",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(3)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "target_cover_bp",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "horizon_days",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": []
+    },
+    "currency_exposure": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "currency",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(3)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "amount_minor",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "direction",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "expected_date",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "source",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(20)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "source_reference",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(60)"
+        },
+        {
+          "default": "IDENTIFIED",
+          "fk": null,
+          "name": "status",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(20)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_by",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "created_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "settled_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "legal_entity_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_currency_direction",
+          "sqltext": "direction in ('PAYABLE','RECEIVABLE')"
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_currency_status",
+          "sqltext": "status in ('IDENTIFIED','PARTIALLY_COVERED','COVERED','SETTLED')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_currency_source",
+          "sqltext": "source in ('CONTRACT','PURCHASE_ORDER','INVOICE','FORECAST')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_currency_exposure_created_by",
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id",
+            "currency",
+            "expected_date"
+          ],
+          "name": "ix_currency_exposure_window",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_currency_exposure_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "deal": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "counterparty.id"
+          ],
+          "name": "counterparty_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "instrument",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(16)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "principal_pence",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "currency",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(3)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "rate_bp",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "tenor_months",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "trade_date",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "value_date",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "maturity_date",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "status",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": "KEYED",
+          "fk": null,
+          "name": "capture_source",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(20)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_by",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "created_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "required_approver",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(24)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "approved_by",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "approved_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "approved_role",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(24)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "approved_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "cp_limit.id"
+          ],
+          "name": "limit_id_at_booking",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "policy_version.id"
+          ],
+          "name": "policy_version_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "check_run_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "instructed_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "closed_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "legal_entity_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_deal_status",
+          "sqltext": "status in ('PROPOSED','BLOCKED','ACTIVE','MATURED','CLOSED','CANCELLED')"
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_deal_instrument",
+          "sqltext": "instrument in ('DEPOSIT','FX_FORWARD','MMF','GILT')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_deal_created_by_user",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_deal_capture_source",
+          "sqltext": "capture_source in ('KEYED','FROM_CONFIRMATION')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_deal_approved_by_user",
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "counterparty_id"
+          ],
+          "name": "ix_deal_counterparty_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id",
+            "status"
+          ],
+          "name": "ix_deal_status",
+          "unique": false
+        },
+        {
+          "columns": [
+            "counterparty_id",
+            "status"
+          ],
+          "name": "ix_deal_cp_active",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_deal_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "exception_item": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "deal.id"
+          ],
+          "name": "deal_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "confirmation_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "counterparty.id"
+          ],
+          "name": "counterparty_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "cause",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(24)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "reason_code",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "detail",
+          "nullable": false,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": [
+            "check_run.id"
+          ],
+          "name": "check_run_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": "OPEN",
+          "fk": null,
+          "name": "status",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "resolution",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(16)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "resolution_reason",
+          "nullable": true,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "raised_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "resolved_by",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "resolved_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "resolved_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_exception_resolution",
+          "sqltext": "resolution is null or resolution in ('RESIZED','REROUTED','OVERRIDDEN','CANCELLED','CORRECTED','CHALLENGED')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_exception_cause",
+          "sqltext": "cause in ('LIMIT_FAILURE','CONFIRMATION_MISMATCH')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_exception_resolved_by_user",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_exception_status",
+          "sqltext": "status in ('OPEN','RESOLVED')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id",
+            "status",
+            "cause"
+          ],
+          "name": "ix_queue_open",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_exception_item_tenant_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "deal_id"
+          ],
+          "name": "ix_exception_item_deal_id",
+          "unique": false
+        }
+      ]
+    },
+    "forecast_line": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "as_of",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "forecast_date",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "currency",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(3)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "amount_minor",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "entity",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "received_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_forecast_line_tenant_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id",
+            "forecast_date"
+          ],
+          "name": "ix_forecast_window",
+          "unique": false
+        }
+      ]
+    },
+    "fx_rate": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "pair",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(6)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "rate_e8",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "as_of",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "source",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "UniqueConstraint",
+          "name": "ux_fx_rate_day",
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_fx_rate_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "hedge_link": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "currency_exposure.id"
+          ],
+          "name": "currency_exposure_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "deal.id"
+          ],
+          "name": "deal_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "covered_amount_minor",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "linked_by",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "linked_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "unlinked_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "unlink_reason",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(24)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "unlinked_by",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_hedge_unlink_reason",
+          "sqltext": "unlink_reason is null or unlink_reason in ('ROLLED','CLOSED_EARLY','EXPOSURE_CANCELLED','REALLOCATED')"
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_hedge_link_tenant_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "currency_exposure_id"
+          ],
+          "name": "ix_hedge_live",
+          "unique": false
+        }
+      ]
+    },
+    "investment_policy": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "effective_from",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "superseded_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "liquidity_buffer_pence",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "buffer_horizon_days",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "priority_order",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(60)"
+        },
+        {
+          "default": "1",
+          "fk": null,
+          "name": "model_enabled",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "approved_by",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "recorded_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_investment_model_enabled",
+          "sqltext": "model_enabled in (0,1)"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_investment_policy_recorded_by",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_investment_policy_tenant_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ux_investment_policy_current",
+          "unique": true
+        }
+      ]
+    },
+    "journal": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "deal.id"
+          ],
+          "name": "deal_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "accrual.id"
+          ],
+          "name": "accrual_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "type",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(16)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "period",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(7)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "debit_account",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "credit_account",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "amount_pence",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": "BUILT",
+          "fk": null,
+          "name": "status",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "posted_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "oracle_reference",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(60)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_journal_type",
+          "sqltext": "type in ('ACCRUAL','SETTLEMENT','REVALUATION','REVERSAL')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_journal_status",
+          "sqltext": "status in ('BUILT','POSTED','FAILED')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_journal_tenant_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "deal_id"
+          ],
+          "name": "ix_journal_deal_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id",
+            "period",
+            "status"
+          ],
+          "name": "ix_journal_period",
+          "unique": false
+        }
+      ]
+    },
+    "ladder_target": {
+      "columns": [
+        {
+          "default": null,
+          "fk": [
+            "investment_policy.id"
+          ],
+          "name": "policy_id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "bucket",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "target_share_bp",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": "0",
+          "fk": null,
+          "name": "minimum_pence",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_ladder_bucket",
+          "sqltext": "bucket in ('0_3M','3_6M','6_12M','OVER_12M')"
+        }
+      ],
+      "indices": []
+    },
+    "legal_entity": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "code",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(24)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "name",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(200)"
+        },
+        {
+          "default": "GBP",
+          "fk": null,
+          "name": "base_currency",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(3)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "country",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(2)"
+        },
+        {
+          "default": "ACTIVE",
+          "fk": null,
+          "name": "status",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_legal_entity_status",
+          "sqltext": "status in ('ACTIVE','ARCHIVED')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "UniqueConstraint",
+          "name": "ux_legal_entity_code",
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_legal_entity_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "match_difference": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "confirmation.id"
+          ],
+          "name": "confirmation_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "field_name",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "keyed_value",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(60)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "confirmed_value",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(60)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "confirmation_id"
+          ],
+          "name": "ix_match_difference_confirmation_id",
+          "unique": false
+        }
+      ]
+    },
+    "membership": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "user_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "role",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(24)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "granted_by",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "granted_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "revoked_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_membership_role",
+          "sqltext": "role in ('ANALYST','HEAD_OF_TREASURY','CFO','OPERATOR','AUDITOR','ADMIN','COMPLIANCE_OFFICER')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_membership_user",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "user_id",
+            "role"
+          ],
+          "name": "ux_membership_live",
+          "unique": true
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_membership_tenant_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "user_id"
+          ],
+          "name": "ix_membership_user_id",
+          "unique": false
+        }
+      ]
+    },
+    "news_item": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "counterparty.id"
+          ],
+          "name": "counterparty_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "source",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(60)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "headline",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(240)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "body",
+          "nullable": false,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "published_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "ingested_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_news_item_tenant_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "counterparty_id"
+          ],
+          "name": "ix_news_item_counterparty_id",
+          "unique": false
+        }
+      ]
+    },
+    "oracle_balance": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "account_name",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "balance_pence",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "as_of_date",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "received_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id",
+            "as_of_date"
+          ],
+          "name": "ix_oracle_balance_asof",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_oracle_balance_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "oracle_instruction": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "deal.id"
+          ],
+          "name": "deal_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "type",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(24)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "amount_pence",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "currency",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(3)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "value_date",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": "PENDING",
+          "fk": null,
+          "name": "status",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(16)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "payload",
+          "nullable": true,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "oracle_reference",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(60)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_by",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "created_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "sent_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_instruction_type",
+          "sqltext": "type in ('PAYMENT_REQUEST','EXPECTED_INBOUND')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_instruction_created_by_user",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_instruction_status",
+          "sqltext": "status in ('PENDING','SENT','ACKNOWLEDGED','FAILED')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_oracle_instruction_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "policy_version": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "effective_from",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "superseded_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "concentration_cap_bp",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "threshold_analyst_pence",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "threshold_hot_pence",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "enforcement",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(24)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "fx_add_on_bp",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "approved_by",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_policy_enforcement",
+          "sqltext": "enforcement in ('HARD_BLOCK','WARN_WITH_OVERRIDE')"
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ux_policy_current",
+          "unique": true
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_policy_version_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "rating_band": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "rating",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(8)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "ordinal",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "max_limit_pence",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "max_tenor_months",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "UniqueConstraint",
+          "name": "ux_rating_band",
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_rating_band_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "rating_event": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "counterparty.id"
+          ],
+          "name": "counterparty_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "previous_rating",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(8)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "new_rating",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(8)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "previous_status",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "new_status",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "action",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "effective_date",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "source",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "policy_version.id"
+          ],
+          "name": "policy_version_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": "0",
+          "fk": null,
+          "name": "positions_tested",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": "0",
+          "fk": null,
+          "name": "breaches_raised",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "recorded_by",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "recorded_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "recorded_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_rating_event_recorded_by_user",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_rating_action",
+          "sqltext": "action in ('UPGRADE','DOWNGRADE','WATCH','AFFIRM')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "counterparty_id"
+          ],
+          "name": "ix_rating_event_counterparty_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_rating_event_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "recommendation": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "advisory_run.id"
+          ],
+          "name": "run_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "candidate.id"
+          ],
+          "name": "candidate_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "rationale",
+          "nullable": true,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "alternatives_json",
+          "nullable": false,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "source",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(16)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "decision",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "decided_by",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "decided_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "decided_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "decision_reason",
+          "nullable": true,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": [
+            "deal.id"
+          ],
+          "name": "deal_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_recommendation_decided_by",
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_rec_decision",
+          "sqltext": "decision is null or decision in ('ACCEPTED','EDITED','REJECTED','EXPIRED')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_rec_source",
+          "sqltext": "source in ('MODEL','RULE_FALLBACK')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": []
+    },
+    "settlement": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "deal.id"
+          ],
+          "name": "deal_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "expected_principal_pence",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "expected_interest_pence",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "confirmed_amount_pence",
+          "nullable": true,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "statement_amount_pence",
+          "nullable": true,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": [
+            "bank_statement_line.id"
+          ],
+          "name": "statement_line_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "match_status",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "break_detail",
+          "nullable": true,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "settled_by",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "settled_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "closed_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_settlement_status",
+          "sqltext": "match_status in ('PENDING','AGREED','BREAK')"
+        },
+        {
+          "kind": "UniqueConstraint",
+          "name": "ux_settlement_deal",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_settlement_settled_by",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_settlement_tenant_id",
+          "unique": false
+        }
+      ]
+    },
+    "system_clock": {
+      "columns": [
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "today_date",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(10)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "updated_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": []
+    },
+    "tenant": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "name",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(200)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [],
+      "indices": []
+    },
+    "user_entity_scope": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "tenant.id"
+          ],
+          "name": "tenant_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "user_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "legal_entity.id"
+          ],
+          "name": "legal_entity_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "granted_by",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "granted_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "revoked_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_scope_entity",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_scope_user",
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_user_entity_scope_tenant_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "user_id"
+          ],
+          "name": "ix_user_entity_scope_user_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "user_id",
+            "legal_entity_id"
+          ],
+          "name": "ux_scope_live",
+          "unique": true
+        }
+      ]
+    },
+    "validation_result": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "advisory_run.id"
+          ],
+          "name": "run_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "test",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(24)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "passed",
+          "nullable": false,
+          "pk": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "detail",
+          "nullable": true,
+          "pk": false,
+          "type": "TEXT"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_validation_test",
+          "sqltext": "test in ('ID_IS_REAL','CHECKS_RERUN_CLEAN','FIGURES_AGREE')"
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_validation_passed",
+          "sqltext": "passed in (0,1)"
+        }
+      ],
+      "indices": []
+    }
+  }
+}

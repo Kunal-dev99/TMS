@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "shape": "monorepo, two runtimes (python backend + next frontend), one sqlite file, one Caddy in front",
+  "layers": [
+    {
+      "name": "presentation",
+      "runtime": "next.js dev server (react 19)",
+      "dir": "frontend/",
+      "entry": "frontend/app/page.tsx",
+      "port_dev": 3000,
+      "conventions": [
+        "one surface (one URL) — the whole treasurer view is `/`",
+        "one panel open at a time; opening one closes another",
+        "no back button (no stack)",
+        "PanelShell owns focus return, escape, scrim"
+      ]
+    },
+    {
+      "name": "api",
+      "runtime": "uvicorn + fastapi",
+      "dir": "backend/app/api/",
+      "entry": "backend/app/main.py",
+      "port_dev": 8000,
+      "routers": [
+        "auth", "state", "deals", "confirmations", "accounting", "counterparties",
+        "control", "advisory", "currency", "fx", "jobs", "scenarios",
+        "planner", "performance", "rates", "system_policy", "admin"
+      ],
+      "prefix": "/api/v1"
+    },
+    {
+      "name": "services",
+      "dir": "backend/app/services/",
+      "purpose": "business logic; the CheckEngine lives here"
+    },
+    {
+      "name": "repo",
+      "dir": "backend/app/repo/",
+      "purpose": "sqlalchemy queries only, no business logic"
+    },
+    {
+      "name": "models",
+      "dir": "backend/app/models.py",
+      "purpose": "sqlalchemy declarative base; single file for the whole schema"
+    }
+  ],
+  "cross_layer_rules": {
+    "money": "integer pence throughout; never floats",
+    "rates": "integer basis points",
+    "dates": "ISO 8601 text (SQLite has no date type)",
+    "ids": "prefixed strings via ids.new_id(prefix), e.g. 'dl_ab12', 'cxp_...'"
+  },
+  "invariants": [
+    "Every path into the book runs one CheckEngine (deposit ticket, planner allocation, FX hedge initiation).",
+    "AI never books a deal. AI writes prose and picks from a whitelist; deterministic code checks and commits.",
+    "Counterparty exposure and currency exposure are separate concerns — different tables, different units, no query joins them.",
+    "Money is integer pence; never floats.",
+    "Rates are integer basis points; never floats.",
+    "One tenant now, schema supports many (tenant_id on every operational row).",
+    "Every change to a policy or a limit creates a new versioned row; old rows are marked superseded_at, not deleted.",
+    "The Treasury Register Connector is FIRST-PARTY — never named 'Oracle Integration Cloud' anywhere in code or UI."
+  ],
+  "traffic_flow_production": [
+    "browser → https://treasury-management-system.fusionpractices.com (TLS via Caddy + Let's Encrypt)",
+    "Caddy → 127.0.0.1:3000 (Next dev server, --hostname 0.0.0.0)",
+    "Next.js → same-origin /api/* rewritten to http://127.0.0.1:8000 (env TREASURY_API_ORIGIN)",
+    "FastAPI → SQLite file (backend/app.db) + optional Groq HTTPS for AI paths"
+  ],
+  "gaps_from_enterprise_grade": [
+    "no SSO (email+password only)",
+    "no managed database (SQLite file)",
+    "no CI/CD pipeline",
+    "no observability stack (structured logs / metrics / traces / alerting)",
+    "no WAF or rate limiting",
+    "no tenant provisioning UI",
+    "no persona pages (admin / compliance / approvals) — treasurer only",
+    "in-memory settings singletons reset on process restart"
+  ]
+}

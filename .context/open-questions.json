@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "questions": [
+    {
+      "id": "Q-001",
+      "date_raised": "2026-09-18",
+      "question": "SMTP provider for invite emails when /admin invite is built",
+      "blocking": "admin invite flow (Track 1, Week 2)",
+      "options": ["log to console + toast (prototype default)", "SendGrid", "SES", "Azure Communication Services"]
+    },
+    {
+      "id": "Q-002",
+      "date_raised": "2026-09-18",
+      "question": "Tenancy model when we go multi-tenant",
+      "blocking": "second-customer sale",
+      "options": ["shared schema + tenant_id column (fast, needs strict row-level security)", "schema-per-tenant (heavier isolation, easier compliance story)"]
+    },
+    {
+      "id": "Q-003",
+      "date_raised": "2026-09-18",
+      "question": "Where does the audit event feed live — dedicated audit_event table, or a view over existing tables?",
+      "blocking": "compliance page activity log (Track 1, Week 3)",
+      "options": ["dedicated audit_event table written from services (best for future non-DB events like AI runs)", "view stitching check_run + hedge_link + policy_version (no schema change; harder to add new event types)"]
+    },
+    {
+      "id": "Q-004",
+      "date_raised": "2026-09-18",
+      "question": "Do we persist LLM prompts + responses for compliance review?",
+      "blocking": "compliance AI activity log (Track 1, Week 4)",
+      "options": ["yes, ai_run table with full prompt+response", "yes, but only metadata (endpoint, model, tokens, timestamp)", "no"],
+      "recommendation": "yes, ai_run with full text — same reason CheckRun stores every input"
+    }
+  ]
+}

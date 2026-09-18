@@ -1,0 +1,38 @@
+{
+  "id": "ADR-0011",
+  "date": "2026-09-18",
+  "status": "accepted",
+  "title": "Permission matrix separates administration from financial authority",
+  "context": "Research into enterprise treasury tools (Treasury Systems, Nomentia, TIS) shows a consistent pattern: 'managing access' (add/remove users, grant roles) is separated from 'financial authority' (propose / approve / book / override). Treasury Systems explicitly recommends removing its unrestricted 'Everything' role after implementation. Nomentia and TIS gate by specific business action, not role name. Our previous Admin gate was role-based (`require_role('ADMIN')`) — good for the initial cut but limiting.",
+  "decision": "Introduce a Permission enum and a role→permissions matrix as the single source of truth for authority. Roles remain the grant unit; permissions are the gate unit. Backend endpoints use `require_permission(...)` in place of / alongside `require_role(...)`. The Admin page renders effective access in plain English ('Can propose deposits · Cannot approve · Cannot change policy') derived from the matrix.",
+  "role_permission_map": {
+    "ADMIN": ["view.book", "view.exposure", "view.audit", "admin.users", "admin.roles", "admin.tenant"],
+    "COMPLIANCE_OFFICER": ["view.book", "view.exposure", "view.audit", "export.data"],
+    "CFO": ["view.*", "deal.propose", "deal.approve", "deal.book", "deal.override", "hedge.initiate", "policy.*.change", "counterparty.change", "export.data"],
+    "HEAD_OF_TREASURY": ["view.*", "deal.propose", "deal.approve", "deal.book", "hedge.initiate", "policy.investment.change", "policy.fx.change", "counterparty.change", "export.data"],
+    "ANALYST": ["view.book", "view.exposure", "deal.propose", "hedge.initiate"],
+    "OPERATOR": ["view.book", "view.exposure"],
+    "AUDITOR": ["view.book", "view.exposure", "view.audit", "export.data"]
+  },
+  "invariants": [
+    "ADMIN does NOT grant automatic dealing or approval authority — administration is a separate concern from financial authority. Treasury Systems and Nomentia both enforce this shape.",
+    "COMPLIANCE_OFFICER is read-only across the audit trail; never mutates the book.",
+    "Every backend gate uses a permission, not a role name. Roles are the grant unit; permissions are the enforcement unit.",
+    "The plain-English label per permission is authoritative — the Admin UI reads it verbatim so 'Can' / 'Cannot' phrasing stays consistent across screens."
+  ],
+  "consequences": [
+    "backend/app/services/permissions.py holds the Permission enum, ROLE_PERMISSIONS, PERMISSION_LABEL and summarise_permissions()",
+    "backend/app/services/identity_service.py — Principal.can(permission) helper",
+    "backend/app/api/deps.py — require_permission() dependency factory (require_role kept for legacy)",
+    "GET /admin/roles now returns each role's permission list + plain-English can[]",
+    "GET /admin/users now returns each user's effective_access { held, can, cannot }",
+    "GET /auth/me + POST /auth/token now return the caller's permissions[] alongside roles[] — the frontend prefers permissions for gating UI",
+    "frontend/lib/session.ts — can(...permissions) helper; hasRole kept for coarse persona-nav gating",
+    "frontend/app/admin/page.tsx — RolesCard shows 'Can …' per role; UsersTable shows an EffectiveAccessSummary per user; EditUserPanel shows a RoleChangePreview of gains/losses before Save"
+  ],
+  "future_work": [
+    "New backend endpoints should default to require_permission over require_role.",
+    "Company/legal-entity scope (Phase B) will layer onto Permission by pairing (permission, entity_id).",
+    "Four-eye control (Phase D) applies to grants of ADMIN / CFO / COMPLIANCE_OFFICER — grants of permissions that would elevate financial or administrative authority."
+  ]
+}

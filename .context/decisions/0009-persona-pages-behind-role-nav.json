@@ -1,0 +1,17 @@
+{
+  "id": "ADR-0009",
+  "date": "2026-09-18",
+  "status": "accepted",
+  "title": "Persona expansion uses multi-page routes with role-gated nav — each page keeps its own 'one surface, one panel' rule",
+  "context": "Track 1 (admin, compliance, approvals) needs to grow the app beyond the single treasurer surface without breaking the panel-over-surface pattern.",
+  "decision": "Add top-nav routes: `/` (treasurer, unchanged), `/admin`, `/compliance`, `/approvals`. Each route has its own strip and panels; each keeps the 'one panel at a time' rule. Nav entries are gated by role — a user only sees the pages their roles permit.",
+  "alternatives_rejected": [
+    "Everything in the single strip (rejected — a compliance officer scrolling a decade of audit trail needs the full canvas, not a right-side panel)"
+  ],
+  "consequences": [
+    "New shared PageShell component wrapping the top-nav + persona-labelled header",
+    "Route-level auth in the frontend (hasRole helper reading from /auth/me)",
+    "Backend endpoints for admin/compliance/approvals live under prefixed tags with require_role decorators",
+    "Treasurer view stays byte-for-byte identical to today's shape"
+  ]
+}

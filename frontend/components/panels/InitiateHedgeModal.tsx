@@ -23,6 +23,7 @@ import {
   type FxCounterparty,
   type FxRateQuote,
 } from "@/lib/api";
+import { currentUser } from "@/lib/session";
 import type { CheckResult } from "@/lib/types";
 
 /**
@@ -71,6 +72,14 @@ export function InitiateHedgeModal({
   const [advice, setAdvice] = useState<string[] | null>(null);
   const [adviceLoading, setAdviceLoading] = useState(false);
   const adviceAbort = useRef<AbortController | null>(null);
+  // Legal entity the hedge is booked under. Options come from the
+  // signed-in user's scope; default is the first scoped entity whose
+  // base currency matches the hedge currency (else the first scoped one).
+  const scopedEntities = useMemo(
+    () => currentUser()?.scope?.entities ?? [],
+    [],
+  );
+  const [legalEntityId, setLegalEntityId] = useState<string>("");
 
   const pair = `${currency}_GBP`;
 
@@ -85,6 +94,15 @@ export function InitiateHedgeModal({
     setReference("");
     setComments("");
     setError(null);
+    // Default the entity to a currency-matching scoped one, else the first.
+    if (scopedEntities.length > 0) {
+      const match =
+        scopedEntities.find((e) => e.base_currency === currency) ??
+        scopedEntities[0];
+      setLegalEntityId(match.id);
+    } else {
+      setLegalEntityId("");
+    }
     getFxCounterparties()
       .then((rows) => {
         setCounterparties(rows);
@@ -215,6 +233,7 @@ export function InitiateHedgeModal({
         reference: reference || undefined,
         comments: comments || undefined,
         override_reason: failedChecks ? overrideReason : undefined,
+        legal_entity_id: legalEntityId || undefined,
       });
       onDone();
       onClose();
@@ -415,6 +434,29 @@ export function InitiateHedgeModal({
                   className="mt-2 w-full accent-[hsl(var(--primary))]"
                 />
               </div>
+
+              {/* Legal entity — where the hedge is booked in the group */}
+              {scopedEntities.length > 0 ? (
+                <div>
+                  <label className="text-[10.5px] font-semibold text-foreground">
+                    Book under legal entity
+                  </label>
+                  <select
+                    value={legalEntityId}
+                    onChange={(e) => setLegalEntityId(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium focus:ring-1 focus:ring-primary outline-none"
+                  >
+                    {scopedEntities.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.code} · {e.name} · base {e.base_currency}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-0.5 text-[9.5px] italic text-muted-foreground">
+                    Only entities you have scope for are listed (ADR-0012).
+                  </p>
+                </div>
+              ) : null}
 
               {/* Counterparty selector */}
               <div>

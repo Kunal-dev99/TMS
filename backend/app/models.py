@@ -329,6 +329,9 @@ class Deal(Base):
     check_run_id: Mapped[str | None] = mapped_column(String(40))
     instructed_at: Mapped[str | None] = mapped_column(String(30))
     closed_at: Mapped[str | None] = mapped_column(String(30))
+    # Which legal entity of the customer's group this deal is booked under
+    # (ADR-0012 / Phase B.2). Nullable for old rows; new writes must set it.
+    legal_entity_id: Mapped[str | None] = mapped_column(String(40))
 
     __table_args__ = (
         CheckConstraint(
@@ -576,6 +579,12 @@ class AppUser(Base):
     status: Mapped[str] = mapped_column(String(12), nullable=False, default="ACTIVE")
     created_at: Mapped[str] = mapped_column(String(30), nullable=False)
     disabled_at: Mapped[str | None] = mapped_column(String(30))
+    # Admin-page metadata (added 2026-09-18). invited_by_user_id is a
+    # plain reference (no FK) to avoid SQLite's batch-alter limitation
+    # around self-referencing keys; integrity enforced in the admin service.
+    last_signed_in_at: Mapped[str | None] = mapped_column(String(30))
+    invited_by_user_id: Mapped[str | None] = mapped_column(String(40))
+    invited_at: Mapped[str | None] = mapped_column(String(30))
 
     __table_args__ = (
         CheckConstraint("status in ('ACTIVE','DISABLED')", name="ck_user_status"),
@@ -605,7 +614,8 @@ class Membership(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "role in ('ANALYST','HEAD_OF_TREASURY','CFO','OPERATOR','AUDITOR')",
+            "role in ('ANALYST','HEAD_OF_TREASURY','CFO','OPERATOR','AUDITOR',"
+            "'ADMIN','COMPLIANCE_OFFICER')",
             name="ck_membership_role",
         ),
         Index(
@@ -1218,6 +1228,8 @@ class CurrencyExposure(Base):
     )
     created_at: Mapped[str] = mapped_column(String(30), nullable=False)
     settled_at: Mapped[str | None] = mapped_column(String(30))
+    # Which legal entity the receivable is due to (Phase B.2).
+    legal_entity_id: Mapped[str | None] = mapped_column(String(40))
 
     __table_args__ = (
         CheckConstraint(
@@ -1325,6 +1337,187 @@ class NewsItem(Base):
     ingested_at: Mapped[str] = mapped_column(String(30), nullable=False)
 
 
+class LegalEntity(Base):
+    """A subsidiary in the corporate group's own legal structure.
+
+    Distinct from `counterparty` (banks we trade WITH) and from `tenant`
+    (the customer of Treasury Register). This is the customer's OWN
+    subsidiary — Northgate Treasury UK Ltd, Northgate Europe GmbH, etc.
+
+    Introduced 2026-09-18 (ADR-0012) as the substrate for user scope:
+    an admin can grant a user access to one, several, or (group-wide) all
+    of these. Every deal, hedge and exposure is tagged with the entity
+    it belongs to, and the six-check gate refuses to book on an entity
+    the user has no scope for.
+    """
+
+    __tablename__ = "legal_entity"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    code: Mapped[str] = mapped_column(String(24), nullable=False)  # e.g. NG_UK
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    base_currency: Mapped[str] = mapped_column(String(3), nullable=False, default="GBP")
+    country: Mapped[str | None] = mapped_column(String(2))
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="ACTIVE")
+    created_at: Mapped[str] = mapped_column(String(30), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("status in ('ACTIVE','ARCHIVED')", name="ck_legal_entity_status"),
+        UniqueConstraint("tenant_id", "code", name="ux_legal_entity_code"),
+    )
+
+
+class UserEntityScope(Base):
+    """Which legal entities a user may act for.
+
+    A row per (user, entity). A single row with `legal_entity_id IS NULL`
+    is 'group-wide' — the user may act for every entity in the tenant.
+    Revoked rows stay for evidence; the live scope is
+    `revoked_at IS NULL`.
+    """
+
+    __tablename__ = "user_entity_scope"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    user_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("app_user.id", name="fk_scope_user"), nullable=False, index=True
+    )
+    # NULL = group-wide access (every entity in the tenant).
+    legal_entity_id: Mapped[str | None] = mapped_column(
+        String(40), ForeignKey("legal_entity.id", name="fk_scope_entity")
+    )
+    granted_by: Mapped[str] = mapped_column(String(120), nullable=False)
+    granted_at: Mapped[str] = mapped_column(String(30), nullable=False)
+    revoked_at: Mapped[str | None] = mapped_column(String(30))
+
+    __table_args__ = (
+        Index(
+            "ux_scope_live",
+            "user_id",
+            "legal_entity_id",
+            unique=True,
+            sqlite_where=text("revoked_at IS NULL"),
+        ),
+    )
+
+
+class AccessChangeRequest(Base):
+    """A pending sensitive access change awaiting a second admin.
+
+    Introduced 2026-09-18 (ADR-0015). Enterprise treasury tools (Treasury
+    Systems' 'four-eye control') require an independent approval for
+    increases to sensitive authority — granting ADMIN, CFO, or
+    COMPLIANCE_OFFICER. Removals still apply immediately (research is
+    explicit on that). This table holds only the increases; it's the
+    'Access changes' inbox on the Admin page.
+
+    subject_type is currently always 'user'; kept as a column so future
+    sensitive changes (e.g. group-wide scope) can queue here without
+    another table.
+    """
+
+    __tablename__ = "access_change_request"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    subject_type: Mapped[str] = mapped_column(String(24), nullable=False)
+    subject_id: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    change_type: Mapped[str] = mapped_column(String(24), nullable=False)  # e.g. role.grant
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="PENDING")
+    requested_by_user_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("app_user.id", name="fk_access_req_requester"), nullable=False
+    )
+    requested_by_display: Mapped[str] = mapped_column(String(120), nullable=False)
+    requested_at: Mapped[str] = mapped_column(String(30), nullable=False)
+    reviewed_by_user_id: Mapped[str | None] = mapped_column(
+        String(40), ForeignKey("app_user.id", name="fk_access_req_reviewer")
+    )
+    reviewed_by_display: Mapped[str | None] = mapped_column(String(120))
+    reviewed_at: Mapped[str | None] = mapped_column(String(30))
+    review_reason: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (
+        CheckConstraint(
+            "status in ('PENDING','APPROVED','REJECTED','WITHDRAWN')",
+            name="ck_access_req_status",
+        ),
+    )
+
+
+class ActivationToken(Base):
+    """A single-use, time-limited activation or password-reset link.
+
+    Introduced 2026-09-18 (ADR-0014) as the replacement for the initial
+    'return the temp password inline' shape. The invite flow issues an
+    INVITE token; the admin reset flow issues a RESET token. Consuming
+    the token lets the user set their own password. Neither the admin
+    nor Treasury Register ever sees the chosen password.
+
+    Rows are never deleted — a consumed token stays in place with
+    `consumed_at` set, both as evidence and as a natural anti-replay
+    check.
+    """
+
+    __tablename__ = "activation_token"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    user_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("app_user.id", name="fk_activation_user"), nullable=False, index=True
+    )
+    # SHA-256 of the raw token bytes. The raw token is only ever shown
+    # once, right after `issue_token` — it isn't recoverable from the DB.
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    purpose: Mapped[str] = mapped_column(String(16), nullable=False)  # INVITE | RESET
+    expires_at: Mapped[str] = mapped_column(String(30), nullable=False)
+    consumed_at: Mapped[str | None] = mapped_column(String(30))
+    created_by: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_at: Mapped[str] = mapped_column(String(30), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("purpose in ('INVITE','RESET')", name="ck_activation_purpose"),
+    )
+
+
+class AuditEvent(Base):
+    """A single durable record of something a person or the system did.
+
+    The dedicated table (rather than a view stitching check_run + hedge_link
+    + policy_version) is the compliance page's substrate. It also carries
+    events the DB tables alone cannot express — AI runs, sign-ins, admin
+    actions, policy edits. Compliance officers filter this feed by user,
+    date, subject_type, action.
+
+    subject_id references whatever the action was about — a deal_id, a
+    counterparty_id, a policy_id, an ai_run_id. Not a foreign key, so
+    rows survive when the subject moves.
+    """
+
+    __tablename__ = "audit_event"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    occurred_at: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+    actor_user_id: Mapped[str | None] = mapped_column(
+        String(40), ForeignKey("app_user.id", name="fk_audit_actor_user")
+    )
+    actor_display: Mapped[str | None] = mapped_column(String(120))
+    action: Mapped[str] = mapped_column(String(48), nullable=False)
+    subject_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    subject_id: Mapped[str | None] = mapped_column(String(60))
+    outcome: Mapped[str | None] = mapped_column(String(16))
+    payload_json: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (
+        Index("ix_audit_subject", "subject_type", "subject_id"),
+        Index("ix_audit_actor", "actor_user_id", "occurred_at"),
+    )
+
+
 #: Every table the running system has. Named for the phase that introduced
 #: the first of them; identity added two in phase 1.5, accounting and the
 #: advisory layer added ten in phase 2, and the deal lifecycle and currency
@@ -1366,4 +1559,9 @@ PHASE_ONE_TABLES = [
     HedgeLink,
     FxRate,
     NewsItem,
+    AuditEvent,
+    LegalEntity,
+    UserEntityScope,
+    ActivationToken,
+    AccessChangeRequest,
 ]

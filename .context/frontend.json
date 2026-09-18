@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "shape": "Next.js 16 App Router; single page (`/`); panels open over the surface.",
+  "routes": {
+    "/": {
+      "component": "frontend/app/page.tsx (Surface)",
+      "description": "The whole treasurer view — strip nav across the bottom, ticket + AI hero on top, panels open over."
+    }
+  },
+  "planned_routes_track_1": [
+    { "path": "/admin", "purpose": "user + role management", "role_gate": "ADMIN" },
+    { "path": "/compliance", "purpose": "audit trail viewer, policy history, override register, AI activity log", "role_gate": ["COMPLIANCE_OFFICER", "CFO", "ADMIN"] },
+    { "path": "/approvals", "purpose": "signer's queue, delegation, bulk approvals", "role_gate": "any role that can sign" }
+  ],
+  "strip_entries_treasurer": [
+    "Exposure", "Performance", "Hedging", "Queue", "Breaches", "Advisory", "Ratings and policy", "Control"
+  ],
+  "panels": {
+    "shell": "frontend/components/PanelShell.tsx — width 660px or 92% on narrow; owns scrim, escape, focus return",
+    "list": [
+      "ExposurePanel", "PerformancePanel", "HedgingPanel", "InitiateHedgeModal", "FxPolicyPanel",
+      "QueuePanel", "BreachesPanel", "AdvisoryRunPanel", "CreditSignalsPanel",
+      "RatingsPanel", "ControlPanel", "PlannerSettingsPanel", "AccountingEventsPanel",
+      "SystemPolicyPanel", "ReferenceSourcesPanel", "OnboardingPanel", "EvidencePanel",
+      "PlannerModal", "ConfirmationParseModal"
+    ]
+  },
+  "design_tokens": {
+    "theme": "Redwood (in-app) — brick red primary",
+    "primary_hsl": "8 68% 38%",
+    "muted_ground": "off-white",
+    "brand_partner_lockup": "Fusion Practices + Oracle Partner (external decks only, not in-app palette)"
+  },
+  "formatting_rules": [
+    "Money in short form: £800k, €10m, $21m, CHF 7.2m — never full digit strings in prose.",
+    "Percentages: perCent() helper, one decimal for rates (4.25%), whole for coverage (60% hedged).",
+    "Numbers use `num` tailwind class for tabular alignment.",
+    "No emojis in code output unless the user explicitly asks."
+  ],
+  "shared_helpers": {
+    "formatMoney(minorUnits, currency)": "€10m / $21m / CHF 7.2m / £800k style",
+    "sterling(pence)": "£X,XXX,XXX (used on stats where full-precision matters)",
+    "perCent(bp)": "converts basis points to percentage string"
+  },
+  "shared_components": {
+    "Button": "frontend/components/ui/button.tsx",
+    "PanelShell": "frontend/components/PanelShell.tsx",
+    "Stat": "small labelled figure",
+    "ConfigChip": "rounded pill with label + value, used in PlannerModal's 'Investment principles in use' row",
+    "Strip": "frontend/components/Strip.tsx — 8-entry bottom nav"
+  },
+  "api_client": {
+    "file": "frontend/lib/api.ts",
+    "base": "/api/v1 (same-origin via next rewrites)",
+    "helpers": ["get<T>", "post<T>", "put<T>", "request<T>"],
+    "auth": "Authorization: Bearer {token} from lib/session.ts"
+  },
+  "next_config": {
+    "file": "frontend/next.config.mjs",
+    "rewrites": "/api/:path* → TREASURY_API_ORIGIN (default http://127.0.0.1:8001 mock)",
+    "allowedDevOrigins": ["treasury-management-system.fusionpractices.com", "treasury-managment-system.westus2.cloudapp.azure.com"]
+  },
+  "ui_conventions": [
+    "One panel at a time — never stack two.",
+    "Modals block; panels dim the surface.",
+    "Refresh state after every write: page.tsx pattern is `load()` returning full StateResponse.",
+    "AI blocks always carry a caveat line — 'never predicts rates' / 'governance narration, not a market view'.",
+    "Every currency card shows the derivation: `X × N% − hedged = gap`."
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "ADR-0001",
+  "date": "2026-08",
+  "status": "accepted",
+  "title": "One surface, one URL, one panel at a time",
+  "context": "The whole treasurer view is a single page. Panels open over the surface for detail. Anil's rule: no page loads after the first, no back button, one panel open at a time.",
+  "decision": "The treasurer view lives at `/` and is a single React component (Surface in page.tsx). Panel state is a single value, not a stack — opening one closes the other by construction.",
+  "alternatives_rejected": [
+    "Multi-page nav for the treasurer view (breaks the 'one URL to open on the day' rule)",
+    "Panel stack with a back button (invites drilling that has no return path in the mental model)"
+  ],
+  "consequences": [
+    "PanelShell owns scrim, escape, focus return",
+    "State refresh pattern: after every write, refetch full StateResponse — no optimistic updates",
+    "Persona expansion (admin/compliance/approvals) will use separate routes but each route keeps its own 'one surface, one panel' rule (ADR-0009)"
+  ]
+}

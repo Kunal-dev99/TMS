@@ -434,6 +434,23 @@ ORACLE_INSTRUCTIONS: list = []
 
 DEMO_PASSWORD = "treasury"
 
+# --------------------------------------------------------------------------
+# A user invited but not yet activated — appears in the Admin users table
+# with the amber "Pending activation" badge. Their activation token is
+# seeded live so a manual test can consume it (see the seed loader for
+# the URL printed to console).
+# --------------------------------------------------------------------------
+
+PENDING_USERS = [
+    {
+        "id": "usr_lin",
+        "email": "s.lin@northgate.example",
+        "display_name": "S. Lin",
+        "roles": ["ANALYST"],
+        "invited_days_ago": 0,
+    },
+]
+
 USERS = [
     {
         "id": "usr_whitfield",
@@ -450,12 +467,73 @@ USERS = [
         "note": "Signs up to the second threshold. The signer in the run sheet.",
     },
     {
+        "id": "usr_price",
+        "email": "l.price@northgate.example",
+        "display_name": "L. Price",
+        "roles": ["ADMIN"],
+        "note": "Second admin — needed to demonstrate four-eye control on sensitive access grants (ADR-0015).",
+    },
+    {
         "id": "usr_sethi",
         "email": "r.sethi@northgate.example",
         "display_name": "R. Sethi",
-        "roles": ["CFO"],
+        "roles": ["CFO", "ADMIN", "COMPLIANCE_OFFICER"],
         "note": "Signs anything above the second threshold.",
     },
+]
+
+# --------------------------------------------------------------------------
+# Legal entities — the customer's own corporate subsidiaries.
+# Distinct from counterparties (banks) and from tenants (customers).
+# Introduced with the Admin scope feature (ADR-0012).
+# --------------------------------------------------------------------------
+
+# The primary operating entity — used as the default legal_entity_id for
+# any seed row that doesn't name one, so the demo book has a coherent
+# origin story ("everything lives under NG_UK unless we say otherwise").
+DEFAULT_LEGAL_ENTITY = "le_ng_uk"
+
+# Rough mapping used to backfill seeded FX exposures: EUR receivables
+# land in the DE entity, USD in the US entity, everything else in UK.
+LEGAL_ENTITY_BY_CURRENCY = {
+    "EUR": "le_ng_de",
+    "USD": "le_ng_us",
+    "GBP": "le_ng_uk",
+    "CHF": "le_ng_uk",
+}
+
+LEGAL_ENTITIES = [
+    {
+        "id": "le_ng_uk",
+        "code": "NG_UK",
+        "name": "Northgate Treasury UK Ltd",
+        "base_currency": "GBP",
+        "country": "GB",
+    },
+    {
+        "id": "le_ng_de",
+        "code": "NG_DE",
+        "name": "Northgate Europe GmbH",
+        "base_currency": "EUR",
+        "country": "DE",
+    },
+    {
+        "id": "le_ng_us",
+        "code": "NG_US",
+        "name": "Northgate North America Inc",
+        "base_currency": "USD",
+        "country": "US",
+    },
+]
+
+# Per-user scope seed. `legal_entity_id = None` means group-wide access.
+# The CFO gets group-wide (they sign anywhere); Head of Treasury has UK+EU;
+# the Analyst starts UK-only.
+USER_SCOPES = [
+    {"user_id": "usr_sethi",     "legal_entity_id": None},          # group-wide
+    {"user_id": "usr_doran",     "legal_entity_id": "le_ng_uk"},
+    {"user_id": "usr_doran",     "legal_entity_id": "le_ng_de"},
+    {"user_id": "usr_whitfield", "legal_entity_id": "le_ng_uk"},
 ]
 
 # --------------------------------------------------------------------------

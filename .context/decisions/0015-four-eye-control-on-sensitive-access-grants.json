@@ -1,0 +1,43 @@
+{
+  "id": "ADR-0015",
+  "date": "2026-09-18",
+  "status": "accepted",
+  "title": "Four-eye control on sensitive access grants; removals apply immediately",
+  "context": "Research into enterprise treasury tools (Treasury Systems' 'four-eye control', Nomentia's approval workflow) shows two rules that must hold together: (a) increases to sensitive authority need an independent approval — a second admin must sign off; (b) removals apply immediately, no waiting on approval. Without (a) an admin can silently grant themselves financial authority. Without (b) an urgent revoke sits in a queue.",
+  "decision": "Grants of ADMIN, CFO or COMPLIANCE_OFFICER go through a pending queue that another admin must approve. Grants of any other role, revocations of any role, and status/name/scope changes all apply immediately. Requester != reviewer is enforced server-side (SEGREGATION_OF_DUTIES) — the reviewer cannot approve their own request even if they hold ADMIN.",
+  "sensitive_roles": ["ADMIN", "CFO", "COMPLIANCE_OFFICER"],
+  "shape": {
+    "table": "access_change_request { id, tenant_id, subject_type, subject_id, change_type, payload_json, reason, status IN('PENDING','APPROVED','REJECTED','WITHDRAWN'), requested_by, requested_at, reviewed_by, reviewed_at, review_reason }",
+    "service": "backend/app/services/access_change_service.py — is_sensitive, create_role_grant_request, list_pending, approve, reject; enforces requester != reviewer",
+    "endpoints": [
+      "GET /admin/access-changes — list PENDING requests for the tenant",
+      "POST /admin/access-changes/{id}/approve — apply the change and stamp reviewer",
+      "POST /admin/access-changes/{id}/reject — refuse with a required reason"
+    ],
+    "PATCH_admin_users_behaviour": "When body.roles adds a sensitive role, the sync creates a pending request instead of writing a Membership. Non-sensitive additions and any revocations apply the same call. Response reports both roles_applied and roles_pending_review in the audit payload.",
+    "user_row": "UserRow gains pending_role_grants: list[str] — the sensitive roles awaiting review for this user. Rendered as an amber 'Pending: CFO' chip in the Admin users table."
+  },
+  "invariants": [
+    "A user with pending sensitive grants signs in without those roles until a second admin approves. Their /auth/me returns the applied set only.",
+    "A reviewer cannot approve or reject their own request (server enforces via SEGREGATION_OF_DUTIES).",
+    "Rejection requires a non-empty reason (REJECTION_REASON_REQUIRED).",
+    "Applying an APPROVED request is idempotent — if the grant already exists (another admin acted in parallel), the approval marks reviewed but doesn't duplicate the Membership.",
+    "Revocations always apply immediately — even of sensitive roles. There is no queue for removal."
+  ],
+  "seed_state_2026_09_18": {
+    "admins": ["r.sethi (also CFO + COMPLIANCE_OFFICER)", "l.price (ADMIN only — seeded so the demo has two admins for a proper four-eye flow)"]
+  },
+  "future_work": [
+    "Scope-widening (e.g. granting group-wide access to a previously scoped user) should join the four-eye queue.",
+    "'Withdraw my request' action for the requester on their own pending row.",
+    "Configurable list of sensitive roles per tenant (currently a hard-coded set)."
+  ],
+  "consequences": [
+    "backend/app/models.py — AccessChangeRequest",
+    "backend/app/services/access_change_service.py — new",
+    "backend/app/api/admin_users.py — _sync_roles queues sensitive grants; UserRow includes pending_role_grants; new /admin/access-changes endpoints",
+    "backend/app/seed_data.py — usr_price added as a second admin",
+    "frontend/lib/api.ts — AdminAccessChange type + listAdminAccessChanges/approveAdminAccessChange/rejectAdminAccessChange",
+    "frontend/app/admin/page.tsx — AccessChangesCard queue + amber 'Pending: {role}' chip on user rows + RoleChangePreview warns before Save"
+  ]
+}

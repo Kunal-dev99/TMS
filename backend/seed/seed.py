@@ -44,7 +44,7 @@ from app.models import (
     SystemClock,
     Tenant,
 )
-from app.models import Membership, PHASE_ONE_TABLES
+from app.models import LegalEntity, Membership, PHASE_ONE_TABLES, UserEntityScope
 from app.security import hash_password
 
 NOW = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -96,6 +96,78 @@ def load(session: Session) -> None:
                     granted_at=NOW,
                 )
             )
+    session.flush()
+
+    # Pending-activation users — invited but haven't yet consumed
+    # their token. They appear in the Admin users table with the amber
+    # 'Pending activation' badge and can be activated by opening the
+    # printed URL in a browser. Cannot sign in until they do.
+    from app.services import activation_service
+
+    for pending in getattr(s, "PENDING_USERS", []):
+        session.add(
+            AppUser(
+                id=pending["id"],
+                tenant_id=s.TENANT_ID,
+                email=pending["email"],
+                display_name=pending["display_name"],
+                password_hash=activation_service.UNUSABLE_PASSWORD_HASH,
+                status="ACTIVE",
+                created_at=NOW,
+                invited_by_user_id="usr_sethi",
+                invited_at=NOW,
+            )
+        )
+        session.flush()
+        for role in pending["roles"]:
+            session.add(
+                Membership(
+                    id=new_id("mem"),
+                    tenant_id=s.TENANT_ID,
+                    user_id=pending["id"],
+                    role=role,
+                    granted_by="Seed",
+                    granted_at=NOW,
+                )
+            )
+        token = activation_service.issue_token(
+            session,
+            tenant_id=s.TENANT_ID,
+            user_id=pending["id"],
+            purpose="INVITE",
+            created_by="Seed",
+        )
+        print(
+            f"[seed] pending activation for {pending['email']} — "
+            f"activation URL: {token.activation_url}"
+        )
+    session.flush()
+
+    # Legal entities (the customer's own subsidiaries) + per-user scope.
+    for entity in getattr(s, "LEGAL_ENTITIES", []):
+        session.add(
+            LegalEntity(
+                id=entity["id"],
+                tenant_id=s.TENANT_ID,
+                code=entity["code"],
+                name=entity["name"],
+                base_currency=entity["base_currency"],
+                country=entity.get("country"),
+                status="ACTIVE",
+                created_at=NOW,
+            )
+        )
+    for scope in getattr(s, "USER_SCOPES", []):
+        session.add(
+            UserEntityScope(
+                id=new_id("scp"),
+                tenant_id=s.TENANT_ID,
+                user_id=scope["user_id"],
+                legal_entity_id=scope["legal_entity_id"],
+                granted_by="Seed",
+                granted_at=NOW,
+            )
+        )
     session.flush()
     session.add(PolicyVersion(**s.POLICY_VERSION))
     session.flush()
@@ -210,6 +282,10 @@ def load(session: Session) -> None:
                 limit_id_at_booking=deal["limit_id_at_booking"],
                 policy_version_id=s.POLICY_VERSION["id"],
                 check_run_id=None,
+                # Backfill: GBP deposits under NG_UK, EUR forwards under NG_DE.
+                legal_entity_id=getattr(s, "LEGAL_ENTITY_BY_CURRENCY", {}).get(
+                    deal["currency"], getattr(s, "DEFAULT_LEGAL_ENTITY", None)
+                ),
             )
         )
 
@@ -339,6 +415,9 @@ def load(session: Session) -> None:
                 created_by="Oracle EPM (stubbed)",
                 created_by_user_id="usr_sethi",
                 created_at=NOW,
+                legal_entity_id=getattr(s, "LEGAL_ENTITY_BY_CURRENCY", {}).get(
+                    exposure["currency"], getattr(s, "DEFAULT_LEGAL_ENTITY", None)
+                ),
             )
         )
     session.flush()
@@ -371,6 +450,9 @@ def load(session: Session) -> None:
                 created_at=NOW,
                 approved_by="M. Doran",
                 approved_at=NOW,
+                legal_entity_id=getattr(s, "LEGAL_ENTITY_BY_CURRENCY", {}).get(
+                    deal_spec["currency"], getattr(s, "DEFAULT_LEGAL_ENTITY", None)
+                ),
             )
         )
     session.flush()

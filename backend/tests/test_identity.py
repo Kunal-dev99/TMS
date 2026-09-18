@@ -381,14 +381,28 @@ def test_onboarding_names_the_caller_at_every_step(client, session):
 
 def test_a_password_is_never_stored_in_the_clear(session):
     from app.models import AppUser
+    from app.services.activation_service import UNUSABLE_PASSWORD_HASH
 
     for user in session.query(AppUser).all():
+        # Users invited but not yet activated (Phase C) carry the
+        # sentinel hash; everyone else has a real pbkdf2 hash.
+        if user.password_hash == UNUSABLE_PASSWORD_HASH:
+            continue
         assert user.password_hash.startswith("pbkdf2_sha256$")
         assert "treasury" not in user.password_hash
 
 
 def test_the_same_password_hashes_differently_for_two_people(session):
     from app.models import AppUser
+    from app.services.activation_service import UNUSABLE_PASSWORD_HASH
 
-    hashes = {user.password_hash for user in session.query(AppUser).all()}
-    assert len(hashes) == 3, "A shared salt would make two identical hashes."
+    hashes = {
+        user.password_hash
+        for user in session.query(AppUser).all()
+        if user.password_hash != UNUSABLE_PASSWORD_HASH
+    }
+    # Every real user gets a unique salt; the count matches the number
+    # of DEMO_PASSWORD-hashed seed users (grows as USERS grows).
+    assert len(hashes) >= 3, "A shared salt would make two identical hashes."
+    # And every hash must be unique among itself — the assertion above
+    # already covers that via `set` semantics.

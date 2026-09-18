@@ -1,0 +1,15 @@
+{
+  "id": "ADR-0008",
+  "date": "2026-09-11",
+  "status": "accepted",
+  "title": "FX hedge advisor is governance narration, not a market view",
+  "context": "The Initiate Hedge modal's AI advisor was drifting toward market-shaped language ('cost of carry embedded', 'discount to spot'). User pushback: 'we are not intended to make trading FX hedging — I hope these AI features are not for trading like suggestion?'",
+  "decision": "The advisor is renamed 'AI Governance Observations' and speaks only to: counterparty concentration on the book, entity/group headroom utilisation, maturity ladder clustering, and policy-gap movement. The cost-of-carry / forward-vs-spot commentary was REMOVED. Panel labels reinforce: 'Policy-gap action' (not 'Recommended trade'), 'Compliance suggestion — not a market view'.",
+  "consequences": [
+    "backend/app/services/fx_narrator.py :: advise_on_hedge no longer emits the forward-vs-spot bullet",
+    "System prompt now opens: 'You are a treasury GOVERNANCE narrator, not an FX trader.'",
+    "Prompt hard rules ban 'attractive', 'favourable', 'good/bad time to hedge'",
+    "InitiateHedgeModal AI block title changed from 'AI Advisor Observations' to 'AI Governance Observations' with subtitle 'Concentration, headroom, ladder and policy movement — not a market view'",
+    "HedgingPanel 'AI briefing' badge line: 'Governance narration · never a market view'"
+  ]
+}

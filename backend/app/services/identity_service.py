@@ -31,6 +31,22 @@ class Principal:
     def holds(self, role: str) -> bool:
         return role in self.roles
 
+    def can(self, permission) -> bool:
+        """Whether the caller's roles grant this permission.
+
+        Accepts a Permission enum member OR its string value. Used by
+        `require_permission()` and by any handler that wants to gate a
+        branch without turning it into a full endpoint dep.
+        """
+        from app.services.permissions import Permission, has_permission
+
+        if isinstance(permission, str):
+            try:
+                permission = Permission(permission)
+            except ValueError:
+                return False
+        return has_permission(self.roles, permission)
+
     def __str__(self) -> str:
         """What goes into an evidence field that is still text.
 
@@ -64,6 +80,22 @@ class IdentityService:
             )
 
         principal = self._principal(user)
+        # Record the sign-in — updates last_signed_in_at for the Admin
+        # page and emits an audit_event for the Compliance page.
+        from app.ids import now
+        from app.services import audit_service
+
+        user.last_signed_in_at = now()
+        audit_service.record(
+            self.session,
+            tenant_id=self.tenant_id,
+            actor_user_id=user.id,
+            actor_display=user.display_name,
+            action="user.signed_in",
+            subject_type="user",
+            subject_id=user.id,
+        )
+        self.session.commit()
         return principal, issue_token(user.id, self.tenant_id)
 
     def from_token(self, token: str) -> Principal:

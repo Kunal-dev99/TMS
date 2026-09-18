@@ -1,0 +1,18 @@
+{
+  "id": "ADR-0007",
+  "date": "2026-09-14",
+  "status": "accepted",
+  "title": "Hedging currency cards sort by policy-gap severity in GBP",
+  "context": "Cards were alphabetical (CHF, EUR, USD). The treasurer's eye should land on the biggest actionable risk first — that means biggest gap to the hedge policy, expressed in a currency-neutral unit for cross-comparison.",
+  "decision": "FxExposureService.summary() sorts by _gap_gbp_pence descending, then by gross_gbp_pence as a tie-break. Full-coverage currencies sink to the bottom. The AI briefing ranks in the same order.",
+  "alternatives_rejected": [
+    "Alphabetical (default behaviour — no signal in the order)",
+    "By gross GBP exposure (biggest total, but ignores how much of it is unresolved)",
+    "By native-currency gap (USD $21m > EUR €20m — but that ranking flips at rates, misleading a UK treasurer)"
+  ],
+  "consequences": [
+    "Each card renders a rank badge '#N · Biggest gap / 2nd priority / 3rd priority'",
+    "A one-line label above the cards explains the sort",
+    "The AI briefing paragraph names the biggest gap first for consistency"
+  ]
+}

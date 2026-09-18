@@ -94,3 +94,53 @@ def get_principal(
 
 
 Caller = Annotated[Principal, Depends(get_principal)]
+
+
+def require_permission(*permissions):
+    """Dependency: refuse the request unless the caller holds ANY of `permissions`.
+
+    Permission-first gating, layered over role-first `require_role`. The
+    Admin page and every new endpoint should prefer this — a role is
+    just a bag of permissions, and gating on 'may they change policy'
+    reads better than gating on 'are they in the CFO/HEAD_OF_TREASURY
+    roles'.
+
+    Accepts Permission enum members or their string values.
+    """
+    from app.services.permissions import Permission
+
+    resolved: list[Permission] = []
+    for p in permissions:
+        if isinstance(p, str):
+            resolved.append(Permission(p))
+        else:
+            resolved.append(p)
+
+    def _guard(caller: Caller) -> Principal:
+        if not any(caller.can(p) for p in resolved):
+            names = ", ".join(p.value for p in resolved)
+            raise TreasuryError(
+                ErrorCode.ROLE_NOT_HELD,
+                f"This endpoint requires one of these permissions: {names}.",
+            )
+        return caller
+
+    return _guard
+
+
+def require_role(*roles: str):
+    """Dependency: refuse the request unless the caller holds ANY of `roles`.
+
+    Used by admin and compliance endpoints. The refusal is a clean 403
+    with the role name, not a leak of what else exists.
+    """
+
+    def _guard(caller: Caller) -> Principal:
+        if not any(caller.holds(r) for r in roles):
+            raise TreasuryError(
+                ErrorCode.ROLE_NOT_HELD,
+                f"This endpoint requires one of: {', '.join(roles)}.",
+            )
+        return caller
+
+    return _guard

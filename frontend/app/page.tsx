@@ -7,6 +7,7 @@ import { Blotter } from "@/components/Blotter";
 import { Book } from "@/components/Book";
 import { CheckPanel } from "@/components/CheckPanel";
 import { Header } from "@/components/Header";
+import { PersonaNav } from "@/components/PersonaNav";
 import { PanelShell, EmptyState } from "@/components/PanelShell";
 import { SignIn } from "@/components/SignIn";
 import { Strip } from "@/components/Strip";
@@ -232,6 +233,7 @@ export default function Surface() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+      <PersonaNav />
       <Header
         state={state}
         user={user}
@@ -325,13 +327,14 @@ export default function Surface() {
               <AdvisoryCard
                 card={state.advisory}
                 onAccept={(accepted, recommendationId) => {
-                  setTicket({
+                  setTicket((prev) => ({
+                    ...prev,
                     counterpartyId: accepted.counterparty_id,
                     instrument: accepted.instrument,
                     principal: String(Math.round(accepted.principal_pence / 100)),
                     tenor: String(accepted.tenor_months),
                     rate: (accepted.rate_bp / 100).toFixed(2),
-                  });
+                  }));
                   setAcceptedFrom(recommendationId);
                   setToast("Loaded. It runs the same six checks as anything typed.");
                   load();
@@ -554,13 +557,14 @@ export default function Surface() {
         open={plannerOpen}
         onClose={() => setPlannerOpen(false)}
         onPick={(a) => {
-          setTicket({
+          setTicket((prev) => ({
+            ...prev,
             counterpartyId: a.counterparty_id,
             instrument: "DEPOSIT",
             principal: String(Math.round(a.principal_pence / 100)),
             tenor: String(a.tenor_months),
             rate: (a.rate_bp / 100).toFixed(2),
-          });
+          }));
           setPlannerOpen(false);
           setToast(
             "Initiated. Runs the same six checks as anything typed by hand.",

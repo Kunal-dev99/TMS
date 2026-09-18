@@ -1,0 +1,19 @@
+{
+  "id": "ADR-0002",
+  "date": "2026-08",
+  "status": "accepted",
+  "title": "Every path into the book runs the same CheckEngine",
+  "context": "Multiple ways a deal can land: manual ticket, planner allocation, FX hedge initiation, confirmation ingestion. If each writes its own version of the rules, the book eventually drifts.",
+  "decision": "One CheckEngine (backend/app/services/check_engine.py). Six checks in fixed order. Every writer calls it and refuses on FAIL (or records an override reason under WARN_AND_ALLOW).",
+  "alternatives_rejected": [
+    "Skip checks for planner allocations because they were 'already validated' — the seed and the state can change between plan and commit; re-run.",
+    "Skip checks for FX forwards because 'that's the FX side' — FX forwards produce counterparty exposure via the FX add-on; they must be gated."
+  ],
+  "consequences": [
+    "DealService.record always runs the engine",
+    "PlannerService._only_bookable filters allocations that would fail",
+    "fx.initiate_hedge runs the engine before writing the Deal row",
+    "fx.check_hedge is a dry-run for the modal's live pill indicator",
+    "Every CheckRun row is durable evidence, tied to the deal via check_run_id"
+  ]
+}

@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "purpose": "Machine-readable index of the backend services — what each does, its invariants, and the routes that call it.",
+  "services": {
+    "CheckEngine": {
+      "file": "backend/app/services/check_engine.py",
+      "responsibility": "The six-check gate; the single source of truth for whether a deal may book.",
+      "checks_in_order": [
+        "COUNTERPARTY_APPROVED — status ACTIVE and permitted for this instrument",
+        "INSTRUMENT_PERMITTED — CounterpartyInstrument row exists and enabled",
+        "ENTITY_LIMIT — proposed + held ≤ CpLimit.amount_pence",
+        "GROUP_LIMIT — sum across the credit group ≤ CpGroup.group_limit_pence",
+        "TENOR_BAND — tenor ≤ RatingBand.max_tenor_months for the counterparty's rating",
+        "CONCENTRATION — new share of portfolio ≤ policy.concentration_cap_bp"
+      ],
+      "enforcement_modes": ["HARD_BLOCK", "WARN_AND_ALLOW"],
+      "used_by": ["deal_service.record", "planner_service._only_bookable", "fx.initiate_hedge", "fx.check_hedge"]
+    },
+    "DealService": {
+      "file": "backend/app/services/deal_service.py",
+      "responsibility": "Persist a deal after running the checks; write CheckRun + Deal in one transaction.",
+      "invariants": ["Nothing else in the code writes to the deal table.", "Every write is paired with a CheckRun row for evidence."]
+    },
+    "PlannerService": {
+      "file": "backend/app/services/planner_service.py",
+      "responsibility": "Propose up to three deployment plans for idle cash: Blended, Higher yield, Tighter concentration.",
+      "algorithm": {
+        "blended": "greedy yield-first fill inside the treasurer's band caps + per-name cap + group concentration cap",
+        "higher_yield": "widen A/BBB caps by +25pts and fill bands in order BBB → A → AA → AAA (yield-chasing shape)",
+        "tighter_concentration": "equal-share round-robin across ≥6 eligible names, still respecting caps"
+      },
+      "post_processing": [
+        "run six checks on every allocation via CheckEngine",
+        "drop any allocation that would fail",
+        "dedup variants whose allocation set is identical to Blended",
+        "populate undeployed_pence so the modal can show the trade-off"
+      ],
+      "reads": ["planner_settings.get_settings()", "system_policy.get_rate_curve()", "state_service.book()"],
+      "writes": "nothing (proposals only; the treasurer commits via the ticket)"
+    },
+    "planner_settings": {
+      "file": "backend/app/services/planner_settings.py",
+      "storage": "in-memory singleton (module-level dict, threading.Lock)",
+      "fields": [
+        "min_rating (rating floor)",
+        "max_tenor_months (tenor ceiling)",
+        "per_name_cap_pct (per-counterparty ceiling as % of idle)",
+        "group_concentration_cap_pct (per-group ceiling as % of idle)",
+        "buckets (per-rating-band CAPS, not targets)"
+      ],
+      "key_decision": "Buckets are CAPS not targets (ADR-0003). Any leftover cash stays uninvested if caps don't cover 100%.",
+      "resets_on": "process restart (prototype behaviour)"
+    },
+    "system_policy": {
+      "file": "backend/app/services/system_policy.py",
+      "storage": "in-memory singleton",
+      "fields": ["concentration_cap_bp", "enforcement", "rating_bands", "rate_curve"],
+      "editable_via": "Control ▸ System policy panel"
+    },
+    "HedgeService": {
+      "file": "backend/app/services/hedge_service.py",
+      "responsibility": "Link an FX forward Deal to a CurrencyExposure; enforce over-hedge invariant; recompute exposure status.",
+      "invariants": [
+        "Only instrument = FX_FORWARD can cover a currency obligation.",
+        "Coverage cannot exceed the exposure amount (across all live links).",
+        "Status flows: IDENTIFIED → PARTIALLY_COVERED → COVERED → SETTLED (never backwards past SETTLED)."
+      ],
+      "used_by": ["fx.initiate_hedge (via HedgeService.link)"]
+    },
+    "FxExposureService": {
+      "file": "backend/app/services/fx_exposure_service.py",
+      "responsibility": "Read-side aggregation for the Hedging panel: summary per currency, bucketed drilldown, GBP equivalent.",
+      "sort_order": "gap-to-target severity, GBP-equivalent, biggest first",
+      "reads_from": ["currency_exposure", "hedge_link", "currency_cover_target"]
+    },
+    "FxRateService": {
+      "file": "backend/app/services/fx_rate_service.py",
+      "responsibility": "Mock spot + forward rates for EUR/GBP, USD/GBP, CHF/GBP.",
+      "source_label": "Bloomberg BGN composite (stubbed)",
+      "quality": "indicative",
+      "forward_model": "linear from annual forward points; deliberately simple for the prototype",
+      "safety": "never returns a rate for a pair not in _PAIRS; ValueError otherwise"
+    },
+    "fx_narrator": {
+      "file": "backend/app/services/fx_narrator.py",
+      "responsibility": "AI briefing + recommendations + watch callouts for the Hedging panel; plus per-hedge governance advisor for the Initiate modal.",
+      "outputs": ["FxBriefing { briefing, recommendations[], watch[] }", "advise_on_hedge → list[str] observations"],
+      "safety_rails": [
+        "never predicts FX rates",
+        "counterparty_id whitelisted to eligible FX_FORWARD-permitted actives",
+        "amount whitelisted to _suggested_amount() choices per currency",
+        "monetary strings pre-formatted to '€10m'-style and echoed verbatim by LLM",
+        "deterministic fallback runs when no Groq key or LLM output fails validation"
+      ]
+    },
+    "planner_narrator": {
+      "file": "backend/app/services/planner_narrator.py",
+      "responsibility": "AI executive summary + per-candidate labels for the Deploy Idle Cash modal.",
+      "safety_rails": ["candidate_kind must match input", "no invented rates", "fixed 4-bullet summary shape"]
+    },
+    "AdvisoryService": {
+      "file": "backend/app/services/advisory_service.py",
+      "responsibility": "The overnight run that ranks candidates and writes an advisory brief."
+    },
+    "credit_signal_scanner": {
+      "file": "backend/app/services/credit_signal_scanner.py",
+      "responsibility": "Read seeded NewsItem rows, classify materiality, emit per-counterparty severity + suggested action."
+    },
+    "ExposureCalculator": {
+      "file": "backend/app/services/exposure_calculator.py",
+      "responsibility": "Recompute counterparty and group exposure on every call — no caching.",
+      "principle": "A cached figure that drifts from the deals behind it is worse than a slow query."
+    }
+  },
+  "measurement_discipline": {
+    "counterparty_exposure": "GBP pence, principal_pence + fx add-on for forwards",
+    "currency_exposure": "minor units of the stated currency, with the currency on every row",
+    "never_join": "counterparty_exposure and currency_exposure are never combined into a single number"
+  },
+  "background_jobs": [
+    "AdvisoryService.run (overnight, produces the morning advisory brief) — no scheduler yet, manual trigger"
+  ]
+}

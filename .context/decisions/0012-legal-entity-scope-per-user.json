@@ -1,0 +1,37 @@
+{
+  "id": "ADR-0012",
+  "date": "2026-09-18",
+  "status": "accepted",
+  "title": "Company scope — a user's access to the corporate group's own legal entities",
+  "context": "Research into enterprise treasury tools (Treasury Systems, Nomentia, TIS) shows a universal pattern: user access is scoped to specific subsidiaries of the customer's corporate group. An analyst may cover the UK and DE entities but not US. Suspending scope on one entity must not silently remove group access. Nomentia frames this as 'restricted by role, company, function and module' — the 'company' dimension is what this ADR introduces.",
+  "vocabulary": {
+    "legal_entity": "a subsidiary in the customer's own corporate group (Northgate Treasury UK Ltd, Northgate Europe GmbH, ...)",
+    "counterparty": "a bank we trade WITH — a separate concern, always has been",
+    "tenant": "the customer of Treasury Register itself — one per deployment today, many in the future"
+  },
+  "decision": "Introduce `legal_entity` and `user_entity_scope` tables. A user's live scope is either GROUP-WIDE (a single row with legal_entity_id IS NULL) or an explicit subset (one row per entity). Rows are never deleted — revoked rows carry revoked_at as evidence. Admin UI edits scope via a dedicated PATCH so revoke can apply immediately without waiting on unrelated role changes.",
+  "invariants": [
+    "Group-wide and specific-entity rows are mutually exclusive; setting one revokes the other.",
+    "A user with zero live scope rows has NO entity access — they can sign in but every dealing/hedging endpoint should refuse them once scope is threaded through (Phase B.2).",
+    "The audit trail records every scope grant and revoke via audit_service."
+  ],
+  "seed_state_2026_09_18": {
+    "entities": ["NG_UK (Northgate Treasury UK Ltd, GBP, GB)", "NG_DE (Northgate Europe GmbH, EUR, DE)", "NG_US (Northgate North America Inc, USD, US)"],
+    "user_scopes": {
+      "usr_sethi (CFO)": "group-wide",
+      "usr_doran (Head of Treasury)": "NG_UK + NG_DE",
+      "usr_whitfield (Analyst)": "NG_UK only"
+    }
+  },
+  "future_work": [
+    "Phase B.2 — thread scope through the six-check gate: every dealing/hedging endpoint must refuse to book on an entity the user has no scope for.",
+    "Tag Deal, CurrencyExposure, HedgeLink rows with legal_entity_id (currently untagged — the whole book is implicitly group-wide).",
+    "Approval-gap detection on suspend (Phase E) reads this scope to decide whether removing a user leaves an entity without an eligible approver."
+  ],
+  "consequences": [
+    "backend/app/models.py — LegalEntity + UserEntityScope tables",
+    "backend/app/services/scope_service.py — scope_for_user, replace_scope, may_act_for",
+    "backend/app/api/admin_users.py — GET /admin/legal-entities, PATCH /admin/users/{id}/scope, UserRow gains scope: {group_wide, entity_ids, summary}",
+    "frontend/app/admin/page.tsx — LegalEntitiesCard, ScopeCell in the users table, Company access editor in the edit-user panel"
+  ]
+}

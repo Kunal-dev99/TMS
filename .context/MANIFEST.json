@@ -1,0 +1,169 @@
+{
+  "changes_recent": [
+    "2026-09-18"
+  ],
+  "decisions": [
+    "0001-one-surface-one-panel",
+    "0002-every-path-runs-the-six-checks",
+    "0003-buckets-are-caps-not-targets",
+    "0004-connector-is-first-party",
+    "0005-ai-proposes-deterministic-disposes",
+    "0006-counterparty-and-currency-exposure-are-separate",
+    "0007-hedging-cards-sort-by-policy-gap",
+    "0008-fx-hedge-advisor-is-governance-not-market",
+    "0009-persona-pages-behind-role-nav",
+    "0010-project-context-matrix",
+    "0011-permission-matrix-separates-admin-from-financial-authority",
+    "0012-legal-entity-scope-per-user",
+    "0013-scope-preflight-guards-writes",
+    "0014-activation-links-replace-temp-passwords",
+    "0015-four-eye-control-on-sensitive-access-grants",
+    "0016-compliance-and-approvals-pages"
+  ],
+  "files": {
+    "ai.json": {
+      "bytes": 4290,
+      "mtime": "2026-09-18T06:03:14+00:00",
+      "sha": "298a5d6f44a0"
+    },
+    "api.json": {
+      "bytes": 29573,
+      "mtime": "2026-09-18T08:48:34+00:00",
+      "sha": "630054e28836"
+    },
+    "architecture.json": {
+      "bytes": 3329,
+      "mtime": "2026-09-18T06:01:44+00:00",
+      "sha": "c77a86ba1341"
+    },
+    "backend.json": {
+      "bytes": 7019,
+      "mtime": "2026-09-18T06:02:23+00:00",
+      "sha": "434a479770e7"
+    },
+    "changes/2026-09-18.json": {
+      "bytes": 20214,
+      "mtime": "2026-09-18T08:48:12+00:00",
+      "sha": "974528f26459"
+    },
+    "conventions.json": {
+      "bytes": 2845,
+      "mtime": "2026-09-18T06:03:36+00:00",
+      "sha": "cbfaaf24d1bc"
+    },
+    "data-model.json": {
+      "bytes": 124709,
+      "mtime": "2026-09-18T08:48:34+00:00",
+      "sha": "9d2559a01610"
+    },
+    "decisions/0001-one-surface-one-panel.json": {
+      "bytes": 1059,
+      "mtime": "2026-09-18T06:03:48+00:00",
+      "sha": "24d91de0e2ff"
+    },
+    "decisions/0002-every-path-runs-the-six-checks.json": {
+      "bytes": 1230,
+      "mtime": "2026-09-18T06:03:58+00:00",
+      "sha": "ea4fac365756"
+    },
+    "decisions/0003-buckets-are-caps-not-targets.json": {
+      "bytes": 1432,
+      "mtime": "2026-09-18T06:04:10+00:00",
+      "sha": "07871e118795"
+    },
+    "decisions/0004-connector-is-first-party.json": {
+      "bytes": 1063,
+      "mtime": "2026-09-18T06:04:19+00:00",
+      "sha": "09d44a1dfdb7"
+    },
+    "decisions/0005-ai-proposes-deterministic-disposes.json": {
+      "bytes": 1570,
+      "mtime": "2026-09-18T06:04:32+00:00",
+      "sha": "b8e50d5029a8"
+    },
+    "decisions/0006-counterparty-and-currency-exposure-are-separate.json": {
+      "bytes": 1045,
+      "mtime": "2026-09-18T06:04:41+00:00",
+      "sha": "f2589dbe957f"
+    },
+    "decisions/0007-hedging-cards-sort-by-policy-gap.json": {
+      "bytes": 1134,
+      "mtime": "2026-09-18T06:04:52+00:00",
+      "sha": "5a87152d9c96"
+    },
+    "decisions/0008-fx-hedge-advisor-is-governance-not-market.json": {
+      "bytes": 1412,
+      "mtime": "2026-09-18T06:05:04+00:00",
+      "sha": "362dacf0d0b8"
+    },
+    "decisions/0009-persona-pages-behind-role-nav.json": {
+      "bytes": 1189,
+      "mtime": "2026-09-18T06:05:15+00:00",
+      "sha": "578f0dd7b243"
+    },
+    "decisions/0010-project-context-matrix.json": {
+      "bytes": 1772,
+      "mtime": "2026-09-18T06:05:29+00:00",
+      "sha": "f04b0d072f3c"
+    },
+    "decisions/0011-permission-matrix-separates-admin-from-financial-authority.json": {
+      "bytes": 3817,
+      "mtime": "2026-09-18T06:51:24+00:00",
+      "sha": "5d42ef8e1fb9"
+    },
+    "decisions/0012-legal-entity-scope-per-user.json": {
+      "bytes": 3024,
+      "mtime": "2026-09-18T06:59:39+00:00",
+      "sha": "0ae5f6d728a0"
+    },
+    "decisions/0013-scope-preflight-guards-writes.json": {
+      "bytes": 2955,
+      "mtime": "2026-09-18T07:09:34+00:00",
+      "sha": "c4d13549978a"
+    },
+    "decisions/0014-activation-links-replace-temp-passwords.json": {
+      "bytes": 4171,
+      "mtime": "2026-09-18T07:32:09+00:00",
+      "sha": "b84f7ae61233"
+    },
+    "decisions/0015-four-eye-control-on-sensitive-access-grants.json": {
+      "bytes": 3965,
+      "mtime": "2026-09-18T07:45:54+00:00",
+      "sha": "9c38dc03609d"
+    },
+    "decisions/0016-compliance-and-approvals-pages.json": {
+      "bytes": 2867,
+      "mtime": "2026-09-18T08:03:06+00:00",
+      "sha": "11ac1b438e3e"
+    },
+    "frontend.json": {
+      "bytes": 3597,
+      "mtime": "2026-09-18T06:02:49+00:00",
+      "sha": "068fd3b3abe2"
+    },
+    "open-questions.json": {
+      "bytes": 1632,
+      "mtime": "2026-09-18T06:05:42+00:00",
+      "sha": "b1c16d9ea5f7"
+    },
+    "project.json": {
+      "bytes": 2991,
+      "mtime": "2026-09-18T06:01:22+00:00",
+      "sha": "a9ef131b21ff"
+    }
+  },
+  "generated_at": "2026-09-18T08:48:34+00:00",
+  "open_questions_file": "open-questions.json",
+  "project": "treasury-register",
+  "read_order_for_new_chats": [
+    "project.json",
+    "architecture.json",
+    "conventions.json",
+    "backend.json",
+    "frontend.json",
+    "data-model.json",
+    "api.json",
+    "ai.json"
+  ],
+  "schema_version": 1
+}

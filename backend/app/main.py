@@ -20,9 +20,13 @@ from fastapi.responses import JSONResponse
 
 from app.api import (
     accounting,
+    activation,
+    approvals,
     auth,
     admin,
+    admin_users,
     advisory,
+    compliance,
     confirmations,
     control,
     counterparties,
@@ -94,6 +98,10 @@ for router in (
     rates.router,
     system_policy.router,
     admin.router,
+    admin_users.router,
+    activation.router,
+    compliance.router,
+    approvals.router,
 ):
     app.include_router(router, prefix="/api/v1")
 

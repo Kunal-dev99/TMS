@@ -1,0 +1,25 @@
+{
+  "id": "ADR-0010",
+  "date": "2026-09-18",
+  "status": "accepted",
+  "title": "Project Context Matrix — in-repo, machine-readable, kept alive by every change",
+  "context": "As the project grows, LLM chats waste tokens re-reading the codebase from scratch to reason about it. Human docs drift. The Claude conversation history is not reachable from fresh sessions.",
+  "decision": "Introduce `.context/` at the repo root: a set of JSON files that a new chat reads INSTEAD of the source. MANIFEST.json is the entry point. Files split by concern: project, architecture, data-model, api, frontend, backend, ai, conventions. Decisions live under `decisions/`. A `changes/` folder holds a daily append-only journal.",
+  "principles": [
+    "Not documentation — machine-readable JSON, not prose for humans.",
+    "Not the codebase — the whole point is to stop re-reading source.",
+    "Alive — updated on every meaningful change.",
+    "Structured — YAML-like keys and short strings; scannable in a few hundred tokens.",
+    "In repo — versioned in git alongside the code."
+  ],
+  "generation_split": {
+    "auto": ["api.json (from FastAPI OpenAPI)", "data-model.json (from SQLAlchemy metadata)", "MANIFEST.json (from directory scan)"],
+    "hand": ["project.json", "architecture.json", "backend.json", "frontend.json", "ai.json", "conventions.json", "decisions/*", "changes/*", "open-questions.json"]
+  },
+  "consequences": [
+    ".context/update.py regenerates the auto files and bumps MANIFEST.json",
+    "Every code change either the assistant or the human updates the affected .context/*.json alongside",
+    "New chats begin with 'read .context/MANIFEST.json'",
+    "Drift-detection is future work: compare committed api.json to current OpenAPI on CI"
+  ]
+}

@@ -47,6 +47,10 @@ class CreateDealRequest(CheckRequest):
     #: recommendation once the deal has passed the six checks, which is the
     #: only direction that edge runs in.
     recommendation_id: str | None = None
+    #: Which legal entity of the customer's group this deal is booked
+    #: under (ADR-0012). Required for new writes; the pre-flight scope
+    #: guard refuses if the caller has no scope for it.
+    legal_entity_id: str | None = None
 
 
 class ApproveDealRequest(BaseModel):

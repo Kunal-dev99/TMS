@@ -82,6 +82,7 @@ class DealService:
         override_reason: str | None = None,
         capture_source: str = "KEYED",
         recommendation_id: str | None = None,
+        legal_entity_id: str | None = None,
     ) -> Booking:
         """Re-run the checks, write the run, then write the deal or block it."""
         self._require_counterparty(counterparty_id)
@@ -137,6 +138,7 @@ class DealService:
             limit_id_at_booking=result.limit_id,
             policy_version_id=self.policy.id,
             check_run_id=check_run_id,
+            legal_entity_id=legal_entity_id,
         )
         self.session.add(deal)
         # The deal is written first because the check run points at it, and
@@ -193,6 +195,32 @@ class DealService:
         result.check_run_id = check_run_id
         if overriding:
             result.outcome = "OVERRIDDEN"
+
+        # Compliance audit trail — the deal write itself lands in
+        # audit_event so the Compliance page shows the same activity a
+        # regulator would ask for (Phase D wiring, ADR-0016).
+        from app.services import audit_service
+
+        audit_service.record(
+            self.session,
+            tenant_id=self.tenant_id,
+            actor_user_id=proposer.user_id,
+            actor_display=proposer.display_name,
+            action="deal.recorded",
+            subject_type="deal",
+            subject_id=deal.id,
+            outcome=deal.status,
+            payload={
+                "counterparty_id": counterparty_id,
+                "instrument": instrument,
+                "principal_pence": principal_pence,
+                "tenor_months": tenor_months,
+                "rate_bp": rate_bp,
+                "legal_entity_id": legal_entity_id,
+                "override_reason": override_reason if overriding else None,
+                "failed_checks": [o.key for o in result.checks if not o.passed] or None,
+            },
+        )
         return Booking(deal=deal, result=result, queue_item_id=queue_item_id)
 
     def _match_waiting_confirmation(self, deal: Deal) -> None:

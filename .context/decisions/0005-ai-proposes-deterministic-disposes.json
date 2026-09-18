@@ -1,0 +1,21 @@
+{
+  "id": "ADR-0005",
+  "date": "2026-09",
+  "status": "accepted",
+  "title": "AI proposes, deterministic disposes",
+  "context": "Every AI path (planner narrator, FX briefing, FX hedge advisor, credit signals) must be safe for a regulated setting.",
+  "decision": "The LLM only writes prose, ranks candidates, and picks from whitelists that deterministic code produced. It NEVER invents monetary amounts, counterparties, or rate predictions. Every AI path has a deterministic fallback that runs on no-key, timeout, or validation failure. LLM output is JSON-parsed and every field validated; invalid picks are silently discarded.",
+  "hard_rules": [
+    "Never predict, forecast, or comment on where FX rates will move.",
+    "Never invent a counterparty — id must be in the input whitelist.",
+    "Never invent an amount — must be present in the input.",
+    "Use display strings ('€10m', '$21m') verbatim; never full digit strings.",
+    "Booking is never done by AI — the treasurer always clicks Initiate, which runs the six checks."
+  ],
+  "consequences": [
+    "planner_narrator._fallback runs when Groq key is missing or LLM response invalid",
+    "fx_narrator._deterministic_briefing produces the same-shape output without the LLM",
+    "fx_narrator.advise_on_hedge builds facts deterministically, then optionally has the LLM rewrite the same bullets — bullet count must match or fallback wins",
+    "Every AI panel carries a user-visible caveat: 'Governance narration, not a market view.' / 'AI narrates policy gaps; it does not predict rates.'"
+  ]
+}

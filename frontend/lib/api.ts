@@ -864,6 +864,257 @@ export function scanCreditSignals(): Promise<{ signals: CreditSignal[] }> {
   return post("/credit-signals/scan", {}) as Promise<{ signals: CreditSignal[] }>;
 }
 
+// -- Admin: user + role + tenant management ------------------------------
+
+export type AdminEffectiveAccess = {
+  held: string[];      // permission ids, e.g. "deal.propose"
+  can: string[];       // plain-English, e.g. "propose deposits"
+  cannot: string[];
+};
+
+export type AdminScope = {
+  group_wide: boolean;
+  entity_ids: string[];
+  summary: string;
+};
+
+export type AdminLegalEntity = {
+  id: string;
+  code: string;
+  name: string;
+  base_currency: string;
+  country: string | null;
+  status: "ACTIVE" | "ARCHIVED";
+};
+
+export type AdminUserRow = {
+  id: string;
+  email: string;
+  display_name: string;
+  status: "ACTIVE" | "DISABLED";
+  roles: string[];
+  created_at: string;
+  last_signed_in_at: string | null;
+  invited_by_display: string | null;
+  invited_at: string | null;
+  effective_access: AdminEffectiveAccess;
+  scope: AdminScope;
+  pending_activation: boolean;
+  pending_role_grants: string[];
+};
+
+export type AdminAccessChange = {
+  id: string;
+  subject_type: string;
+  subject_id: string;
+  subject_display: string;
+  change_type: string;
+  payload: Record<string, unknown>;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN";
+  requested_by_display: string;
+  requested_at: string;
+  reviewed_by_display: string | null;
+  reviewed_at: string | null;
+  review_reason: string | null;
+};
+
+export type AdminRoleRow = {
+  role: string;
+  label: string;
+  description: string;
+  permissions: string[];
+  can: string[];
+};
+
+export type AdminTenantView = {
+  id: string;
+  name: string;
+  base_currency: string;
+  as_of_date: string;
+};
+
+export type AdminInviteResponse = {
+  user: AdminUserRow;
+  activation_url: string;
+  expires_at: string;
+  note: string;
+};
+
+export type AdminResetPasswordResponse = {
+  user_id: string;
+  activation_url: string;
+  expires_at: string;
+};
+
+export type ActivationResolve = {
+  email: string;
+  display_name: string;
+  purpose: "INVITE" | "RESET";
+  expires_at: string;
+};
+
+export function resolveActivationToken(
+  token: string,
+): Promise<ActivationResolve> {
+  return get(`/activate/${encodeURIComponent(token)}`);
+}
+
+export function consumeActivationToken(
+  token: string,
+  password: string,
+): Promise<{ token: string; token_type: string; user: SignedInUser }> {
+  return post("/activate", { token, password });
+}
+
+export function listAdminUsers(): Promise<AdminUserRow[]> {
+  return get("/admin/users");
+}
+
+export function listAdminRoles(): Promise<AdminRoleRow[]> {
+  return get("/admin/roles");
+}
+
+export function getAdminTenant(): Promise<AdminTenantView> {
+  return get("/admin/tenant");
+}
+
+export function inviteAdminUser(body: {
+  email: string;
+  display_name: string;
+  roles: string[];
+}): Promise<AdminInviteResponse> {
+  return post("/admin/users", body);
+}
+
+export function updateAdminUser(
+  id: string,
+  body: {
+    display_name?: string;
+    status?: "ACTIVE" | "DISABLED";
+    roles?: string[];
+  },
+): Promise<AdminUserRow> {
+  return request<AdminUserRow>(`/admin/users/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export function resetAdminUserPassword(
+  id: string,
+): Promise<AdminResetPasswordResponse> {
+  return post(`/admin/users/${id}/reset-password`, {});
+}
+
+export function listAdminLegalEntities(): Promise<AdminLegalEntity[]> {
+  return get("/admin/legal-entities");
+}
+
+export function listAdminAccessChanges(): Promise<AdminAccessChange[]> {
+  return get("/admin/access-changes");
+}
+
+export function approveAdminAccessChange(
+  id: string,
+  reason?: string,
+): Promise<AdminUserRow> {
+  return post(`/admin/access-changes/${id}/approve`, { reason: reason ?? null });
+}
+
+export function rejectAdminAccessChange(
+  id: string,
+  reason: string,
+): Promise<AdminAccessChange> {
+  return post(`/admin/access-changes/${id}/reject`, { reason });
+}
+
+// -- Compliance (audit trail) --------------------------------------------
+
+export type ComplianceActivityRow = {
+  id: string;
+  occurred_at: string;
+  actor_display: string | null;
+  action: string;
+  subject_type: string;
+  subject_id: string | null;
+  outcome: string | null;
+  payload: Record<string, unknown> | null;
+};
+
+export type ComplianceActivityView = {
+  items: ComplianceActivityRow[];
+  total: number;
+  actions_seen: string[];
+  subject_types_seen: string[];
+};
+
+export function listComplianceActivity(
+  params: {
+    actor?: string;
+    action?: string;
+    subject_type?: string;
+    subject_id?: string;
+    date_from?: string;
+    date_to?: string;
+    limit?: number;
+  } = {},
+): Promise<ComplianceActivityView> {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") q.set(k, String(v));
+  });
+  const qs = q.toString();
+  return get(`/compliance/activity${qs ? `?${qs}` : ""}`);
+}
+
+export function complianceActivityCsvUrl(
+  params: Record<string, string | undefined> = {},
+): string {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== "") q.set(k, v);
+  });
+  const qs = q.toString();
+  return `/api/v1/compliance/activity.csv${qs ? `?${qs}` : ""}`;
+}
+
+// -- Approvals (signer's queue) ------------------------------------------
+
+export type ApprovalQueueItem = {
+  deal_id: string;
+  counterparty_name: string;
+  counterparty_rating: string;
+  instrument: string;
+  principal_pence: number;
+  currency: string;
+  tenor_months: number;
+  rate_bp: number;
+  trade_date: string;
+  required_approver: string | null;
+  proposed_by: string;
+  can_approve: boolean;
+  legal_entity_id: string | null;
+};
+
+export type ApprovalQueueView = {
+  items: ApprovalQueueItem[];
+  role_names_i_hold: string[];
+};
+
+export function getApprovalQueue(): Promise<ApprovalQueueView> {
+  return get("/approvals/queue");
+}
+
+export function updateAdminUserScope(
+  id: string,
+  body: { group_wide: boolean; entity_ids: string[] },
+): Promise<AdminUserRow> {
+  return request<AdminUserRow>(`/admin/users/${id}/scope`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
 // -- FX Hedging ------------------------------------------------------------
 
 export type FxCurrencySummary = {
@@ -980,6 +1231,7 @@ export function initiateHedge(body: {
   reference?: string;
   comments?: string;
   override_reason?: string;
+  legal_entity_id?: string;
 }): Promise<FxHedgeInitiateResponse> {
   return post("/fx/hedges", body);
 }

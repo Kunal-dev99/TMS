@@ -13,11 +13,27 @@
 
 const KEY = "treasury.token";
 
+export interface SignedInEntity {
+  id: string;
+  code: string;
+  name: string;
+  base_currency: string;
+}
+
 export interface SignedInUser {
   id: string;
   display_name: string;
   email: string;
   roles: string[];
+  /** Effective permissions, union of role permissions. Prefer this
+   *  over `roles` for gating UI — see ADR-0011. */
+  permissions?: string[];
+  /** The user's legal-entity scope — entities they may act for.
+   *  group_wide=true means every entity in the tenant (ADR-0012). */
+  scope?: {
+    group_wide: boolean;
+    entities: SignedInEntity[];
+  };
 }
 
 let token: string | null = null;
@@ -33,6 +49,27 @@ export function currentToken(): string | null {
     token = null;
   }
   return token;
+}
+
+/**
+ * Whether the signed-in user holds ANY of the given roles.
+ * Persona nav uses this to gate `/admin`, `/compliance`, `/approvals`.
+ */
+export function hasRole(...roles: string[]): boolean {
+  const u = currentUser();
+  if (!u) return false;
+  return roles.some((r) => u.roles.includes(r));
+}
+
+/**
+ * Whether the signed-in user holds ANY of the given permissions.
+ * Prefer this over hasRole for gating action buttons — a permission is
+ * the thing the backend actually enforces (ADR-0011).
+ */
+export function can(...permissions: string[]): boolean {
+  const u = currentUser();
+  if (!u || !u.permissions) return false;
+  return permissions.some((p) => u.permissions!.includes(p));
 }
 
 export function currentUser(): SignedInUser | null {

@@ -156,6 +156,11 @@ class InitiateHedgeRequest(BaseModel):
     reference: str | None = None
     comments: str | None = None
     override_reason: str | None = None
+    #: Which legal entity of the customer's group this hedge is booked
+    #: under (ADR-0012). The pre-flight scope guard refuses if the caller
+    #: has no scope for it. Optional here for backward compat but
+    #: strongly recommended.
+    legal_entity_id: str | None = None
 
 
 class HedgeCheckRequest(BaseModel):
@@ -362,6 +367,13 @@ def initiate_hedge(
     pair = _pair_for(currency)
     quote = forward_rate(pair, body.tenor_months)
 
+    # Pre-flight scope guard (ADR-0012). The person must be authorised for
+    # the entity the hedge books under before the six-check gate runs.
+    from app.services import scope_service
+
+    if body.legal_entity_id:
+        scope_service.require_scope(session, caller, body.legal_entity_id)
+
     counterparty = session.get(Counterparty, body.counterparty_id)
     if counterparty is None or counterparty.tenant_id != ctx.tenant_id:
         raise TreasuryError(ErrorCode.COUNTERPARTY_NOT_FOUND, field="counterparty_id")
@@ -432,6 +444,7 @@ def initiate_hedge(
         policy_version_id=ctx.policy.id,
         approved_by=None,
         approved_at=None,
+        legal_entity_id=body.legal_entity_id,
     )
     session.add(deal)
     session.flush()
@@ -495,6 +508,33 @@ def initiate_hedge(
         link_ids.append(link.id)
         to_allocate -= covered
 
+    # Compliance audit trail — the hedge write lands in audit_event
+    # (ADR-0016). Payload names the exposures covered + the FX pair
+    # so a compliance officer can reconstruct why the hedge exists.
+    from app.services import audit_service as audit
+
+    audit.record(
+        session,
+        tenant_id=ctx.tenant_id,
+        actor_user_id=caller.user_id,
+        actor_display=caller.display_name,
+        action="hedge.initiated",
+        subject_type="deal",
+        subject_id=deal.id,
+        outcome=deal.status,
+        payload={
+            "counterparty_id": counterparty.id,
+            "counterparty_name": counterparty.name,
+            "currency": currency,
+            "sell_amount_minor": body.sell_amount_minor,
+            "gbp_expected_pence": gbp_expected_pence,
+            "tenor_months": body.tenor_months,
+            "forward_rate": quote.forward,
+            "legal_entity_id": body.legal_entity_id,
+            "exposure_ids": body.exposure_ids,
+            "hedge_link_ids": link_ids,
+        },
+    )
     session.commit()
 
     return InitiateHedgeResponse(

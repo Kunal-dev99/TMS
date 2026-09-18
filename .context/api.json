@@ -1,0 +1,1096 @@
+{
+  "base_prefix": "/api/v1",
+  "count": 95,
+  "endpoints_by_tag": {
+    "Accounting and settlement": [
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "get_accounting_events_api_v1_accounting_events_get",
+        "path": "/api/v1/accounting/events",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Get Accounting Events"
+      },
+      {
+        "has_body": true,
+        "method": "PUT",
+        "operation_id": "put_accounting_events_api_v1_accounting_events_put",
+        "path": "/api/v1/accounting/events",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Put Accounting Events"
+      },
+      {
+        "has_body": false,
+        "method": "POST",
+        "operation_id": "reset_accounting_events_api_v1_accounting_events_reset_post",
+        "path": "/api/v1/accounting/events/reset",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Reset Accounting Events"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "list_accruals_api_v1_deals__deal_id__accruals_get",
+        "path": "/api/v1/deals/{deal_id}/accruals",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "List Accruals"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "list_journals_api_v1_journals_get",
+        "path": "/api/v1/journals",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "List Journals"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "post_journals_api_v1_journals_post_post",
+        "path": "/api/v1/journals/post",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Post Journals"
+      }
+    ],
+    "Activation": [
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "consume_api_v1_activate_post",
+        "path": "/api/v1/activate",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Consume"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "resolve_api_v1_activate__raw_token__get",
+        "path": "/api/v1/activate/{raw_token}",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Resolve"
+      }
+    ],
+    "Admin": [
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "list_access_changes_api_v1_admin_access_changes_get",
+        "path": "/api/v1/admin/access-changes",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "List Access Changes"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "approve_access_change_api_v1_admin_access_changes__request_id__approve_post",
+        "path": "/api/v1/admin/access-changes/{request_id}/approve",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Approve Access Change"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "reject_access_change_api_v1_admin_access_changes__request_id__reject_post",
+        "path": "/api/v1/admin/access-changes/{request_id}/reject",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Reject Access Change"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "list_legal_entities_api_v1_admin_legal_entities_get",
+        "path": "/api/v1/admin/legal-entities",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "List Legal Entities"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "list_roles_api_v1_admin_roles_get",
+        "path": "/api/v1/admin/roles",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "List Roles"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "get_tenant_api_v1_admin_tenant_get",
+        "path": "/api/v1/admin/tenant",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Get Tenant"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "list_users_api_v1_admin_users_get",
+        "path": "/api/v1/admin/users",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "List Users"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "invite_user_api_v1_admin_users_post",
+        "path": "/api/v1/admin/users",
+        "responses": [
+          "201",
+          "422"
+        ],
+        "summary": "Invite User"
+      },
+      {
+        "has_body": true,
+        "method": "PATCH",
+        "operation_id": "update_user_api_v1_admin_users__user_id__patch",
+        "path": "/api/v1/admin/users/{user_id}",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Update User"
+      },
+      {
+        "has_body": false,
+        "method": "POST",
+        "operation_id": "reset_password_api_v1_admin_users__user_id__reset_password_post",
+        "path": "/api/v1/admin/users/{user_id}/reset-password",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Reset Password"
+      },
+      {
+        "has_body": true,
+        "method": "PATCH",
+        "operation_id": "update_user_scope_api_v1_admin_users__user_id__scope_patch",
+        "path": "/api/v1/admin/users/{user_id}/scope",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Update User Scope"
+      }
+    ],
+    "Administration": [
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "set_clock_api_v1_admin_clock_post",
+        "path": "/api/v1/admin/clock",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Set Clock"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "set_enforcement_api_v1_admin_enforcement_post",
+        "path": "/api/v1/admin/enforcement",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Set Enforcement"
+      },
+      {
+        "has_body": false,
+        "method": "POST",
+        "operation_id": "reset_api_v1_admin_reset_post",
+        "path": "/api/v1/admin/reset",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Reset"
+      }
+    ],
+    "Approvals": [
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "queue_api_v1_approvals_queue_get",
+        "path": "/api/v1/approvals/queue",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Queue"
+      }
+    ],
+    "Compliance": [
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "activity_api_v1_compliance_activity_get",
+        "path": "/api/v1/compliance/activity",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Activity"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "activity_csv_api_v1_compliance_activity_csv_get",
+        "path": "/api/v1/compliance/activity.csv",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Activity Csv"
+      }
+    ],
+    "Confirmations and matching": [
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "list_confirmations_api_v1_confirmations_get",
+        "path": "/api/v1/confirmations",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "List Confirmations"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "ingest_confirmation_api_v1_confirmations_post",
+        "path": "/api/v1/confirmations",
+        "responses": [
+          "201",
+          "422"
+        ],
+        "summary": "Ingest Confirmation"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "parse_confirmation_endpoint_api_v1_confirmations_parse_post",
+        "path": "/api/v1/confirmations/parse",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Parse Confirmation Endpoint"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "match_confirmation_api_v1_confirmations__confirmation_id__match_post",
+        "path": "/api/v1/confirmations/{confirmation_id}/match",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Match Confirmation"
+      }
+    ],
+    "Counterparties": [
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "create_counterparty_api_v1_counterparties_post",
+        "path": "/api/v1/counterparties",
+        "responses": [
+          "201",
+          "422"
+        ],
+        "summary": "Create Counterparty"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "counterparty_sources_api_v1_counterparties_sources_get",
+        "path": "/api/v1/counterparties/sources",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Counterparty Sources"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "activate_counterparty_api_v1_counterparties__counterparty_id__activate_post",
+        "path": "/api/v1/counterparties/{counterparty_id}/activate",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Activate Counterparty"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "set_limit_api_v1_counterparties__counterparty_id__limit_post",
+        "path": "/api/v1/counterparties/{counterparty_id}/limit",
+        "responses": [
+          "201",
+          "422"
+        ],
+        "summary": "Set Limit"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "list_limits_api_v1_counterparties__counterparty_id__limits_get",
+        "path": "/api/v1/counterparties/{counterparty_id}/limits",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "List Limits"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "record_rating_action_api_v1_counterparties__counterparty_id__rating_post",
+        "path": "/api/v1/counterparties/{counterparty_id}/rating",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Record Rating Action"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "verify_counterparty_api_v1_counterparties__counterparty_id__verify_post",
+        "path": "/api/v1/counterparties/{counterparty_id}/verify",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Verify Counterparty"
+      }
+    ],
+    "Currency risk": [
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "create_currency_exposure_api_v1_currency_exposures_post",
+        "path": "/api/v1/currency-exposures",
+        "responses": [
+          "201",
+          "422"
+        ],
+        "summary": "Create Currency Exposure"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "link_hedge_api_v1_currency_exposures__exposure_id__hedges_post",
+        "path": "/api/v1/currency-exposures/{exposure_id}/hedges",
+        "responses": [
+          "201",
+          "422"
+        ],
+        "summary": "Link Hedge"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "exposure_counterparty_api_v1_exposure_counterparty_get",
+        "path": "/api/v1/exposure/counterparty",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Exposure Counterparty"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "exposure_currency_api_v1_exposure_currency_get",
+        "path": "/api/v1/exposure/currency",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Exposure Currency"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "unlink_hedge_api_v1_hedge_links__link_id__unlink_post",
+        "path": "/api/v1/hedge-links/{link_id}/unlink",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Unlink Hedge"
+      }
+    ],
+    "Deals": [
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "apply_amendment_api_v1_amendments__amendment_id__apply_post",
+        "path": "/api/v1/amendments/{amendment_id}/apply",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Apply Amendment"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "list_deals_api_v1_deals_get",
+        "path": "/api/v1/deals",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "List Deals"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "create_deal_api_v1_deals_post",
+        "path": "/api/v1/deals",
+        "responses": [
+          "201",
+          "422"
+        ],
+        "summary": "Create Deal"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "check_deal_api_v1_deals_check_post",
+        "path": "/api/v1/deals/check",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Check Deal"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "get_deal_api_v1_deals__deal_id__get",
+        "path": "/api/v1/deals/{deal_id}",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Get Deal"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "raise_amendment_api_v1_deals__deal_id__amendments_post",
+        "path": "/api/v1/deals/{deal_id}/amendments",
+        "responses": [
+          "201",
+          "422"
+        ],
+        "summary": "Raise Amendment"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "approve_deal_api_v1_deals__deal_id__approve_post",
+        "path": "/api/v1/deals/{deal_id}/approve",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Approve Deal"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "instruct_deal_api_v1_deals__deal_id__instruct_post",
+        "path": "/api/v1/deals/{deal_id}/instruct",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Instruct Deal"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "settle_deal_api_v1_deals__deal_id__settle_post",
+        "path": "/api/v1/deals/{deal_id}/settle",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Settle Deal"
+      }
+    ],
+    "FX hedging": [
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "fx_counterparties_api_v1_fx_counterparties_get",
+        "path": "/api/v1/fx/counterparties",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Fx Counterparties"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "summary_api_v1_fx_exposures_get",
+        "path": "/api/v1/fx/exposures",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Summary"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "by_currency_api_v1_fx_exposures__currency__get",
+        "path": "/api/v1/fx/exposures/{currency}",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "By Currency"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "list_hedges_api_v1_fx_hedges_get",
+        "path": "/api/v1/fx/hedges",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "List Hedges"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "initiate_hedge_api_v1_fx_hedges_post",
+        "path": "/api/v1/fx/hedges",
+        "responses": [
+          "201",
+          "422"
+        ],
+        "summary": "Initiate Hedge"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "advise_hedge_api_v1_fx_hedges_advise_post",
+        "path": "/api/v1/fx/hedges/advise",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Advise Hedge"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "check_hedge_api_v1_fx_hedges_check_post",
+        "path": "/api/v1/fx/hedges/check",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Check Hedge"
+      },
+      {
+        "has_body": false,
+        "method": "POST",
+        "operation_id": "narrate_api_v1_fx_narrate_post",
+        "path": "/api/v1/fx/narrate",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Narrate"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "get_fx_policy_api_v1_fx_policy_get",
+        "path": "/api/v1/fx/policy",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Get Fx Policy"
+      },
+      {
+        "has_body": true,
+        "method": "PUT",
+        "operation_id": "put_fx_policy_api_v1_fx_policy_put",
+        "path": "/api/v1/fx/policy",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Put Fx Policy"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "forward_endpoint_api_v1_fx_rates_forward__pair__get",
+        "path": "/api/v1/fx/rates/forward/{pair}",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Forward Endpoint"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "spot_endpoint_api_v1_fx_rates_spot__pair__get",
+        "path": "/api/v1/fx/rates/spot/{pair}",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Spot Endpoint"
+      }
+    ],
+    "Identity": [
+      {
+        "has_body": false,
+        "method": "POST",
+        "operation_id": "sign_out_api_v1_auth_logout_post",
+        "path": "/api/v1/auth/logout",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Sign Out"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "whoami_api_v1_auth_me_get",
+        "path": "/api/v1/auth/me",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Whoami"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "sign_in_api_v1_auth_token_post",
+        "path": "/api/v1/auth/token",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Sign In"
+      }
+    ],
+    "Jobs and the Oracle boundary": [
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "list_instructions_api_v1_instructions_get",
+        "path": "/api/v1/instructions",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "List Instructions"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "nightly_api_v1_jobs_nightly_post",
+        "path": "/api/v1/jobs/nightly",
+        "responses": [
+          "202",
+          "422"
+        ],
+        "summary": "Nightly"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "list_statements_api_v1_statements_get",
+        "path": "/api/v1/statements",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "List Statements"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "ingest_statement_api_v1_statements_post",
+        "path": "/api/v1/statements",
+        "responses": [
+          "201",
+          "422"
+        ],
+        "summary": "Ingest Statement"
+      }
+    ],
+    "Performance": [
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "performance_api_v1_performance_get",
+        "path": "/api/v1/performance",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Performance"
+      }
+    ],
+    "Planner": [
+      {
+        "has_body": false,
+        "method": "POST",
+        "operation_id": "deploy_cash_api_v1_planner_deploy_cash_post",
+        "path": "/api/v1/planner/deploy-cash",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Deploy Cash"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "get_planner_settings_api_v1_planner_settings_get",
+        "path": "/api/v1/planner/settings",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Get Planner Settings"
+      },
+      {
+        "has_body": true,
+        "method": "PUT",
+        "operation_id": "put_planner_settings_api_v1_planner_settings_put",
+        "path": "/api/v1/planner/settings",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Put Planner Settings"
+      },
+      {
+        "has_body": false,
+        "method": "POST",
+        "operation_id": "reset_planner_settings_api_v1_planner_settings_reset_post",
+        "path": "/api/v1/planner/settings/reset",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Reset Planner Settings"
+      }
+    ],
+    "Rates": [
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "rate_quote_api_v1_rates_quote_get",
+        "path": "/api/v1/rates/quote",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Rate Quote"
+      }
+    ],
+    "Scenarios": [
+      {
+        "has_body": false,
+        "method": "POST",
+        "operation_id": "scan_credit_signals_api_v1_credit_signals_scan_post",
+        "path": "/api/v1/credit-signals/scan",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Scan Credit Signals"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "cap_change_api_v1_what_if_cap_change_post",
+        "path": "/api/v1/what-if/cap-change",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Cap Change"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "not_rolled_api_v1_what_if_not_rolled_post",
+        "path": "/api/v1/what-if/not-rolled",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Not Rolled"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "rating_change_api_v1_what_if_rating_change_post",
+        "path": "/api/v1/what-if/rating-change",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Rating Change"
+      }
+    ],
+    "State and policy": [
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "get_investment_policy_api_v1_investment_policy_get",
+        "path": "/api/v1/investment-policy",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Get Investment Policy"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "set_investment_policy_api_v1_investment_policy_post",
+        "path": "/api/v1/investment-policy",
+        "responses": [
+          "201",
+          "422"
+        ],
+        "summary": "Set Investment Policy"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "get_policy_api_v1_policy_get",
+        "path": "/api/v1/policy",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Get Policy"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "get_state_api_v1_state_get",
+        "path": "/api/v1/state",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Get State"
+      }
+    ],
+    "System policy": [
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "get_system_policy_api_v1_system_policy_get",
+        "path": "/api/v1/system-policy",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Get System Policy"
+      },
+      {
+        "has_body": true,
+        "method": "PUT",
+        "operation_id": "put_system_policy_api_v1_system_policy_put",
+        "path": "/api/v1/system-policy",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Put System Policy"
+      },
+      {
+        "has_body": false,
+        "method": "POST",
+        "operation_id": "reset_rate_curve_api_v1_system_policy_reset_rate_curve_post",
+        "path": "/api/v1/system-policy/reset-rate-curve",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Reset Rate Curve"
+      }
+    ],
+    "The advisory layer": [
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "advisory_latest_api_v1_advisory_latest_get",
+        "path": "/api/v1/advisory/latest",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Advisory Latest"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "decide_recommendation_api_v1_advisory_recommendations__recommendation_id__decide_post",
+        "path": "/api/v1/advisory/recommendations/{recommendation_id}/decide",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Decide Recommendation"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "trigger_advisory_run_api_v1_advisory_runs_post",
+        "path": "/api/v1/advisory/runs",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Trigger Advisory Run"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "advisory_run_api_v1_advisory_runs__run_id__get",
+        "path": "/api/v1/advisory/runs/{run_id}",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Advisory Run"
+      }
+    ],
+    "The queue and breaches": [
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "get_breaches_api_v1_breaches_get",
+        "path": "/api/v1/breaches",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Get Breaches"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "respond_to_breach_api_v1_breaches__breach_id__respond_post",
+        "path": "/api/v1/breaches/{breach_id}/respond",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Respond To Breach"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "get_queue_api_v1_queue_get",
+        "path": "/api/v1/queue",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Get Queue"
+      },
+      {
+        "has_body": true,
+        "method": "POST",
+        "operation_id": "resolve_queue_item_api_v1_queue__item_id__resolve_post",
+        "path": "/api/v1/queue/{item_id}/resolve",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Resolve Queue Item"
+      }
+    ],
+    "_untagged": [
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "health_health_get",
+        "path": "/health",
+        "responses": [
+          "200"
+        ],
+        "summary": "Health"
+      }
+    ]
+  },
+  "generated_at": "2026-09-18T08:48:34+00:00",
+  "source": "fastapi.openapi()"
+}

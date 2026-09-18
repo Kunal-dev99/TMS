@@ -1,0 +1,169 @@
+TREASURY REGISTER — WHAT IT IS TODAY
+=====================================
+
+
+OBJECTIVE
+---------
+
+Give a corporate treasurer one screen to run the day: see cash and
+exposure, place new deposits, hedge foreign-currency receivables,
+respond to breaches, and act on advice — all under one policy, all
+recorded to an audit trail, all filtered through the same six checks
+that decide whether any deal may book.
+
+The system says no to a trade that breaks policy before it says yes to
+a trade that fits. AI helps interpret and prioritise, but it never
+books, never predicts markets, and never invents a number.
+
+
+WHO IT IS FOR
+-------------
+
+The primary persona is the corporate treasurer of a mid-cap group.
+Around them:
+
+- Analyst — proposes deals up to a small threshold
+- Head of Treasury — signs mid-size deals
+- CFO — signs the largest, and holds override authority
+- Compliance officer — reads the audit trail, never mutates
+- Administrator — manages users, roles, workspace settings
+
+
+CORE FEATURES TODAY
+-------------------
+
+1. ONE SURFACE FOR THE TREASURER
+   Everything lives on a single screen. Bottom strip navigates between
+   eight areas: Exposure, Performance, Hedging, Queue, Breaches,
+   Advisory, Ratings & Policy, and Control. One panel opens at a time
+   over the surface — no page reloads, no back button, no getting lost.
+
+2. THE SIX-CHECK GATE
+   Every deal — deposit, FX forward, planner allocation — passes
+   through the same six controls before it can book:
+     - Counterparty is approved and active
+     - Instrument is permitted for this counterparty
+     - Entity limit is not exceeded
+     - Group (parent-company) limit is not exceeded
+     - Tenor is inside the rating band's ceiling
+     - Concentration stays below the policy cap
+   Every check runs on every keystroke; the treasurer sees the six
+   result pills live before they ever click a button.
+
+3. DEPLOY IDLE CASH (THE PLANNER)
+   Given the day's uninvested cash, the planner proposes up to three
+   deployment plans, each fully checked and ready to book with one
+   click:
+     - Blended plan — the treasurer's investment principles applied
+       exactly
+     - Higher yield — bends lower-rated caps to chase yield
+     - Tighter concentration — spreads across at least six names
+   The treasurer sets caps (max 50% AAA, max 30% AA, etc.) and the
+   system picks the highest-yielding spread inside those ceilings.
+   AI writes a short executive summary; the numbers are ours.
+
+4. FX EXPOSURE & HEDGING
+   For overseas receipts in EUR / USD / CHF, the system shows:
+     - Forecast exposure by currency and time bucket
+     - How much is already hedged, how much remains exposed
+     - GBP equivalent for board-level conversations
+     - Gap to the treasurer's policy target ("USD 40% hedged vs 75%
+       target — $21m short")
+   Initiate Hedge opens a modal that pre-checks the trade against the
+   same six controls, shows an indicative forward rate labelled as
+   such, and lets the treasurer book it in one click.
+   AI briefs the shape of the exposure; it does NOT predict rates.
+
+5. COUNTERPARTY & POLICY CONTROL
+   Every counterparty carries a rating, limits, and instrument
+   permissions — all editable, all versioned. Policy changes create
+   new versions rather than overwriting old ones, so a check that
+   passed six months ago can be re-derived exactly.
+
+6. INVESTMENT PRINCIPLES & FX POLICY
+   Treasurer-editable in the Control panel:
+     - Rating floor and tenor ceiling for the planner
+     - Per-name and per-group concentration caps
+     - Rating-band caps (the "buckets")
+     - Per-currency hedge policy targets
+
+7. ADVISORY & BREACHES
+   An overnight run ranks candidates the treasurer might act on today
+   and writes a short brief. Breaches are surfaced in their own panel,
+   with an unwind or acknowledge path per breach.
+
+8. RATINGS & CREDIT SIGNAL SCANNER
+   Reads seeded news items per counterparty and classifies materiality
+   ("watch", "material", "immaterial"). Suggests actions like
+   "put on watch" or "reduce" — the treasurer decides.
+
+9. ACCOUNTING EVENTS
+   Every lifecycle stage (proposed, active, matured, settled) can fire
+   an accounting event routed through the Treasury Register Connector
+   into Fusion AHCS, Fusion GL, Oracle EBS, or a custom REST endpoint.
+   The routing is editable from Control.
+
+10. EVIDENCE ON EVERY DEAL
+    Every booked deal carries a check_run row with the six inputs, the
+    policy version in force at booking, the limit version referenced,
+    and the person who signed. Re-derives on demand for audit.
+
+11. ADMIN PAGE (NEW)
+    Persona-scoped page for user + role + tenant management. Invite
+    users with a temporary password, edit roles, disable accounts,
+    reset passwords. Every action is written to the audit trail.
+
+
+AI — WHAT IT DOES AND WHAT IT DOESN'T
+-------------------------------------
+
+AI helps in four places today:
+  - Planner executive summary (four bullets that pick a recommended
+    plan and say why)
+  - FX briefing paragraph (ranks currencies by policy-gap severity,
+    surfaces watch callouts about concentration or refinance walls)
+  - FX hedge governance advisor (comments on concentration, headroom,
+    maturity ladder as the treasurer builds a hedge)
+  - Credit signal classifier (reads news, flags material items)
+
+AI hard rules:
+  - Never predicts, forecasts, or comments on where any FX rate will
+    move
+  - Never invents a counterparty
+  - Never invents a monetary amount
+  - Every path has a deterministic fallback — the system works with
+    or without an AI key
+  - The treasurer always clicks the button; AI never books
+
+
+TECHNICAL POSTURE (LIGHT)
+-------------------------
+
+  - Publicly hosted on an Azure VM at
+    https://treasury-management-system.fusionpractices.com
+    (HTTPS via Caddy + Let's Encrypt)
+  - Backend: Python / FastAPI / SQLite
+  - Frontend: Next.js / React / Tailwind
+  - AI: Groq (OpenAI GPT-OSS-120b) with deterministic fallbacks
+  - Single tenant today; schema supports many
+  - 271 backend tests passing
+
+
+WHAT'S NEXT (IN FLIGHT)
+-----------------------
+
+  - Compliance page (audit trail viewer, policy history, override
+    register, AI activity log)
+  - Approvals page (queue view, delegation, bulk approvals, reason
+    codes catalogue)
+  - Multi-tenancy, SSO via Entra ID, managed PostgreSQL,
+    observability, CI/CD (parked pending IT/DevOps bandwidth)
+
+
+THE ELEVATOR PITCH
+------------------
+
+"Treasury Register is a treasurer's daily screen. It shows what's on
+the book, what's exposed, and what can safely be done next — all
+gated by the same six controls, all evidenced, all narrated by AI that
+knows it isn't a trader."

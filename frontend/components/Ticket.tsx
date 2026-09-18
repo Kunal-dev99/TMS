@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { checkDeal, getRateQuote, type RateQuote } from "@/lib/api";
 import { perCent } from "@/lib/format";
+import { currentUser } from "@/lib/session";
 import type { BookRow, CheckResult, Instrument, TicketFields } from "@/lib/types";
 
 /** A pause in typing produces one call. */
@@ -23,6 +24,10 @@ export interface TicketState {
   principal: string;
   tenor: string;
   rate: string;
+  /** Legal entity the deal is booked under (ADR-0012). Defaulted from
+   *  the caller's scope by the parent surface; blank means group-wide
+   *  users haven't picked yet. */
+  legalEntityId: string;
 }
 
 export const EMPTY_TICKET: TicketState = {
@@ -34,6 +39,7 @@ export const EMPTY_TICKET: TicketState = {
   // (Bloomberg BGN via /rates/quote) when a counterparty + tenor are
   // set. A treasurer's override wins from that point on.
   rate: "",
+  legalEntityId: "",
 };
 
 export function toFields(ticket: TicketState): TicketFields | null {
@@ -50,6 +56,7 @@ export function toFields(ticket: TicketState): TicketFields | null {
     principal_pence: Math.round(principal * 100),
     tenor_months: Math.round(tenor),
     rate_bp: Math.round(rate * 100),
+    legal_entity_id: ticket.legalEntityId || null,
   };
 }
 
@@ -187,6 +194,8 @@ export function Ticket({
           event.preventDefault();
         }}
       >
+        <LegalEntityRow ticket={ticket} onChange={onChange} />
+
         <div className="space-y-1.5">
           <Label htmlFor="counterparty" className="text-xs">
             Counterparty
@@ -329,5 +338,59 @@ export function Ticket({
         </div>
       </form>
     </PageSection>
+  );
+}
+
+/**
+ * The legal-entity picker rendered above the counterparty select.
+ *
+ * Only shows when the signed-in user has any scope. Auto-defaults the
+ * entity on first render if the ticket's `legalEntityId` is blank.
+ * Extracted into its own component so the auto-default effect owns a
+ * stable dependency list and never overwrites an explicit user choice.
+ */
+function LegalEntityRow({
+  ticket,
+  onChange,
+}: {
+  ticket: TicketState;
+  onChange: (next: TicketState) => void;
+}) {
+  const scoped = currentUser()?.scope?.entities ?? [];
+  useEffect(() => {
+    if (!ticket.legalEntityId && scoped.length > 0) {
+      onChange({ ...ticket, legalEntityId: scoped[0].id });
+    }
+    // Runs once per mount for a given ticket instance; if the user
+    // clears the field explicitly they get sent back to the default
+    // once, which is the correct behaviour ("blank means default").
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (scoped.length === 0) return null;
+
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor="legal-entity" className="text-xs">
+        Book under legal entity
+      </Label>
+      <select
+        id="legal-entity"
+        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        value={ticket.legalEntityId}
+        onChange={(event) =>
+          onChange({ ...ticket, legalEntityId: event.target.value })
+        }
+      >
+        {scoped.map((e) => (
+          <option key={e.id} value={e.id}>
+            {e.code} · {e.name} · base {e.base_currency}
+          </option>
+        ))}
+      </select>
+      <p className="text-[10px] italic text-muted-foreground">
+        Only entities you have scope for are listed (ADR-0012).
+      </p>
+    </div>
   );
 }

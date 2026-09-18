@@ -161,13 +161,21 @@ export interface ApiError {
   error: { code: string; message: string; field: string | null };
 }
 
-/** The five ticket fields. Nothing else is needed to test a deal. */
+/** The ticket fields the six-check gate consumes.
+ *
+ *  Five business fields (counterparty, instrument, principal, tenor,
+ *  rate) plus the legal entity the deal books under (ADR-0012). The
+ *  entity is defaulted from the caller's scope on the client so a
+ *  treasurer never fills it in unless they are moving between
+ *  subsidiaries. */
 export interface TicketFields {
   counterparty_id: string;
   instrument: Instrument;
   principal_pence: number;
   tenor_months: number;
   rate_bp: number;
+  /** Nullable while old UIs still exist; new writes should set it. */
+  legal_entity_id?: string | null;
 }
 
 export interface RecordDealResponse {

@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "python": {
+    "version": "3.13",
+    "imports": "absolute from app.",
+    "typing": "use built-in types (list[int], dict[str, T]) — no typing.List",
+    "errors": "raise TreasuryError(ErrorCode.X, msg, field?) — never bare HTTPException except in dedicated adapters (fx.py)",
+    "money": "integer pence throughout; never floats",
+    "rates": "integer basis points",
+    "dates": "ISO 8601 strings; SQLite has no date type",
+    "ids": "ids.new_id(prefix) — prefixes: cp, cxp, dl, hl, run, pol, adv, ...",
+    "docstrings": "always for services and non-trivial functions; explain the invariant, not the implementation"
+  },
+  "typescript": {
+    "strict": true,
+    "no_emojis_in_source_code": true,
+    "money_helper": "formatMoney(minor, currency) → '€10m'-style short form",
+    "state_refresh": "after every write call `load()` in page.tsx to refetch StateResponse; never optimistic updates"
+  },
+  "comments": {
+    "rule": "explain WHY not WHAT — well-named identifiers do the what",
+    "never": "reference the current task, fix, or callers ('used by X', 'added for Y flow', 'fixes issue #123')",
+    "always": "reference the invariant or the surprising behaviour"
+  },
+  "naming": {
+    "backend_services": "snake_case_service.py; class SnakeCaseService",
+    "backend_endpoints": "kebab paths under /api/v1",
+    "frontend_panels": "{Kebab}Panel.tsx",
+    "frontend_modals": "{Kebab}Modal.tsx"
+  },
+  "commit_messages": {
+    "shape": "lowercase area prefix: brief change — e.g. 'hedging: sort cards by policy-gap severity'",
+    "co_author_line": "Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>",
+    "never_skip_hooks": "no --no-verify unless the user explicitly asks"
+  },
+  "tests": {
+    "location": "backend/tests/",
+    "count_baseline_2026_09_18": 271,
+    "framework": "pytest",
+    "run_all": "cd backend && python -m pytest -q",
+    "principle": "seed-heavy fixtures via seed/seed.py load(); tests then read the actual book"
+  },
+  "product_language": [
+    "'Six checks' — never 'validation rules' or 'controls'",
+    "'Six-check gate' — the gate every path must run",
+    "'Idle cash' — never 'excess cash' or 'uninvested balance'",
+    "'AI proposes, deterministic disposes' — the AI-vs-code pattern",
+    "'Treasury Register Connector' — first-party name for our integration surface; NEVER 'Oracle Integration Cloud' anywhere",
+    "'Bloomberg BGN composite (stubbed)' — the label for mock rate quotes",
+    "'Governance narration, not a market view' — the caveat for every AI output in FX"
+  ],
+  "output_style_for_ai_prose": {
+    "money": "short form (€10m, $21m, CHF 7.2m, £800k)",
+    "percentages": "whole percent for coverage (60% hedged), 2dp for rates (4.25%)",
+    "priority": "biggest gap first — sort explicit, never alphabetical"
+  }
+}
