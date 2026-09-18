@@ -26,9 +26,37 @@ KNOWN = {
     "TREASURY_MODEL_API_KEY": "The advisory layer's model. Absent means the stub runs.",
     "TREASURY_MODEL_NAME": "Which model. Defaults to openai/gpt-oss-120b on Groq.",
     "TREASURY_API_ORIGIN": "Read by the frontend, not by this process.",
+    "TREASURY_CORS_ORIGINS": (
+        "Comma-separated allow-list of browser origins allowed to call the "
+        "API cross-origin. Defaults cover localhost dev + the current VM. "
+        "Set explicitly in every real deployment."
+    ),
 }
 
 SECRETS = {"TREASURY_TOKEN_SECRET", "TREASURY_MODEL_API_KEY"}
+
+
+def cors_origins() -> list[str]:
+    """The browser origins allowed to call this API cross-origin.
+
+    Read from TREASURY_CORS_ORIGINS as a comma-separated list; falls
+    back to a conservative local-dev + demo-VM default. An explicit
+    entry of '*' is refused when credentials would be allowed — the
+    CORS spec doesn't let both live in the same response, and we'd
+    rather fail startup than confuse the browser.
+    """
+    raw = os.environ.get("TREASURY_CORS_ORIGINS", "").strip()
+    if raw:
+        return [o.strip() for o in raw.split(",") if o.strip()]
+    return [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        # Current VM deploy (see deployment story). Kept in the default
+        # so a fresh checkout matches the live customer.
+        "http://treasury-management-system.fusionpractices.com",
+        "http://treasury-management-system.fusionpractices.com:3000",
+        "https://treasury-management-system.fusionpractices.com",
+    ]
 
 
 def load_env_file(path: Path = ENV_FILE) -> int:

@@ -554,6 +554,26 @@
         "Local typecheck of the frontend was clean before the workflow was written."
       ],
       "related_roadmap": "P0-02"
+    },
+    {
+      "time": "night",
+      "author": "assistant",
+      "kind": "infrastructure",
+      "summary": "P0-03 CORS — CORSMiddleware wired with an explicit allow-list + config knob + tests",
+      "backend": {
+        "changed": [
+          "backend/app/main.py — CORSMiddleware added; allow_credentials=true because the frontend sends the bearer token in Authorization; expose_headers exposes X-Rows-Matching + X-Rows-Exported (used by the compliance CSV UI); '*' in the allow list is refused at startup (spec disallows wildcard + credentials in the same response)",
+          "backend/app/config.py — cors_origins() reads TREASURY_CORS_ORIGINS (comma-separated) and falls back to localhost dev + the VM origins so a fresh checkout matches the live customer"
+        ],
+        "new_tests": [
+          "backend/tests/test_cors.py — preflight from an allowed origin reflects it back with allow-credentials=true; preflight from an unlisted origin has no allow-origin header; an actual response exposes X-Rows-Matching + X-Rows-Exported"
+        ]
+      },
+      "notes": [
+        "TREASURY_CORS_ORIGINS should be set explicitly in every real deployment; the defaults are convenient for the current VM only.",
+        "expose_headers rides on the ACTUAL response, not on preflight — the test asserts against a live GET /health, not the OPTIONS."
+      ],
+      "related_roadmap": "P0-03"
     }
   ]
 }

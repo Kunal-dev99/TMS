@@ -14,8 +14,9 @@ from fastapi import FastAPI, Request
 
 # Imported first so a .env file is read before anything looks at the
 # environment for a signing key or a model.
-from app import config  # noqa: F401
+from app import config
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import (
@@ -50,6 +51,26 @@ app = FastAPI(
         "A control system, not a register. Every path into the book passes "
         "through one CheckEngine."
     ),
+)
+
+# CORS (P0-03). Explicit allow-list — a wildcard is refused above.
+# Credentials are enabled because the frontend sends the bearer token
+# in the Authorization header; a preflight without allow_credentials
+# would drop it.
+_allowed_origins = config.cors_origins()
+if "*" in _allowed_origins:
+    raise RuntimeError(
+        "TREASURY_CORS_ORIGINS contains '*' but this app allows credentials. "
+        "Pick explicit origins."
+    )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
+    expose_headers=["X-Rows-Matching", "X-Rows-Exported"],
+    max_age=600,
 )
 
 
