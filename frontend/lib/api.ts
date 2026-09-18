@@ -1231,6 +1231,37 @@ export function getComplianceRecentDeals(
   return get(`/compliance/deals/recent?limit=${limit}`);
 }
 
+// -- Compliance: policy history -----------------------------------------
+
+export type CompliancePolicyChange = { from: unknown; to: unknown };
+
+export type CompliancePolicyVersion = {
+  id: string;
+  effective_from: string;
+  superseded_at: string | null;
+  superseded_by_version_id: string | null;
+  is_current: boolean;
+  concentration_cap_bp: number;
+  threshold_analyst_pence: number;
+  threshold_hot_pence: number;
+  enforcement: string;
+  fx_add_on_bp: number;
+  approved_by: string;
+  changed_by_display: string | null;
+  authorised_by_display: string | null;
+  note: string | null;
+  changes: Record<string, CompliancePolicyChange>;
+};
+
+export type CompliancePolicyHistory = {
+  versions: CompliancePolicyVersion[];
+  generated_at: string;
+};
+
+export function getCompliancePolicyHistory(): Promise<CompliancePolicyHistory> {
+  return get(`/compliance/policy/history`);
+}
+
 export function complianceBreachesCsvUrl(
   params: Record<string, string | undefined> = {},
 ): string {

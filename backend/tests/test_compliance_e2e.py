@@ -254,6 +254,94 @@ def test_compliance_recent_deals_feeds_the_picker(signer):
             assert f in row
 
 
+def test_compliance_policy_history(signer):
+    """Policy history returns every version newest-first, flags the
+    current one, and computes a field-level diff against the prior
+    version."""
+    r = signer.get("/api/v1/compliance/policy/history")
+    assert r.status_code == 200, r.text
+    view = r.json()
+    versions = view["versions"]
+    assert len(versions) >= 1
+    # Exactly one current version, and it's the newest row.
+    current = [v for v in versions if v["is_current"]]
+    assert len(current) == 1
+    assert versions[0]["is_current"] is True
+    # Newest -> oldest ordering.
+    for a, b in zip(versions, versions[1:]):
+        assert a["effective_from"] >= b["effective_from"]
+    # Every version carries its policy fields and (nullable) metadata.
+    for v in versions:
+        for f in (
+            "id",
+            "effective_from",
+            "concentration_cap_bp",
+            "threshold_analyst_pence",
+            "threshold_hot_pence",
+            "enforcement",
+            "fx_add_on_bp",
+            "approved_by",
+            "changes",
+        ):
+            assert f in v
+    # The oldest version has no prior, so its changes must be empty.
+    assert versions[-1]["changes"] == {}
+
+
+def test_compliance_policy_history_diffs_against_prior(session, signer):
+    """Introduce a second version programmatically and confirm the
+    diff picks up the fields that changed."""
+    from app.models import PolicyVersion
+    from app.repo import policy as policy_repo
+    from app import seed_data as s
+
+    current = policy_repo.current_policy(session, s.TENANT_ID)
+    assert current is not None
+
+    # Supersede the current policy and insert a new one with two
+    # changes (concentration cap + enforcement) plus change metadata.
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    current.superseded_at = now
+    new = PolicyVersion(
+        id="pv_test_new",
+        tenant_id=s.TENANT_ID,
+        effective_from="2027-01-01",
+        superseded_at=None,
+        concentration_cap_bp=current.concentration_cap_bp + 500,
+        threshold_analyst_pence=current.threshold_analyst_pence,
+        threshold_hot_pence=current.threshold_hot_pence,
+        enforcement=(
+            "WARN_WITH_OVERRIDE"
+            if current.enforcement == "HARD_BLOCK"
+            else "HARD_BLOCK"
+        ),
+        fx_add_on_bp=current.fx_add_on_bp,
+        approved_by="R. Sethi",
+        changed_by_display="R. Sethi",
+        authorised_by_display="M. Doran",
+        note="Loosen cap; tighten enforcement.",
+    )
+    current.superseded_by_version_id = new.id
+    session.add(new)
+    session.commit()
+
+    r = signer.get("/api/v1/compliance/policy/history")
+    assert r.status_code == 200, r.text
+    versions = r.json()["versions"]
+    # Newest first — the new version leads and is current.
+    newest = versions[0]
+    assert newest["id"] == "pv_test_new"
+    assert newest["is_current"] is True
+    assert set(newest["changes"].keys()) == {"concentration_cap_bp", "enforcement"}
+    assert newest["changes"]["enforcement"]["from"] == current.enforcement
+    assert newest["changes"]["enforcement"]["to"] == new.enforcement
+    assert newest["changed_by_display"] == "R. Sethi"
+    assert newest["authorised_by_display"] == "M. Doran"
+    assert newest["note"] == "Loosen cap; tighten enforcement."
+
+
 def test_compliance_breaches_filters_and_csv(signer):
     # JSON filter — a bogus counterparty returns zero rows without
     # 500-ing.

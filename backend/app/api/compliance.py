@@ -990,6 +990,97 @@ class RecentDeal(BaseModel):
     status: str
 
 
+# ---------------------------------------------------------- policy history
+
+
+class PolicyVersionRow(BaseModel):
+    id: str
+    effective_from: str
+    superseded_at: str | None
+    superseded_by_version_id: str | None
+    is_current: bool
+    concentration_cap_bp: int
+    threshold_analyst_pence: int
+    threshold_hot_pence: int
+    enforcement: str
+    fx_add_on_bp: int
+    approved_by: str
+    changed_by_display: str | None
+    authorised_by_display: str | None
+    note: str | None
+    # Field-by-field diff vs the prior (older) version, so the UI can
+    # highlight what changed without recomputing on the client.
+    changes: dict[str, dict[str, object]]
+
+
+class PolicyHistoryView(BaseModel):
+    versions: list[PolicyVersionRow]
+    generated_at: str
+
+
+# Fields that count as "policy content" for the diff. Metadata like
+# approver + timestamp is shown separately.
+_POLICY_DIFF_FIELDS = (
+    "concentration_cap_bp",
+    "threshold_analyst_pence",
+    "threshold_hot_pence",
+    "enforcement",
+    "fx_add_on_bp",
+)
+
+
+@router.get("/policy/history", response_model=PolicyHistoryView)
+def policy_history(ctx: Ctx, _: ComplianceGuard) -> PolicyHistoryView:
+    """Every policy version this tenant has held, newest first.
+
+    Each row includes a `changes` dict that names every policy field
+    that differs from the immediately-prior version. The current
+    version (superseded_at IS NULL) is flagged so the UI can label it.
+    """
+    rows = list(
+        ctx.session.scalars(
+            select(PolicyVersion)
+            .where(PolicyVersion.tenant_id == ctx.tenant_id)
+            .order_by(PolicyVersion.effective_from.desc(), PolicyVersion.id.desc())
+        )
+    )
+    out: list[PolicyVersionRow] = []
+    # Iterate newest -> oldest; prior_row is the OLDER version we
+    # compare a given row against.
+    for i, r in enumerate(rows):
+        prior = rows[i + 1] if i + 1 < len(rows) else None
+        changes: dict[str, dict[str, object]] = {}
+        if prior is not None:
+            for field in _POLICY_DIFF_FIELDS:
+                a = getattr(prior, field)
+                b = getattr(r, field)
+                if a != b:
+                    changes[field] = {"from": a, "to": b}
+        out.append(
+            PolicyVersionRow(
+                id=r.id,
+                effective_from=r.effective_from,
+                superseded_at=r.superseded_at,
+                superseded_by_version_id=r.superseded_by_version_id,
+                is_current=r.superseded_at is None,
+                concentration_cap_bp=r.concentration_cap_bp,
+                threshold_analyst_pence=r.threshold_analyst_pence,
+                threshold_hot_pence=r.threshold_hot_pence,
+                enforcement=r.enforcement,
+                fx_add_on_bp=r.fx_add_on_bp,
+                approved_by=r.approved_by,
+                changed_by_display=r.changed_by_display,
+                authorised_by_display=r.authorised_by_display,
+                note=r.note,
+                changes=changes,
+            )
+        )
+    return PolicyHistoryView(
+        versions=out,
+        generated_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    )
+
+
 @router.get("/deals/recent", response_model=list[RecentDeal])
 def recent_deals(
     ctx: Ctx, _: ComplianceGuard, limit: int = Query(20, ge=1, le=100)

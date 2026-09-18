@@ -18,6 +18,7 @@ import { AuditTrailTab } from "./_audit_trail";
 import { BreachesTab } from "./_breaches";
 import { DealEvidenceTab } from "./_deal_evidence";
 import { OverviewTab } from "./_overview";
+import { PolicyHistoryTab } from "./_policy_history";
 
 /**
  * Compliance shell — a compact summary strip and five tabs.
@@ -124,23 +125,7 @@ export default function CompliancePage() {
           }}
         />
       ) : null}
-      {tab === "policy" ? <PolicyHistoryStub /> : null}
+      {tab === "policy" ? <PolicyHistoryTab /> : null}
     </PageShell>
-  );
-}
-
-function PolicyHistoryStub() {
-  return (
-    <div className="rounded border border-dashed border-border bg-surface-2/40 p-4 text-xs text-muted-foreground">
-      <p className="mb-1 font-medium text-foreground">
-        Policy history — not shipped yet.
-      </p>
-      <p>
-        Requires a small migration to <code className="font-mono">policy_version</code> so
-        each version records <b>changed_by</b>, <b>authorised_by</b> and{" "}
-        <b>superseded_by</b>, then a diff endpoint that renders one version against the next.
-        Tracked as a schema task; the substrate is otherwise in place.
-      </p>
-    </div>
   );
 }

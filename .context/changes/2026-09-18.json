@@ -499,6 +499,42 @@
         "Breaches register can now search by counterparty and date range, expand a row for the full override reason and failed_checks, and export the filtered slice to CSV."
       ],
       "related_decision": "ADR-0016"
+    },
+    {
+      "time": "night",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "Policy history tab — ships. policy_version gets change metadata + server-computed diff endpoint replaces the stub",
+      "backend": {
+        "migration": "694ad4b80e75 -> d6a2e91b31c4 — adds changed_by_user_id, changed_by_display, authorised_by_user_id, authorised_by_display, note, superseded_by_version_id (all nullable) on policy_version",
+        "changed": [
+          "backend/app/models.py — PolicyVersion exposes the six new columns",
+          "backend/app/api/compliance.py — GET /compliance/policy/history returns every version newest-first with is_current flag + pre-computed field-level changes dict vs the prior version (server-side, so a workpaper export can never disagree with the UI diff)"
+        ],
+        "new_tests": [
+          "test_compliance_policy_history — versions ordered newest-first, exactly one is_current, oldest has empty changes",
+          "test_compliance_policy_history_diffs_against_prior — programmatically writes a second policy version with 2 field changes and asserts the diff picks up exactly those, plus that changed_by/authorised_by/note are carried through"
+        ]
+      },
+      "frontend": {
+        "new_files": [
+          "frontend/app/compliance/_policy_history.tsx — Policy history tab: newest-first ordered list of version cards, each with policy fields (concentration cap, thresholds, enforcement, FX add-on), change metadata (changed by / authorised by / approved by / note), a diff strip that renders 'from -> to' for every changed field with strikethrough on the old value"
+        ],
+        "changed": [
+          "frontend/lib/api.ts — CompliancePolicyVersion + CompliancePolicyHistory types + getCompliancePolicyHistory fetcher",
+          "frontend/app/compliance/page.tsx — stub replaced with <PolicyHistoryTab /> import"
+        ]
+      },
+      "user_visible_gains": [
+        "Policy history tab now really works — see every version, know which is current, and see field-by-field what changed and why.",
+        "Older seeded versions read 'not recorded' for changed_by / authorised_by rather than being retro-fitted; deliberate, so no invented history.",
+        "Diff is computed server-side — the UI and CSV workpaper agree."
+      ],
+      "still_deferred": [
+        "The four-eye write-side enforcement lands with the policy editor (out of Compliance's scope; there is no admin write surface today).",
+        "audit_event on policy write lands with that same policy editor."
+      ],
+      "related_decision": "ADR-0017"
     }
   ]
 }

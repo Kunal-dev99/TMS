@@ -1,0 +1,32 @@
+{
+  "id": "ADR-0017",
+  "date": "2026-09-18",
+  "status": "accepted",
+  "title": "Policy history: change metadata on policy_version + diff endpoint",
+  "context": "Track 1 Compliance page asked for a Policy history tab that names, per version, who wrote the change and who authorised it (four-eye), free-text why, and what specifically changed vs the previous version. policy_version already had effective_from + superseded_at + approved_by, but nothing else. Rather than build a parallel policy_change table, the smallest thing that works is to extend policy_version itself.",
+  "decision": "Extend policy_version with changed_by_user_id, changed_by_display, authorised_by_user_id, authorised_by_display, note, superseded_by_version_id — all NULLABLE so historical/seeded rows without a formal authoriser aren't retro-fitted. The diff is computed server-side by /compliance/policy/history against the prior row (ordered by effective_from desc) — never on the client, so the audit view can't disagree with a workpaper export.",
+  "scope_in": [
+    "Migration d6a2e91b31c4 — six nullable columns on policy_version",
+    "PolicyVersion model updated to expose them",
+    "GET /compliance/policy/history — every version newest-first with is_current flag + pre-computed field-diff dict {field: {from, to}} vs the prior version",
+    "Compliance page: PolicyHistoryTab replaces the earlier stub with per-version card (fields + change metadata + note + diff strip)"
+  ],
+  "scope_out_deferred": [
+    "Enforcement of the four-eye control when a NEW policy version is written — no admin surface writes policy_version today, so there is no write path to gate. When one is added (Track 1 policy editor, not this ADR), the requester != authoriser rule should mirror ADR-0015.",
+    "Backfilling changed_by / authorised_by on seeded historical versions — they read 'not recorded' in the UI. Deliberate.",
+    "A dedicated audit_event when a policy version is written — captured separately whenever the policy editor lands."
+  ],
+  "invariants": [
+    "The diff is server-side and read-only. Nothing on the compliance page mutates policy_version.",
+    "The 'current' version is the row with superseded_at IS NULL, enforced by the existing partial unique index ux_policy_current. superseded_by_version_id is a soft cross-reference, not a foreign key, to keep the migration safe on SQLite.",
+    "Field-level changes are computed only for policy content (concentration_cap_bp, threshold_analyst_pence, threshold_hot_pence, enforcement, fx_add_on_bp). Metadata like approved_by is displayed separately so its changes don't clutter the diff strip."
+  ],
+  "consequences": [
+    "backend/alembic/versions/d6a2e91b31c4_policy_version_change_metadata.py — additive nullable columns via batch_alter for SQLite",
+    "backend/app/models.py — PolicyVersion columns",
+    "backend/app/api/compliance.py — /compliance/policy/history endpoint + shapes",
+    "frontend/lib/api.ts — CompliancePolicyVersion / CompliancePolicyHistory types + fetcher",
+    "frontend/app/compliance/_policy_history.tsx — new tab component",
+    "frontend/app/compliance/page.tsx — stub replaced with the real tab"
+  ]
+}

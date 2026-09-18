@@ -87,6 +87,15 @@ class PolicyVersion(Base):
     enforcement: Mapped[str] = mapped_column(String(24), nullable=False)
     fx_add_on_bp: Mapped[int] = mapped_column(Integer, nullable=False)
     approved_by: Mapped[str] = mapped_column(String(120), nullable=False)
+    # Compliance change metadata (ADR-0017). Nullable so seeded
+    # historical rows without a formal authoriser don't need a
+    # backfill; the endpoint reports "not recorded" for those.
+    changed_by_user_id: Mapped[str | None] = mapped_column(String(40))
+    changed_by_display: Mapped[str | None] = mapped_column(String(120))
+    authorised_by_user_id: Mapped[str | None] = mapped_column(String(40))
+    authorised_by_display: Mapped[str | None] = mapped_column(String(120))
+    note: Mapped[str | None] = mapped_column(Text)
+    superseded_by_version_id: Mapped[str | None] = mapped_column(String(40))
 
     __table_args__ = (
         CheckConstraint(

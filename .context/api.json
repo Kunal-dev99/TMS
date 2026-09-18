@@ -1,6 +1,6 @@
 {
   "base_prefix": "/api/v1",
-  "count": 100,
+  "count": 101,
   "endpoints_by_tag": {
     "Accounting and settlement": [
       {
@@ -342,6 +342,17 @@
           "422"
         ],
         "summary": "Overview"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "policy_history_api_v1_compliance_policy_history_get",
+        "path": "/api/v1/compliance/policy/history",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Policy History"
       }
     ],
     "Confirmations and matching": [
@@ -1146,6 +1157,6 @@
       }
     ]
   },
-  "generated_at": "2026-09-18T17:04:58+00:00",
+  "generated_at": "2026-09-18T17:10:19+00:00",
   "source": "fastapi.openapi()"
 }

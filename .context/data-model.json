@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-18T17:04:58+00:00",
+  "generated_at": "2026-09-18T17:10:19+00:00",
   "source": "app.models.Base.metadata",
   "table_count": 41,
   "tables": {
@@ -706,8 +706,8 @@
       "constraints": [
         {
           "kind": "CheckConstraint",
-          "name": "ck_amendment_status",
-          "sqltext": "status in ('RAISED','APPLIED','REJECTED')"
+          "name": "ck_amendment_type",
+          "sqltext": "type in ('BREAK','ROLL','PARTIAL_DRAWDOWN','CORRECTION')"
         },
         {
           "kind": "ForeignKeyConstraint",
@@ -720,14 +720,14 @@
           "sqltext": ""
         },
         {
+          "kind": "CheckConstraint",
+          "name": "ck_amendment_status",
+          "sqltext": "status in ('RAISED','APPLIED','REJECTED')"
+        },
+        {
           "kind": "ForeignKeyConstraint",
           "name": null,
           "sqltext": ""
-        },
-        {
-          "kind": "CheckConstraint",
-          "name": "ck_amendment_type",
-          "sqltext": "type in ('BREAK','ROLL','PARTIAL_DRAWDOWN','CORRECTION')"
         }
       ],
       "indices": [
@@ -1780,8 +1780,18 @@
       "constraints": [
         {
           "kind": "CheckConstraint",
+          "name": "ck_confirmation_message_type",
+          "sqltext": "message_type in ('MT300','MT320','MT535','MT536','BROKER_NOTE','DOCUMENT')"
+        },
+        {
+          "kind": "CheckConstraint",
           "name": "ck_confirmation_match_status",
           "sqltext": "match_status in ('UNMATCHED','MATCHED','MISMATCHED','DISPUTED')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
         },
         {
           "kind": "UniqueConstraint",
@@ -1797,16 +1807,6 @@
           "kind": "ForeignKeyConstraint",
           "name": null,
           "sqltext": ""
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
-        },
-        {
-          "kind": "CheckConstraint",
-          "name": "ck_confirmation_message_type",
-          "sqltext": "message_type in ('MT300','MT320','MT535','MT536','BROKER_NOTE','DOCUMENT')"
         }
       ],
       "indices": [
@@ -1993,8 +1993,13 @@
       "constraints": [
         {
           "kind": "ForeignKeyConstraint",
-          "name": null,
+          "name": "fk_counterparty_created_by_user",
           "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_counterparty_status",
+          "sqltext": "status in ('DRAFT','VERIFIED','APPROVED','ACTIVE','SUSPENDED')"
         },
         {
           "kind": "ForeignKeyConstraint",
@@ -2013,28 +2018,23 @@
         },
         {
           "kind": "ForeignKeyConstraint",
-          "name": "fk_counterparty_created_by_user",
+          "name": null,
           "sqltext": ""
-        },
-        {
-          "kind": "CheckConstraint",
-          "name": "ck_counterparty_status",
-          "sqltext": "status in ('DRAFT','VERIFIED','APPROVED','ACTIVE','SUSPENDED')"
         }
       ],
       "indices": [
         {
           "columns": [
-            "group_id"
+            "tenant_id"
           ],
-          "name": "ix_counterparty_group_id",
+          "name": "ix_counterparty_tenant_id",
           "unique": false
         },
         {
           "columns": [
-            "tenant_id"
+            "group_id"
           ],
-          "name": "ix_counterparty_tenant_id",
+          "name": "ix_counterparty_group_id",
           "unique": false
         }
       ]
@@ -2088,6 +2088,16 @@
       ],
       "constraints": [
         {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_cp_instrument",
+          "sqltext": "instrument in ('DEPOSIT','FX_FORWARD','MMF','GILT')"
+        },
+        {
           "kind": "UniqueConstraint",
           "name": "ux_cp_instrument",
           "sqltext": ""
@@ -2101,31 +2111,21 @@
           "kind": "CheckConstraint",
           "name": "ck_cp_instrument_enabled",
           "sqltext": "enabled in (0,1)"
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
-        },
-        {
-          "kind": "CheckConstraint",
-          "name": "ck_cp_instrument",
-          "sqltext": "instrument in ('DEPOSIT','FX_FORWARD','MMF','GILT')"
         }
       ],
       "indices": [
         {
           "columns": [
-            "tenant_id"
+            "counterparty_id"
           ],
-          "name": "ix_counterparty_instrument_tenant_id",
+          "name": "ix_counterparty_instrument_counterparty_id",
           "unique": false
         },
         {
           "columns": [
-            "counterparty_id"
+            "tenant_id"
           ],
-          "name": "ix_counterparty_instrument_counterparty_id",
+          "name": "ix_counterparty_instrument_tenant_id",
           "unique": false
         }
       ]
@@ -2526,11 +2526,6 @@
       "constraints": [
         {
           "kind": "CheckConstraint",
-          "name": "ck_currency_direction",
-          "sqltext": "direction in ('PAYABLE','RECEIVABLE')"
-        },
-        {
-          "kind": "CheckConstraint",
           "name": "ck_currency_status",
           "sqltext": "status in ('IDENTIFIED','PARTIALLY_COVERED','COVERED','SETTLED')"
         },
@@ -2538,6 +2533,11 @@
           "kind": "ForeignKeyConstraint",
           "name": "fk_currency_exposure_created_by",
           "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_currency_direction",
+          "sqltext": "direction in ('PAYABLE','RECEIVABLE')"
         },
         {
           "kind": "CheckConstraint",
@@ -2553,18 +2553,18 @@
       "indices": [
         {
           "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_currency_exposure_tenant_id",
+          "unique": false
+        },
+        {
+          "columns": [
             "tenant_id",
             "currency",
             "expected_date"
           ],
           "name": "ix_currency_exposure_window",
-          "unique": false
-        },
-        {
-          "columns": [
-            "tenant_id"
-          ],
-          "name": "ix_currency_exposure_tenant_id",
           "unique": false
         }
       ]
@@ -2812,11 +2812,6 @@
           "sqltext": "status in ('PROPOSED','BLOCKED','ACTIVE','MATURED','CLOSED','CANCELLED')"
         },
         {
-          "kind": "CheckConstraint",
-          "name": "ck_deal_instrument",
-          "sqltext": "instrument in ('DEPOSIT','FX_FORWARD','MMF','GILT')"
-        },
-        {
           "kind": "ForeignKeyConstraint",
           "name": null,
           "sqltext": ""
@@ -2835,6 +2830,11 @@
           "kind": "CheckConstraint",
           "name": "ck_deal_capture_source",
           "sqltext": "capture_source in ('KEYED','FROM_CONFIRMATION')"
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_deal_instrument",
+          "sqltext": "instrument in ('DEPOSIT','FX_FORWARD','MMF','GILT')"
         },
         {
           "kind": "ForeignKeyConstraint",
@@ -2857,10 +2857,10 @@
         },
         {
           "columns": [
-            "counterparty_id",
+            "tenant_id",
             "status"
           ],
-          "name": "ix_deal_cp_active",
+          "name": "ix_deal_status",
           "unique": false
         },
         {
@@ -2872,10 +2872,10 @@
         },
         {
           "columns": [
-            "tenant_id",
+            "counterparty_id",
             "status"
           ],
-          "name": "ix_deal_status",
+          "name": "ix_deal_cp_active",
           "unique": false
         }
       ]
@@ -3023,11 +3023,6 @@
       ],
       "constraints": [
         {
-          "kind": "CheckConstraint",
-          "name": "ck_exception_resolution",
-          "sqltext": "resolution is null or resolution in ('RESIZED','REROUTED','OVERRIDDEN','CANCELLED','CORRECTED','CHALLENGED')"
-        },
-        {
           "kind": "ForeignKeyConstraint",
           "name": "fk_exception_resolved_by_user",
           "sqltext": ""
@@ -3036,6 +3031,16 @@
           "kind": "ForeignKeyConstraint",
           "name": null,
           "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_exception_cause",
+          "sqltext": "cause in ('LIMIT_FAILURE','CONFIRMATION_MISMATCH')"
         },
         {
           "kind": "ForeignKeyConstraint",
@@ -3053,14 +3058,9 @@
           "sqltext": ""
         },
         {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
-        },
-        {
           "kind": "CheckConstraint",
-          "name": "ck_exception_cause",
-          "sqltext": "cause in ('LIMIT_FAILURE','CONFIRMATION_MISMATCH')"
+          "name": "ck_exception_resolution",
+          "sqltext": "resolution is null or resolution in ('RESIZED','REROUTED','OVERRIDDEN','CANCELLED','CORRECTED','CHALLENGED')"
         }
       ],
       "indices": [
@@ -3372,16 +3372,16 @@
       "indices": [
         {
           "columns": [
-            "tenant_id"
+            "currency_exposure_id"
           ],
-          "name": "ix_hedge_link_tenant_id",
+          "name": "ix_hedge_live",
           "unique": false
         },
         {
           "columns": [
-            "currency_exposure_id"
+            "tenant_id"
           ],
-          "name": "ix_hedge_live",
+          "name": "ix_hedge_link_tenant_id",
           "unique": false
         }
       ]
@@ -4073,16 +4073,16 @@
       "indices": [
         {
           "columns": [
-            "tenant_id"
+            "counterparty_id"
           ],
-          "name": "ix_news_item_tenant_id",
+          "name": "ix_news_item_counterparty_id",
           "unique": false
         },
         {
           "columns": [
-            "counterparty_id"
+            "tenant_id"
           ],
-          "name": "ix_news_item_counterparty_id",
+          "name": "ix_news_item_tenant_id",
           "unique": false
         }
       ]
@@ -4406,6 +4406,54 @@
           "nullable": false,
           "pk": false,
           "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "changed_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "changed_by_display",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "authorised_by_user_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "authorised_by_display",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(120)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "note",
+          "nullable": true,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "superseded_by_version_id",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(40)"
         }
       ],
       "constraints": [
@@ -4425,15 +4473,15 @@
           "columns": [
             "tenant_id"
           ],
-          "name": "ux_policy_current",
-          "unique": true
+          "name": "ix_policy_version_tenant_id",
+          "unique": false
         },
         {
           "columns": [
             "tenant_id"
           ],
-          "name": "ix_policy_version_tenant_id",
-          "unique": false
+          "name": "ux_policy_current",
+          "unique": true
         }
       ]
     },
@@ -4492,13 +4540,13 @@
       ],
       "constraints": [
         {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
+          "kind": "UniqueConstraint",
+          "name": "ux_rating_band",
           "sqltext": ""
         },
         {
-          "kind": "UniqueConstraint",
-          "name": "ux_rating_band",
+          "kind": "ForeignKeyConstraint",
+          "name": null,
           "sqltext": ""
         }
       ],
@@ -4663,11 +4711,6 @@
           "sqltext": ""
         },
         {
-          "kind": "CheckConstraint",
-          "name": "ck_rating_action",
-          "sqltext": "action in ('UPGRADE','DOWNGRADE','WATCH','AFFIRM')"
-        },
-        {
           "kind": "ForeignKeyConstraint",
           "name": "fk_rating_event_recorded_by_user",
           "sqltext": ""
@@ -4676,21 +4719,26 @@
           "kind": "ForeignKeyConstraint",
           "name": null,
           "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_rating_action",
+          "sqltext": "action in ('UPGRADE','DOWNGRADE','WATCH','AFFIRM')"
         }
       ],
       "indices": [
         {
           "columns": [
-            "tenant_id"
+            "counterparty_id"
           ],
-          "name": "ix_rating_event_tenant_id",
+          "name": "ix_rating_event_counterparty_id",
           "unique": false
         },
         {
           "columns": [
-            "counterparty_id"
+            "tenant_id"
           ],
-          "name": "ix_rating_event_counterparty_id",
+          "name": "ix_rating_event_tenant_id",
           "unique": false
         }
       ]
@@ -4953,13 +5001,8 @@
       ],
       "constraints": [
         {
-          "kind": "ForeignKeyConstraint",
-          "name": "fk_settlement_settled_by",
-          "sqltext": ""
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
+          "kind": "UniqueConstraint",
+          "name": "ux_settlement_deal",
           "sqltext": ""
         },
         {
@@ -4968,8 +5011,13 @@
           "sqltext": "match_status in ('PENDING','AGREED','BREAK')"
         },
         {
-          "kind": "UniqueConstraint",
-          "name": "ux_settlement_deal",
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_settlement_settled_by",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
           "sqltext": ""
         },
         {
@@ -5146,13 +5194,6 @@
       "indices": [
         {
           "columns": [
-            "tenant_id"
-          ],
-          "name": "ix_user_entity_scope_tenant_id",
-          "unique": false
-        },
-        {
-          "columns": [
             "user_id"
           ],
           "name": "ix_user_entity_scope_user_id",
@@ -5165,6 +5206,13 @@
           ],
           "name": "ux_scope_live",
           "unique": true
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_user_entity_scope_tenant_id",
+          "unique": false
         }
       ]
     },
@@ -5215,11 +5263,6 @@
       ],
       "constraints": [
         {
-          "kind": "CheckConstraint",
-          "name": "ck_validation_passed",
-          "sqltext": "passed in (0,1)"
-        },
-        {
           "kind": "ForeignKeyConstraint",
           "name": null,
           "sqltext": ""
@@ -5228,6 +5271,11 @@
           "kind": "CheckConstraint",
           "name": "ck_validation_test",
           "sqltext": "test in ('ID_IS_REAL','CHECKS_RERUN_CLEAN','FIGURES_AGREE')"
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_validation_passed",
+          "sqltext": "passed in (0,1)"
         }
       ],
       "indices": []
