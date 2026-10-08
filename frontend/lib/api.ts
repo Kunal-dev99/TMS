@@ -1231,6 +1231,56 @@ export function getComplianceRecentDeals(
   return get(`/compliance/deals/recent?limit=${limit}`);
 }
 
+// -- Compliance: AI activity (Q-004) -----------------------------------
+
+export type ComplianceAiRunRow = {
+  id: string;
+  occurred_at: string;
+  endpoint: string;
+  model: string;
+  response_ms: number | null;
+  tokens_prompt: number;
+  tokens_completion: number;
+  fallback_used: boolean;
+  subject_type: string | null;
+  subject_id: string | null;
+  outcome: string | null;
+  prompt_preview: string | null;
+  response_preview: string | null;
+};
+
+export type ComplianceAiActivityView = {
+  items: ComplianceAiRunRow[];
+  page_size: number;
+  offset: number;
+  total_matching: number;
+  total_all: number;
+  endpoints_seen: string[];
+  models_seen: string[];
+  generated_at: string;
+};
+
+export function listComplianceAiActivity(
+  params: {
+    endpoint?: string;
+    model?: string;
+    fallback?: boolean;
+    subject_type?: string;
+    subject_id?: string;
+    date_from?: string;
+    date_to?: string;
+    limit?: number;
+    offset?: number;
+  } = {},
+): Promise<ComplianceAiActivityView> {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") q.set(k, String(v));
+  });
+  const qs = q.toString();
+  return get(`/compliance/ai-activity${qs ? `?${qs}` : ""}`);
+}
+
 // -- Compliance: policy history -----------------------------------------
 
 export type CompliancePolicyChange = { from: unknown; to: unknown };

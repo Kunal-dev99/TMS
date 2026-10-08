@@ -25,10 +25,13 @@
     {
       "id": "Q-004",
       "date_raised": "2026-09-18",
+      "date_closed": "2026-09-23",
+      "status": "CLOSED",
       "question": "Do we persist LLM prompts + responses for compliance review?",
       "blocking": "compliance AI activity log (Track 1, Week 4)",
       "options": ["yes, ai_run table with full prompt+response", "yes, but only metadata (endpoint, model, tokens, timestamp)", "no"],
-      "recommendation": "yes, ai_run with full text — same reason CheckRun stores every input"
+      "recommendation": "yes, ai_run with full text — same reason CheckRun stores every input",
+      "resolution": "Closed by Phase 2 Stage 3: ai_run table shipped (migration a91c4e2f0d05), ai_run_service.chat() writes one row per LLM call with full prompt + response text, and /compliance/ai-activity + Compliance page AI Activity tab surface the runs. fx_narrator migrated as proof-of-pattern; 5 remaining narrator migrations tracked as follow-ups."
     }
   ]
 }

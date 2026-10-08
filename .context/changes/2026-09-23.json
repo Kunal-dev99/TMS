@@ -1,0 +1,125 @@
+{
+  "date": "2026-09-23",
+  "entries": [
+    {
+      "time": "morning",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "Phase 2 Stage 1 — connector substrate: ports + registry + eight adapters + contract tests",
+      "backend": {
+        "new_files": [
+          "backend/app/connector/__init__.py — re-exports ports + registry",
+          "backend/app/connector/ports.py — 8 Protocol classes (ERPPort, BankPort, MarketDataPort, IdentityPort, SigningPort, LLMPort, SecretsPort, MailPort) + 15 value-object dataclasses (ExposureSnapshot, BankStatement, JournalEntry, Payment, Quote, Rate, IdentityAssertion, LLMResponse, ...)",
+          "backend/app/connector/registry.py — env-driven adapter binding with override() + reset() for tests; one factory per port; env vars ERP_PROVIDER / BANK_PROVIDER / MARKET_DATA_PROVIDER / IDENTITY_PROVIDER / SIGNING_PROVIDER / LLM_PROVIDER / SECRETS_PROVIDER / MAIL_PROVIDER all default to today's behaviour",
+          "backend/app/connector/adapters/secrets/env_var.py — reads os.environ (today's behaviour)",
+          "backend/app/connector/adapters/secrets/local_file.py — reads .env.local for dev",
+          "backend/app/connector/adapters/mail/console.py — prints to stdout (today's behaviour)",
+          "backend/app/connector/adapters/llm/deterministic.py — fixed fallback response",
+          "backend/app/connector/adapters/llm/groq.py — wraps today's Groq client pattern (open-coded in 6 services today; migration to the port is a follow-up)",
+          "backend/app/connector/adapters/market/deterministic.py — wraps fx_rate_service.spot/forward",
+          "backend/app/connector/adapters/identity/local_password.py — wraps security.read_token; start_login/complete_login raise (password flow has no authorize URL)",
+          "backend/app/connector/adapters/erp/fake_oracle.py — pull_exposure aggregates currency_exposure by direction; post_journal idempotent on external_reference (matches Oracle behaviour); pull_bank_statement returns None until Stage 5",
+          "backend/app/connector/adapters/bank/file_bank.py — writes outbound to BANK_OUTBOX, reads inbound from BANK_INBOX; body is a pain.001 skeleton until Stage 5's real serialiser",
+          "backend/app/connector/adapters/signing/software.py — RSA-2048 via cryptography if present, sha256 fallback otherwise (cryptography lands in Stage 8 requirements)",
+          "backend/tests/test_connector_ports.py — 15 contract tests, one per adapter capability + registry mechanics (override, reset)"
+        ],
+        "changed": [
+          "backend/app/services/rate_limit.py — _enabled() now reads TREASURY_RATE_LIMITS through SecretsPort (registry.get). Behaviour unchanged; a Vault-bound deployment picks the same knob up. First migration proof of the substrate."
+        ]
+      },
+      "test_state": {
+        "new": 15,
+        "changed": 0,
+        "removed": 0
+      },
+      "notes": [
+        "Nothing user-visible changed. Registry defaults reproduce today's behaviour on every port.",
+        "Later stages migrate additional callers to their port. Six LLM callers (fx_narrator, planner_narrator, ranker, credit_signals, confirmation_parser, scenario_narrator) all still open-code the Groq client pattern — they migrate in Stage 3 alongside the ai_run table (closes Q-004).",
+        "SigningAdapter's fallback (sha256 pseudo-signature when cryptography isn't installed) is a Stage 1 crutch. Stage 8 adds cryptography to requirements and the real RSA path becomes the only path."
+      ],
+      "related_plan": "PHASE_2_IMPLEMENTATION_PLAN.md Stage 1"
+    },
+    {
+      "time": "morning",
+      "author": "assistant",
+      "kind": "migration",
+      "summary": "Phase 2 Stage 2 — 11 substrate tables added (empty, additive, portable)",
+      "backend": {
+        "migration": "d6a2e91b31c4 -> a91c4e2f0d05 — one consolidated migration adding oracle_entity_mapping, gl_account_map, sso_identity, sso_group_map, ai_run, cash_balance, market_snapshot, bank_ack, gl_posting_ack, integration_health, data_snapshot. Every tenant_id column FKs to tenant + is indexed, matching the models' _tenant() factory.",
+        "changed": [
+          "backend/app/models.py — 11 new ORM classes appended before PHASE_ONE_TABLES + registered there so the migration/model parity test covers them"
+        ],
+        "new_tests": [
+          "backend/tests/test_phase_2_substrate_tables.py — every substrate table exists and is empty on a fresh seeded book; count equals the plan's 11. Protects against a Phase 1 path accidentally writing to a table before its adapter lands."
+        ]
+      },
+      "notes": [
+        "Portable across SQLite + Postgres: no dialect-specific DDL, no partial indexes, simple UNIQUE + CHECK + FK. Existing Postgres CI job (postgres-migrations) exercises the migration end-to-end.",
+        "market_snapshot.rate_micro stores a rate as an integer at 10^7 precision (e.g. spot 1.1450 -> 11450000) so arithmetic on rate + basis-points is exact. Adapters convert.",
+        "gl_posting_ack.accrual_id and .settlement_id are BOTH nullable — a single row acks either an accrual OR a settlement journal. Enforced by application code, not by a DB check (SQLite check-constraint semantics on nullable columns are unreliable across versions)."
+      ],
+      "related_plan": "PHASE_2_IMPLEMENTATION_PLAN.md Stage 2"
+    },
+    {
+      "time": "morning",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "Phase 2 Stage 3 — ai_run end-to-end + Compliance AI Activity tab. Closes Q-004.",
+      "backend": {
+        "new_files": [
+          "backend/app/services/ai_run_service.py — chat() wraps registry.get(LLMPort).chat() and writes one ai_run row per call: prompt+response text stored (Q-004 recommendation), model, tokens, timing, fallback flag; recording is best-effort so a DB failure never blocks an AI decision. record_decision() links a human accept/reject back to the AI row"
+        ],
+        "changed": [
+          "backend/app/services/fx_narrator.py — both Groq call sites (observations_rewrite + narrate) now route through ai_run_service. Deterministic fallback path unchanged; behaviour equivalent when no key is present.",
+          "backend/app/api/compliance.py — GET /compliance/ai-activity: filterable (endpoint, model substring, real-vs-fallback, subject, date range) + paginated. Read-only, gated by VIEW_AUDIT or MANAGE_USERS like every compliance endpoint. Returns preview-truncated prompt+response so the table stays legible; a follow-up detail view returns the full text."
+        ],
+        "new_tests": [
+          "backend/tests/test_ai_run_service.py — one row per call; prompt text stored; record_decision updates outcome; ANALYST refused by endpoint guard; CFO reads back the seeded rows with endpoint + model surfaces populated; fx_narrator.narrate persists an ai_run row every time it's called."
+        ]
+      },
+      "frontend": {
+        "new_files": [
+          "frontend/app/compliance/_ai_activity.tsx — 6th Compliance tab. Endpoint dropdown + model substring + real/fallback toggle + summary tiles + expandable rows showing prompt + response previews. Pagination First/Prev/Next like the audit-trail tab."
+        ],
+        "changed": [
+          "frontend/lib/api.ts — ComplianceAiRunRow + ComplianceAiActivityView types + listComplianceAiActivity fetcher",
+          "frontend/app/compliance/page.tsx — 'ai' tab added to TabKey enum + TABS list + render branch (Cpu icon)"
+        ]
+      },
+      "not_yet_migrated_to_ai_run_service": [
+        "backend/app/services/planner_narrator.py",
+        "backend/app/services/ranker.py",
+        "backend/app/services/credit_signals.py",
+        "backend/app/services/confirmation_parser.py",
+        "backend/app/services/scenario_narrator.py"
+      ],
+      "notes": [
+        "fx_narrator was migrated as proof-of-pattern. The five callers above use the exact same shape: replace the open-coded Groq client block with `ai_run_service.chat(session=..., tenant_id=..., endpoint='<code>', system=SYSTEM_PROMPT, user=<json>)`, then branch on `result.fallback_used` for the deterministic fallback path. Mechanical; scheduled as a follow-up so Stage 3 stays reviewable.",
+        "Frontend AiActivityTab shows preview-truncated text. The full prompt/response is on the row (already stored); a future 'open in detail' view returns it via a new endpoint. Not shipped in Stage 3.",
+        "ai_run_service.record_decision(session, ai_run_id, outcome) is on the shelf for the treasurer + hedge flows to close the loop: 'the model recommended X on 12 May; the treasurer chose X and booked it'. Not wired to any UI action yet."
+      ],
+      "closes_open_question": "Q-004",
+      "related_plan": "PHASE_2_IMPLEMENTATION_PLAN.md Stage 3"
+    },
+    {
+      "time": "afternoon",
+      "author": "assistant",
+      "kind": "infrastructure",
+      "summary": "Parked plans get real enforcement — CI-level guard replaces documentation-only marker",
+      "new_files": [
+        "PARKED_PLANS.json — machine-readable list of parked plans + the forbidden files/symbols/routes/SQL patterns per plan + unpark_instructions per plan",
+        "backend/tests/test_parked_plans.py — 5 tests: no forbidden files exist, no forbidden symbols appear in named source files, no forbidden route prefixes in main.py, no forbidden SQL patterns in migrations, PARKED_PLANS.json schema is sane",
+        "PHASE_2_ADMIN_UI_PLAN.md — new top-of-file guard block naming the JSON + the test + the unpark diff requirement",
+        "PHASE_2_MULTITENANCY_PLAN.md — same",
+        "scripts/install_parked_plans_hook.sh — optional local git pre-commit hook that runs the guard before push, not just in CI",
+        "CLAUDE.md — replaced 'do not execute without unpark instruction' text with the concrete mechanism (JSON + test + unpark commit)"
+      ],
+      "notes": [
+        "Both guards were live-verified by injecting a forbidden path (backend/app/platform/) and a forbidden symbol (MANAGE_INTEGRATIONS in permissions.py); the test failed with the correct plan name + fix instruction in each case, and passed again after the injection was reverted.",
+        "The pre-commit hook is optional — the CI test is the hard gate. The hook script exists so a developer who prefers a local check can install it.",
+        "New tables (like `platform_admin`, `break_glass_session`) are guarded via symbol match on models.py, not table names — tests run against SQLite and can't easily assert 'no CREATE TABLE X'. Symbol match is equivalent because models.py must declare the class before a migration could create the table.",
+        "To unpark either plan, edit PARKED_PLANS.json (status: 'parked' -> 'unparked') as its own commit. For the multi-tenancy plan, an ADR-0019 recording the Q-002 resolution must accompany the flip."
+      ]
+    }
+  ]
+}

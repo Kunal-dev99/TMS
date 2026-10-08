@@ -158,6 +158,12 @@ def dump_manifest() -> None:
             "api.json",
             "ai.json",
             "roadmap.json",
+            # Human-readable Phase 2 docs at repo root, not in
+            # .context/, but named here so a fresh chat reads them.
+            "../PHASE_2_BLUEPRINT.md",             # business layer
+            "../PHASE_2_IMPLEMENTATION_PLAN.md",   # code-shaped plan, IN PROGRESS
+            "../PHASE_2_ADMIN_UI_PLAN.md",         # admin UI for Phase-2 tables, PARKED
+            "../PHASE_2_MULTITENANCY_PLAN.md",     # RLS + tenant provisioning, PARKED
         ],
         "files": files,
         "decisions": decisions_index,

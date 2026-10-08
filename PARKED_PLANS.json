@@ -1,0 +1,80 @@
+{
+  "$schema_version": 1,
+  "purpose": "Machine-readable list of parked plans + the exact files and symbols that MUST NOT exist while each plan is parked. Enforced by backend/tests/test_parked_plans.py — the pytest suite refuses to go green if any parked-plan territory is touched. To start building a plan, change its status to 'unparked' in this file (visible, reviewable diff), then the guard permits the corresponding files/symbols. This is real enforcement, not documentation.",
+  "plans": [
+    {
+      "id": "phase_2_admin_ui",
+      "plan_document": "PHASE_2_ADMIN_UI_PLAN.md",
+      "status": "parked",
+      "unpark_instructions": [
+        "Read PHASE_2_ADMIN_UI_PLAN.md end-to-end.",
+        "Confirm PHASE_2_IMPLEMENTATION_PLAN.md Stage 4 (SSO) OR Stage 7 (Oracle Fusion connector) has shipped — the admin UI is for their data.",
+        "Change this plan's 'status' from 'parked' to 'unparked'.",
+        "Commit the flip as its own commit so the change is reviewable in isolation.",
+        "Then start at Stage 1 of PHASE_2_ADMIN_UI_PLAN.md."
+      ],
+      "forbidden_while_parked": {
+        "files": [
+          "backend/app/api/admin_integrations.py",
+          "backend/app/api/admin_oracle.py",
+          "backend/app/api/admin_sso.py",
+          "backend/app/api/integration_health.py",
+          "frontend/app/admin/oracle",
+          "frontend/app/admin/sso",
+          "frontend/app/admin/health",
+          "frontend/app/admin/_oracle_mappings.tsx",
+          "frontend/app/admin/_sso_mappings.tsx",
+          "frontend/app/admin/_integration_health.tsx"
+        ],
+        "symbols_in_files": [
+          {"file": "backend/app/services/permissions.py", "symbol": "MANAGE_INTEGRATIONS"},
+          {"file": "backend/app/services/permissions.py", "symbol": "VIEW_INTEGRATION_HEALTH"},
+          {"file": "backend/app/services/access_change_service.py", "symbol": "integration_mapping"},
+          {"file": "backend/app/services/access_change_service.py", "symbol": "sso_group_map"}
+        ],
+        "route_paths_in_main_py": [
+          "/admin/integrations/",
+          "/admin/oracle-entities",
+          "/admin/gl-account-map",
+          "/admin/sso-group-map"
+        ]
+      }
+    },
+    {
+      "id": "phase_2_multitenancy",
+      "plan_document": "PHASE_2_MULTITENANCY_PLAN.md",
+      "status": "parked",
+      "unpark_instructions": [
+        "Read PHASE_2_MULTITENANCY_PLAN.md end-to-end.",
+        "Confirm customer #2 is real — this plan makes no sense speculatively.",
+        "Confirm Postgres is bound in the target deployment (ADR-0018 shipped; SQLite path is dev-only for RLS).",
+        "Change this plan's 'status' from 'parked' to 'unparked'.",
+        "Add ADR-0019 recording the Q-002 resolution (shared schema + RLS, or schema-per-tenant if the customer demands it).",
+        "Commit the flip + ADR-0019 as its own commit.",
+        "Then start at Stage 1 of PHASE_2_MULTITENANCY_PLAN.md."
+      ],
+      "forbidden_while_parked": {
+        "files": [
+          "backend/app/platform/",
+          "backend/app/middleware/tenant_context.py",
+          "backend/app/services/tenant_provisioner.py",
+          "backend/app/services/tenant_archiver.py",
+          "backend/app/services/break_glass.py",
+          "frontend/app/platform"
+        ],
+        "symbols_in_files": [
+          {"file": "backend/app/models.py", "symbol": "class PlatformAdmin"},
+          {"file": "backend/app/models.py", "symbol": "class BreakGlassSession"},
+          {"file": "backend/app/models.py", "symbol": "class TenantStatusHistory"},
+          {"file": "backend/app/main.py", "symbol": "TenantContextMiddleware"},
+          {"file": "backend/app/main.py", "symbol": "app.tenant_id"}
+        ],
+        "sql_patterns_in_migrations": [
+          "ENABLE ROW LEVEL SECURITY",
+          "CREATE POLICY tenant_isolation",
+          "FORCE ROW LEVEL SECURITY"
+        ]
+      }
+    }
+  ]
+}

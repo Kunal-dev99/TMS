@@ -589,37 +589,35 @@ def advise_on_hedge(
     # Optional: rephrase through the LLM for warmer prose. Facts stay
     # deterministic — we hand the model the exact bullets and ask it to
     # tighten them without changing the numbers.
-    key = _os.environ.get(KEY_VAR, "").strip()
-    if not key or not observations:
+    if not observations:
         return observations
 
-    try:
-        from groq import Groq
+    # Route through ai_run_service so every call is captured for the
+    # compliance page (closes Q-004). Fallback path unchanged.
+    from app.services import ai_run_service
 
-        client = Groq(api_key=key, timeout=TIMEOUT_SECONDS)
-        completion = client.chat.completions.create(
-            model=_os.environ.get(MODEL_VAR, DEFAULT_MODEL),
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a treasury GOVERNANCE narrator. Rewrite each of "
-                        "these bullets in tighter, more natural English. Preserve "
-                        "every number, counterparty name, and percentage exactly. "
-                        "You are describing counterparty concentration, limit "
-                        "headroom, maturity ladder, and policy movement — never "
-                        "a market view. Never predict or comment on where FX "
-                        "rates will move; never say a rate is attractive, "
-                        "favourable, or a good/bad time to hedge. Reply as JSON: "
-                        '{"bullets": ["...", "..."]}'
-                    ),
-                },
-                {"role": "user", "content": _json.dumps({"bullets": observations})},
-            ],
-            temperature=0.2,
-            max_tokens=800,
-        )
-        raw = (completion.choices[0].message.content or "").strip()
+    system = (
+        "You are a treasury GOVERNANCE narrator. Rewrite each of "
+        "these bullets in tighter, more natural English. Preserve "
+        "every number, counterparty name, and percentage exactly. "
+        "You are describing counterparty concentration, limit "
+        "headroom, maturity ladder, and policy movement — never "
+        "a market view. Never predict or comment on where FX "
+        "rates will move; never say a rate is attractive, "
+        "favourable, or a good/bad time to hedge. Reply as JSON: "
+        '{"bullets": ["...", "..."]}'
+    )
+    result = ai_run_service.chat(
+        session=session,
+        tenant_id=tenant_id,
+        endpoint="fx.observations_rewrite",
+        system=system,
+        user=_json.dumps({"bullets": observations}),
+    )
+    if result.fallback_used or not result.text:
+        return observations
+    try:
+        raw = result.text.strip()
         if raw.startswith("```"):
             raw = raw.strip("`").lstrip("json").strip()
         start = raw.find("{")
@@ -644,24 +642,22 @@ def narrate(
     snap = _snapshot(session, tenant_id, as_of_date, policy)
     eligible_by_id = {cp["id"]: cp for cp in snap["eligible_counterparties"]}
 
-    key = os.environ.get(KEY_VAR, "").strip()
-    if not key:
+    # Route through ai_run_service so every call is captured for the
+    # compliance page (closes Q-004). Adapter is bound to Groq today.
+    from app.services import ai_run_service
+
+    result = ai_run_service.chat(
+        session=session,
+        tenant_id=tenant_id,
+        endpoint="fx.narrate",
+        system=SYSTEM_PROMPT,
+        user=json.dumps(snap, default=str),
+    )
+    if result.fallback_used or not result.text:
         return _deterministic_briefing(snap, eligible_by_id)
 
     try:
-        from groq import Groq
-
-        client = Groq(api_key=key, timeout=TIMEOUT_SECONDS)
-        completion = client.chat.completions.create(
-            model=os.environ.get(MODEL_VAR, DEFAULT_MODEL),
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": json.dumps(snap, default=str)},
-            ],
-            temperature=0.2,
-            max_tokens=1800,
-        )
-        raw = (completion.choices[0].message.content or "").strip()
+        raw = result.text.strip()
         if raw.startswith("```"):
             raw = raw.strip("`").lstrip("json").strip()
         start = raw.find("{")

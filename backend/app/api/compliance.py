@@ -31,6 +31,7 @@ from sqlalchemy import func, select
 
 from app.api.deps import Ctx, require_permission
 from app.models import (
+    AiRun,
     AuditEvent,
     CheckRun,
     Counterparty,
@@ -1118,3 +1119,140 @@ def recent_deals(
         )
         for d in rows
     ]
+
+
+# ---------------------------------------------------------- AI activity (Q-004)
+
+
+class AiRunRow(BaseModel):
+    id: str
+    occurred_at: str
+    endpoint: str
+    model: str
+    response_ms: int | None
+    tokens_prompt: int
+    tokens_completion: int
+    fallback_used: bool
+    subject_type: str | None
+    subject_id: str | None
+    outcome: str | None
+    prompt_preview: str | None
+    response_preview: str | None
+
+
+class AiActivityView(BaseModel):
+    items: list[AiRunRow]
+    page_size: int
+    offset: int
+    total_matching: int
+    total_all: int
+    endpoints_seen: list[str]
+    models_seen: list[str]
+    generated_at: str
+
+
+@router.get("/ai-activity", response_model=AiActivityView)
+def ai_activity(
+    ctx: Ctx,
+    _: ComplianceGuard,
+    endpoint: str | None = Query(None, description="Filter by exact endpoint code"),
+    model: str | None = Query(None, description="Filter by model string"),
+    fallback: bool | None = Query(
+        None, description="true = only fallback runs; false = only real AI runs"
+    ),
+    subject_type: str | None = Query(None),
+    subject_id: str | None = Query(None),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+) -> AiActivityView:
+    """Every LLM call this tenant has made. Closes Q-004.
+
+    Read-only. Prompt + response text are preview-truncated for the
+    table; a future 'open in detail' view would return the full row.
+    """
+
+    def apply_filters(stmt):
+        stmt = stmt.where(AiRun.tenant_id == ctx.tenant_id)
+        if endpoint:
+            stmt = stmt.where(AiRun.endpoint == endpoint)
+        if model:
+            stmt = stmt.where(AiRun.model.ilike(f"%{model}%"))
+        if fallback is True:
+            stmt = stmt.where(AiRun.fallback_used == "true")
+        elif fallback is False:
+            stmt = stmt.where(AiRun.fallback_used == "false")
+        if subject_type:
+            stmt = stmt.where(AiRun.subject_type == subject_type)
+        if subject_id:
+            stmt = stmt.where(AiRun.subject_id == subject_id)
+        if date_from:
+            stmt = stmt.where(AiRun.occurred_at >= date_from)
+        if date_to:
+            stmt = stmt.where(AiRun.occurred_at <= date_to)
+        return stmt
+
+    total_matching = int(
+        ctx.session.scalar(apply_filters(select(func.count(AiRun.id)))) or 0
+    )
+    total_all = int(
+        ctx.session.scalar(
+            select(func.count(AiRun.id)).where(AiRun.tenant_id == ctx.tenant_id)
+        )
+        or 0
+    )
+    rows = list(
+        ctx.session.scalars(
+            apply_filters(select(AiRun))
+            .order_by(AiRun.occurred_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+    )
+    endpoints_seen = sorted(
+        ctx.session.scalars(
+            select(AiRun.endpoint)
+            .where(AiRun.tenant_id == ctx.tenant_id)
+            .distinct()
+        )
+    )
+    models_seen = sorted(
+        ctx.session.scalars(
+            select(AiRun.model).where(AiRun.tenant_id == ctx.tenant_id).distinct()
+        )
+    )
+
+    return AiActivityView(
+        items=[
+            AiRunRow(
+                id=r.id,
+                occurred_at=r.occurred_at,
+                endpoint=r.endpoint,
+                model=r.model,
+                response_ms=r.response_ms,
+                tokens_prompt=r.tokens_prompt,
+                tokens_completion=r.tokens_completion,
+                fallback_used=(r.fallback_used == "true"),
+                subject_type=r.subject_type,
+                subject_id=r.subject_id,
+                outcome=r.outcome,
+                prompt_preview=_preview(r.prompt_text, 240),
+                response_preview=_preview(r.response_text, 240),
+            )
+            for r in rows
+        ],
+        page_size=limit,
+        offset=offset,
+        total_matching=total_matching,
+        total_all=total_all,
+        endpoints_seen=endpoints_seen,
+        models_seen=models_seen,
+        generated_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    )
+
+
+def _preview(text: str | None, limit: int) -> str | None:
+    if not text:
+        return None
+    return text if len(text) <= limit else text[: limit - 1] + "…"

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ClipboardCheck,
+  Cpu,
   FileSearch,
   Loader2,
   ShieldAlert,
@@ -14,6 +15,7 @@ import { PageShell } from "@/components/PageShell";
 import { whoAmI } from "@/lib/api";
 import { can, currentUser } from "@/lib/session";
 
+import { AiActivityTab } from "./_ai_activity";
 import { AuditTrailTab } from "./_audit_trail";
 import { BreachesTab } from "./_breaches";
 import { DealEvidenceTab } from "./_deal_evidence";
@@ -35,7 +37,13 @@ import { PolicyHistoryTab } from "./_policy_history";
  * override, resolve) link out to the operational page instead.
  */
 
-type TabKey = "overview" | "audit" | "evidence" | "breaches" | "policy";
+type TabKey =
+  | "overview"
+  | "audit"
+  | "evidence"
+  | "breaches"
+  | "policy"
+  | "ai";
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: "overview", label: "Overview", icon: ShieldCheck },
@@ -43,6 +51,7 @@ const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?
   { key: "evidence", label: "Deal evidence", icon: FileSearch },
   { key: "breaches", label: "Breaches & overrides", icon: ShieldAlert },
   { key: "policy", label: "Policy history", icon: ShieldCheck },
+  { key: "ai", label: "AI activity", icon: Cpu },
 ];
 
 export default function CompliancePage() {
@@ -126,6 +135,7 @@ export default function CompliancePage() {
         />
       ) : null}
       {tab === "policy" ? <PolicyHistoryTab /> : null}
+      {tab === "ai" ? <AiActivityTab /> : null}
     </PageShell>
   );
 }
