@@ -1,0 +1,36 @@
+{
+  "id": "ADR-0020",
+  "date": "2026-10-08",
+  "status": "accepted",
+  "title": "Postgres in production — Azure Database for PostgreSQL Flexible Server",
+  "context": "P0-01 of the roadmap. ADR-0018 made the schema and migrations dialect-portable and proved them in CI against Postgres 16, but prod still ran on a single SQLite file on the Azure VM. That file is a one-disk-failure-away-from-total-data-loss surface, won't clear a bank security review, and blocks Phase-2 multi-tenancy (RLS requires Postgres). This ADR records the operational decision to cut production over, and the shape it takes.",
+  "decision": "Production runs on Azure Database for PostgreSQL — Flexible Server, version 16, in the same region as the application VM. The application reaches it via TREASURY_DATABASE_URL, sourced from Azure Key Vault at boot (P0-06). SQLite stays as the default for local dev and the hermetic pytest suite (ADR-0018 invariant unchanged).",
+  "scope_in": [
+    "Managed Postgres: Azure Database for PostgreSQL Flexible Server 16, same region as the app VM, SSL enforced (sslmode=require), private endpoint or VM-only firewall allow-list — never public.",
+    "Backups: PITR enabled, 7-day retention minimum, geo-redundant where the region supports it. A restore drill is run before go-live and documented in scripts/.",
+    "Pool config in backend/app/db.py: pool_size=10, max_overflow=10, pool_pre_ping=True, pool_recycle=1800. SQLite path is unchanged. pool_pre_ping is load-bearing — Azure PG reaps idle connections and without it the first request after idle 500s.",
+    "Dedicated non-superuser role 'treasury_app' owns the 'treasury' database. The application never connects as a superuser.",
+    "Connection string lives in Key Vault, not in a VM env file. Interim env-var deployment is acceptable but tracked as debt against P0-06."
+  ],
+  "scope_out_deferred": [
+    "Read replicas. Single primary is fine until the load shape is known.",
+    "PgBouncer / external pooler. Flexible Server's built-in pooler is enough at this size.",
+    "Per-tenant database routing (data residency). That lands with the multi-tenancy plan — see PHASE_2_MULTITENANCY_PLAN.md §6.",
+    "Running the full pytest suite against Postgres — still deferred (ADR-0018). The CI migration-and-seed job plus the production footprint is the coverage.",
+    "Removing SQLite as a supported dialect. Dev + tests keep it."
+  ],
+  "invariants": [
+    "Production TREASURY_DATABASE_URL always points at Postgres. SQLite in prod is a regression, not a configuration choice.",
+    "The DB role used by the app is never a superuser and never has BYPASSRLS (reserved for the platform-admin role when the multi-tenancy plan unparks).",
+    "pool_pre_ping stays true. Removing it to shave latency has already been tried mentally and rejected — the failure mode is a user-visible 500 after lunch.",
+    "Backups are only backups once a restore has been performed into a scratch database and a row read out. Untested backups do not count."
+  ],
+  "consequences": [
+    "backend/app/db.py — pool config added behind the SQLite/Postgres branch.",
+    "Operational: Azure Database for PostgreSQL Flexible Server provisioned, PITR enabled, restore drill documented in scripts/.",
+    "Secrets: TREASURY_DATABASE_URL moves to Key Vault (ties to P0-06).",
+    "Unblocks PHASE_2_MULTITENANCY_PLAN.md Stage 1 — RLS requires a real Postgres bind in the target deployment.",
+    "P3-03 (backup + snapshot) is subsumed by the PITR + restore-drill clauses of this ADR."
+  ],
+  "related": ["ADR-0018", "P0-01", "P0-06", "P3-03", "PHASE_2_MULTITENANCY_PLAN.md"]
+}

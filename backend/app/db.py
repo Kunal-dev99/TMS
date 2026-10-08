@@ -18,13 +18,23 @@ BACKEND_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DB_PATH = BACKEND_ROOT / "treasury.db"
 DATABASE_URL = os.environ.get("TREASURY_DATABASE_URL", f"sqlite:///{DEFAULT_DB_PATH}")
 
-engine = create_engine(
-    DATABASE_URL,
-    future=True,
-    # One session per request, but FastAPI runs synchronous endpoints in a
-    # threadpool, so the connection must not be pinned to the creating thread.
-    connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {},
-)
+_engine_kwargs: dict = {"future": True}
+if DATABASE_URL.startswith("sqlite"):
+    # FastAPI runs sync endpoints in a threadpool, so the SQLite connection
+    # must not be pinned to the creating thread.
+    _engine_kwargs["connect_args"] = {"check_same_thread": False}
+else:
+    # pool_pre_ping is the one that matters: Azure PG Flexible Server reaps
+    # idle connections and without it the first request after an idle period
+    # 500s. Recycle well under the server's idle timeout for the same reason.
+    _engine_kwargs.update(
+        pool_size=10,
+        max_overflow=10,
+        pool_pre_ping=True,
+        pool_recycle=1800,
+    )
+
+engine = create_engine(DATABASE_URL, **_engine_kwargs)
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False, future=True)
 
