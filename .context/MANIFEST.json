@@ -1,6 +1,8 @@
 {
   "changes_recent": [
-    "2026-09-18"
+    "2026-09-18",
+    "2026-09-23",
+    "2026-10-08"
   ],
   "decisions": [
     "0001-one-surface-one-panel",
@@ -20,7 +22,10 @@
     "0015-four-eye-control-on-sensitive-access-grants",
     "0016-compliance-and-approvals-pages",
     "0017-policy-history-change-metadata",
-    "0018-postgres-migration-ready"
+    "0018-postgres-migration-ready",
+    "0020-postgres-in-production",
+    "0021-feature-isolation-via-worktree",
+    "0022-pcs-deferred"
   ],
   "files": {
     "ai.json": {
@@ -29,9 +34,9 @@
       "sha": "298a5d6f44a0"
     },
     "api.json": {
-      "bytes": 31498,
-      "mtime": "2026-09-18T17:44:04+00:00",
-      "sha": "782c97746efc"
+      "bytes": 31801,
+      "mtime": "2026-10-08T13:30:29+00:00",
+      "sha": "f8374e586490"
     },
     "architecture.json": {
       "bytes": 3329,
@@ -44,9 +49,19 @@
       "sha": "434a479770e7"
     },
     "changes/2026-09-18.json": {
-      "bytes": 44156,
-      "mtime": "2026-09-18T17:37:04+00:00",
-      "sha": "7e08239a5b25"
+      "bytes": 46286,
+      "mtime": "2026-09-18T17:44:20+00:00",
+      "sha": "f2b7dc0f6f4c"
+    },
+    "changes/2026-09-23.json": {
+      "bytes": 10953,
+      "mtime": "2026-09-23T07:17:58+00:00",
+      "sha": "c02e3516d957"
+    },
+    "changes/2026-10-08.json": {
+      "bytes": 16933,
+      "mtime": "2026-10-08T13:30:18+00:00",
+      "sha": "eaba69df89c5"
     },
     "conventions.json": {
       "bytes": 2845,
@@ -54,9 +69,9 @@
       "sha": "cbfaaf24d1bc"
     },
     "data-model.json": {
-      "bytes": 125908,
-      "mtime": "2026-09-18T17:44:04+00:00",
-      "sha": "0b08783748e7"
+      "bytes": 156027,
+      "mtime": "2026-10-08T13:30:29+00:00",
+      "sha": "4777efaa44d5"
     },
     "decisions/0001-one-surface-one-panel.json": {
       "bytes": 1059,
@@ -148,15 +163,30 @@
       "mtime": "2026-09-18T17:43:48+00:00",
       "sha": "590cfbb54cb3"
     },
+    "decisions/0020-postgres-in-production.json": {
+      "bytes": 3642,
+      "mtime": "2026-10-08T08:36:16+00:00",
+      "sha": "88940c84bbe5"
+    },
+    "decisions/0021-feature-isolation-via-worktree.json": {
+      "bytes": 3048,
+      "mtime": "2026-10-08T13:29:31+00:00",
+      "sha": "407e4af417bb"
+    },
+    "decisions/0022-pcs-deferred.json": {
+      "bytes": 2262,
+      "mtime": "2026-10-08T13:29:31+00:00",
+      "sha": "d41e3ee35078"
+    },
     "frontend.json": {
       "bytes": 3597,
       "mtime": "2026-09-18T06:02:49+00:00",
       "sha": "068fd3b3abe2"
     },
     "open-questions.json": {
-      "bytes": 1632,
-      "mtime": "2026-09-18T06:05:42+00:00",
-      "sha": "b1c16d9ea5f7"
+      "bytes": 2051,
+      "mtime": "2026-09-23T07:01:09+00:00",
+      "sha": "3a5083cb31c7"
     },
     "project.json": {
       "bytes": 2991,
@@ -169,7 +199,7 @@
       "sha": "1b3d5cb1fd7a"
     }
   },
-  "generated_at": "2026-09-18T17:44:04+00:00",
+  "generated_at": "2026-10-08T13:30:29+00:00",
   "open_questions_file": "open-questions.json",
   "project": "treasury-register",
   "read_order_for_new_chats": [
@@ -181,7 +211,11 @@
     "data-model.json",
     "api.json",
     "ai.json",
-    "roadmap.json"
+    "roadmap.json",
+    "../PHASE_2_BLUEPRINT.md",
+    "../PHASE_2_IMPLEMENTATION_PLAN.md",
+    "../PHASE_2_ADMIN_UI_PLAN.md",
+    "../PHASE_2_MULTITENANCY_PLAN.md"
   ],
   "schema_version": 1
 }

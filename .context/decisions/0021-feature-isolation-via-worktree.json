@@ -1,0 +1,28 @@
+{
+  "id": "ADR-0021",
+  "date": "2026-10-08",
+  "status": "accepted",
+  "title": "Feature isolation — worktree + DB copy, never the live dev DB",
+  "context": "Fusion's standing rule D-03 says in-progress feature work must be isolated from the running application. On a shared dev DB a half-landed migration leaks into another feature's test run; a half-finished schema change blocks the next person's debug session. We hit a lighter version of this today when pytest discovery on the live backend/treasury.db interacted badly with OneDrive sync. The constraint is cheap to adopt and expensive to retrofit after a schema accident.",
+  "decision": "Every feature of non-trivial size is built in a git worktree outside the main checkout, pointed at a fresh copy of the dev database (sqlite file copy today; `pg_dump | psql` into a scratch database when Postgres lands per ADR-0020). The main checkout runs the live dev app; the worktrees build what will replace it. When a worktree's feature lands on main, the worktree is removed.",
+  "scope_in": [
+    "The rule applies to any change that touches a migration, a service with side effects, or more than two files.",
+    "Trivial changes (comment fix, single-file typo, docs edit) can land on the main checkout — the overhead of a worktree isn't earned.",
+    "The feature's worktree gets its own TREASURY_DATABASE_URL — either a copy of the SQLite file or, under Postgres, a scratch DB spun up for the branch.",
+    "The dev VM continues to run the main checkout; worktrees are per-developer, local-only."
+  ],
+  "scope_out_deferred": [
+    "Automation. Today a developer runs `git worktree add ../tms-<feature> <branch>` and `cp backend/treasury.db ../tms-<feature>/backend/treasury.db` by hand. A `scripts/new-feature.sh` wrapper is a nice-to-have, not a blocker.",
+    "Per-worktree Postgres schema (vs. per-worktree database). Deferred until multi-tenancy unparks — RLS + schema-per-feature is a thought exercise that doesn't belong on today's plate."
+  ],
+  "invariants": [
+    "The live dev DB (backend/treasury.db on the main checkout) is never written to by a feature branch's test suite or dev server. Running tests from a worktree creates its own tmp SQLite via the `session` fixture; worktree dev servers point at the copied file, not the original.",
+    "A worktree that has been merged is removed. Zombie worktrees with half-finished code are a bigger risk than the duplication cost of removing them."
+  ],
+  "consequences": [
+    "scripts/start-backend.ps1 + scripts/start-frontend.ps1 added — they are OneDrive-safe and port-clearing, which the worktree workflow needs since each worktree starts its own dev server.",
+    ".claude/agents/*.md reference D-03 so an engineer agent that forgets and tries to edit the main checkout's DB stops itself.",
+    "docs/MASTER_PROMPT_FEATURE_KICKOFF.md names D-03 in the kickoff template — a feature that doesn't open with 'build this in a worktree' is non-compliant on arrival."
+  ],
+  "related": ["D-03", "ADR-0018", "ADR-0020"]
+}

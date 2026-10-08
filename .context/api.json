@@ -1,6 +1,6 @@
 {
   "base_prefix": "/api/v1",
-  "count": 101,
+  "count": 102,
   "endpoints_by_tag": {
     "Accounting and settlement": [
       {
@@ -287,6 +287,17 @@
           "422"
         ],
         "summary": "Activity Csv"
+      },
+      {
+        "has_body": false,
+        "method": "GET",
+        "operation_id": "ai_activity_api_v1_compliance_ai_activity_get",
+        "path": "/api/v1/compliance/ai-activity",
+        "responses": [
+          "200",
+          "422"
+        ],
+        "summary": "Ai Activity"
       },
       {
         "has_body": false,
@@ -1157,6 +1168,6 @@
       }
     ]
   },
-  "generated_at": "2026-09-18T17:44:04+00:00",
+  "generated_at": "2026-10-08T13:30:29+00:00",
   "source": "fastapi.openapi()"
 }

@@ -1,0 +1,187 @@
+{
+  "date": "2026-10-08",
+  "entries": [
+    {
+      "time": "afternoon",
+      "author": "assistant",
+      "kind": "infrastructure",
+      "summary": "P0-01 Postgres-in-prod — pool config in db.py + ADR-0020 recording the operational decision",
+      "backend": {
+        "changed": [
+          "backend/app/db.py — Postgres branch gains pool_size=10, max_overflow=10, pool_pre_ping=True, pool_recycle=1800. SQLite branch unchanged (dev + hermetic tests keep today's behaviour). pool_pre_ping is load-bearing: Azure Database for PostgreSQL Flexible Server reaps idle connections and without it the first request after an idle period 500s."
+        ]
+      },
+      "new_files": [
+        ".context/decisions/0020-postgres-in-production.json — ADR-0020: production runs on Azure Database for PostgreSQL Flexible Server 16, same region as the app VM, SSL enforced, private endpoint, PITR 7d, dedicated non-superuser 'treasury_app' role. Connection string sourced from Key Vault (ties P0-06). Subsumes P3-03 (backup + snapshot) via the restore-drill invariant. Unblocks PHASE_2_MULTITENANCY_PLAN.md Stage 1 — RLS requires a real Postgres bind."
+      ],
+      "operational_followups": [
+        "Provision the Flexible Server + 'treasury' DB + 'treasury_app' non-superuser role.",
+        "Put TREASURY_DATABASE_URL in Azure Key Vault; VM reads it at boot via managed identity (interim env-var acceptable, tracked as P0-06 debt).",
+        "Run alembic upgrade head against the new DB (CI already proves this is a no-op).",
+        "Perform the restore drill into a scratch DB and document the one-liner in scripts/. An untested backup is not a backup."
+      ],
+      "related_adrs": ["ADR-0018", "ADR-0020"],
+      "related_roadmap": ["P0-01", "P0-06", "P3-03"]
+    },
+    {
+      "time": "evening",
+      "author": "assistant",
+      "kind": "refactor",
+      "summary": "S2 — planner settings + rate curve moved from in-process singletons to the tenant_setting table (restart-safe, per-tenant, scale-out ready)",
+      "backend": {
+        "changed": [
+          "backend/app/models.py — new TenantSetting ORM class (id, tenant_id, key, payload_json, updated_at, updated_by_user_id; UNIQUE(tenant_id, key)); registered in PHASE_ONE_TABLES",
+          "backend/app/services/planner_settings.py — dropped module-level Lock + _settings singleton. get_settings/update_settings/reset_defaults now take (session, tenant_id). Defaults still live in the PlannerSettings dataclass; DB stores only the diff; a missing row returns defaults.",
+          "backend/app/services/system_policy.py — same shape for the rate curve. get_rate_curve/update_rate_curve/reset_rate_curve take (session, tenant_id). The 'DEFAULT_RATE_CURVE' table stays as the fallback.",
+          "backend/app/api/planner.py — three endpoints pass ctx.session + ctx.tenant_id through; writes commit explicitly; updated_by_user_id captured from the caller",
+          "backend/app/services/planner_service.py — _rate_for(session, tenant_id, rating, tenor); deploy_cash() passes self.session, self.tenant_id to get_settings and _rate_for"
+        ],
+        "new_files": [
+          "backend/app/repo/tenant_settings.py — thin repo with get, get_or_default, upsert, delete over the tenant_setting table",
+          "backend/alembic/versions/b17c3f04d2a8_tenant_setting_table.py — portable migration (no dialect-specific DDL)"
+        ],
+        "new_tests": [
+          "backend/tests/test_tenant_settings_persistence.py — 7 tests: planner settings survive a fresh session, are per-tenant, reset restores defaults, get-without-prior-write returns defaults; same three invariants for the rate curve"
+        ]
+      },
+      "test_state": {
+        "new": 7,
+        "changed": 0,
+        "removed": 0,
+        "full_suite_after": "323 passed"
+      },
+      "notes": [
+        "Observable API shape is unchanged: GET /planner/settings returns the same JSON. Internals are per-tenant + persistent instead of per-process.",
+        "Behaviour change worth flagging: reset endpoints now DELETE the row instead of mutating a shared singleton. Next read returns dataclass defaults — same observable outcome. No code relied on singleton object identity.",
+        "Prerequisite for horizontal scaling: with the Postgres cutover (ADR-0020) + this change, two app instances now agree on what the planner settings are. Previously each instance held its own in-RAM copy.",
+        "Prerequisite for the parked multi-tenancy plan: every tenant now has its own planner knobs. One of the two in-memory places where tenant isolation was impossible is closed.",
+        "The tenant_setting table is a general per-tenant JSON-blob config store — future settings (e.g. accounting-event targets, hedge-advisor knobs) can land on it without another migration."
+      ],
+      "related_roadmap": ["S2 (scalability), prerequisite for PHASE_2_MULTITENANCY_PLAN.md"]
+    },
+    {
+      "time": "evening",
+      "author": "assistant",
+      "kind": "performance",
+      "summary": "S10 / P1-05 — composite index (tenant_id, occurred_at) on audit_event",
+      "backend": {
+        "changed": [
+          "backend/app/models.py — AuditEvent.__table_args__ gains Index('ix_audit_tenant_occurred', 'tenant_id', 'occurred_at'). Every compliance query filters by tenant_id and orders/ranges on occurred_at; without this a scan of the table grew linearly with history."
+        ],
+        "new_files": [
+          "backend/alembic/versions/c4f8e21a9b65_audit_event_tenant_occurred_index.py — portable migration (no dialect-specific DDL)"
+        ]
+      },
+      "test_state": {
+        "new": 0,
+        "changed": 0,
+        "removed": 0,
+        "full_suite_after": "phase0 model/migration parity green (58 passed); full suite unchanged"
+      },
+      "notes": [
+        "Query shape surveyed in backend/app/api/compliance.py — 20+ sites filter by tenant_id and order/range on occurred_at. Composite covers all of them as a seek rather than a scan.",
+        "Deliberately not adding (tenant_id, action, occurred_at) or (tenant_id, subject_type, occurred_at) — the primary composite's selectivity on tenant_id alone is enough at today's row counts; add the three-column variant when a slow-query log justifies it.",
+        "Follow-up still open for P1-05 full close: nightly archive job for events > 7 years. Not shipped here; the index alone was the hot win."
+      ],
+      "related_roadmap": ["P1-05", "S10"]
+    },
+    {
+      "time": "evening",
+      "author": "assistant",
+      "kind": "refactor",
+      "summary": "S1 — rate-limit store moved behind a port (Memory default, Redis adapter shipped)",
+      "backend": {
+        "changed": [
+          "backend/app/connector/ports.py — new RateLimitStorePort Protocol: hit(key, max_requests, window_seconds) -> (allowed, retry_after); clear() for tests. Added to ALL_PORTS.",
+          "backend/app/connector/registry.py — _make_rate_limit_store() reads RATE_LIMIT_STORE env var (memory|redis). Redis path pulls REDIS_URL through SecretsPort (vault-uniform) and refuses to bind without it.",
+          "backend/app/services/rate_limit.py — rewritten to delegate to registry.get(RateLimitStorePort). Window arithmetic lives in the adapter now. Policy constants + FastAPI dependency surface unchanged — zero caller change."
+        ],
+        "new_files": [
+          "backend/app/connector/adapters/rate_limit_store/__init__.py",
+          "backend/app/connector/adapters/rate_limit_store/memory.py — MemoryRateLimitStore: deque per key, thread-safe. Behaviour matches the previous in-module singleton exactly.",
+          "backend/app/connector/adapters/rate_limit_store/redis.py — RedisRateLimitStore: sorted-set sliding window via ZREMRANGEBYSCORE/ZCARD/ZADD/EXPIRE in a MULTI pipeline. redis-py is a lazy import; a deployment without it just leaves RATE_LIMIT_STORE=memory.",
+          "backend/tests/test_rate_limit_store.py — 9 tests covering the port contract (allowed-until-cap, cap refusal, key independence, window release, clear) + registry wiring (memory default, unknown refused, redis-without-url refused)."
+        ]
+      },
+      "test_state": {
+        "new": 9,
+        "changed": 0,
+        "removed": 0,
+        "full_suite_after": "rate-limit + connector-port suites green"
+      },
+      "notes": [
+        "No change in observable API behaviour. Every endpoint rate-limits exactly as before; the store is just pluggable.",
+        "Horizontal scaling unlock: set RATE_LIMIT_STORE=redis + REDIS_URL and N FastAPI instances share one bucket. Without this, each instance held its own in-RAM counter and the effective limit became N × policy.",
+        "Deliberately did NOT add Redis to backend/requirements.txt — it's an optional dep. A deployment that chooses redis adds `redis>=5` on its own. Tests use Memory only.",
+        "The clear() method is for tests; a prod Redis adapter wipes its namespace (scan+delete) and should never be called by application code."
+      ],
+      "related_roadmap": ["S1"]
+    },
+    {
+      "time": "evening",
+      "author": "assistant",
+      "kind": "observability",
+      "summary": "S9 — structured JSON logs with per-request context (request_id, tenant_id, user_id, path, method, status, duration_ms)",
+      "backend": {
+        "new_files": [
+          "backend/app/logging.py — JsonFormatter + bind_request_context/clear_request_context/current_context on contextvars; configure() installs on the root logger. No third-party dep (stdlib logging + contextvars). get_logger() is the stable import surface so swapping in structlog later is one-line.",
+          "backend/app/middleware/__init__.py",
+          "backend/app/middleware/request_context.py — RequestContextMiddleware: reads or generates X-Request-Id, best-effort pulls user_id+tenant_id from the bearer token (same stateless read the rate limiter uses), binds everything into contextvars, logs request.start/request.end with method/path/status/duration_ms, echoes X-Request-Id on the response.",
+          "backend/tests/test_logging_context.py — 9 tests: formatter emits required keys, includes bound context, omits unbound keys, merges 'extra', coerces unserialisable; middleware echoes supplied X-Request-Id, generates one when missing, anon /health still succeeds."
+        ],
+        "changed": [
+          "backend/app/main.py — app_logging.configure() at import; RequestContextMiddleware registered after CORS; CORS expose_headers gains X-Request-Id so a browser client can read the trace id."
+        ]
+      },
+      "test_state": {
+        "new": 9,
+        "changed": 0,
+        "removed": 0,
+        "full_suite_after": "pending full-suite confirmation (narrow run green)"
+      },
+      "notes": [
+        "Every log line emitted during a request now carries the same request_id. Grep by request_id to see one request's trail across services; grep by tenant_id to see one tenant's.",
+        "Response header X-Request-Id is set on 2xx AND 5xx so an operator can correlate what the user saw with what the log shows.",
+        "Reserved stdlib LogRecord keys are filtered when merging 'extra' so a caller cannot overwrite 'ts' or 'level' by accident.",
+        "Unserialisable extra values are coerced via repr() rather than crashing the log call. Loud failure modes in logging land are the wrong trade.",
+        "uvicorn.access + sqlalchemy.engine.Engine quieted to WARNING in configure() — their default INFO torrent swamps the useful signal.",
+        "No existing log callsites were migrated. The infra is in place; a follow-up can route print()/console-mail/etc. through get_logger() when a specific debugging need demands it."
+      ],
+      "related_roadmap": ["S9", "feeds P3-02 observability"]
+    },
+    {
+      "time": "evening",
+      "author": "assistant",
+      "kind": "process",
+      "summary": "Adopted Fusion AI-assisted engineering approach (adapted, not replaced) — agent roles, kickoff template, methodology doc, dev-script hardening, isolation ADR, PCS deferred ADR",
+      "new_files": [
+        ".gitignore (repo root) — ignores .project-memory/, .env, editor cruft. backend/.gitignore and frontend/.gitignore unchanged.",
+        ".claude/agents/solution-architect.md — planner/architect role, Read+Grep+Glob+Write+Edit only (deliberately NO Bash). Owns .context/decisions/ and PHASE_*.md. Never edits source files.",
+        ".claude/agents/backend-engineer.md — builds inside the Router→Service→Repository→Database layering, enforces portable DDL (ADR-0018), tenant filter (D-04), SecretsPort usage, tenant_setting over singletons, ai_run_service over raw LLM calls, get_logger over print. Reports done; does NOT tick the plan.",
+        ".claude/agents/frontend-engineer.md — Next.js 14 + TS + Tailwind, API-only data access, persona-pages behind role-nav (ADR-0009), compliance-tab shape (ADR-0016), X-Request-Id correlation to backend logs (S9). Reports done; does NOT tick the plan.",
+        "docs/MASTER_PROMPT_FEATURE_KICKOFF.md — copy-paste kickoff template with pre-plan reading, standing rules, plan-first discipline, and the 'what you must NOT do' list.",
+        "docs/AI_Assisted_Development_Framework.md — client-facing methodology document. The whole Requirement→Research→Challenge→Plan→Isolate→Build→Review→Regression→Human testing→E2E→Scenario→Record Decisions flow. The three agents and their boundaries. Design constraints (reversibility, isolation, tenant isolation, additive-only, fail-closed authz). What the client gets vs raw prompts.",
+        "docs/prompts/kickoffs/.gitkeep — placeholder for per-feature kickoff prompts.",
+        "scripts/start-backend.ps1 — OneDrive-safe uvicorn --reload wrapper. Clears orphans on port 8000 + stale python processes under the project before launch. (Addresses the pytest-discovery hang we hit while running S1 tests today.)",
+        "scripts/start-frontend.ps1 — same shape for Next.js. Wipes .next with Remove-Item -Recurse -Force (OneDrive placeholders) before npm run dev.",
+        ".context/decisions/0021-feature-isolation-via-worktree.json — ADR-0021: D-03 'build features in a worktree against a DB copy, never the live dev DB'. Trivial changes exempt; worktree + copied TREASURY_DATABASE_URL for anything touching migrations or side-effectful services.",
+        ".context/decisions/0022-pcs-deferred.json — ADR-0022: PCS (Project Context System) is NOT installed. .context/changes/ + Claude Code auto-memory cover the memory need today. .project-memory/ pre-ignored for a future install."
+      ],
+      "changed": [
+        "CLAUDE.md — new header block pointing at docs/AI_Assisted_Development_Framework.md, docs/MASTER_PROMPT_FEATURE_KICKOFF.md, .claude/agents/*, scripts/*, and naming the four standing rules (D-01..D-04)."
+      ],
+      "deliberately_NOT_created": [
+        "docs/DECISIONS.md — the Fusion template asks for a D-01 log but this project has 22 ADRs in .context/decisions/. Running the template verbatim would create a second decision log. User chose 'adapt, don't replace' explicitly.",
+        "docs/DELIVERY_PLAN.md — same reasoning; PHASE_2_BLUEPRINT.md + PHASE_2_IMPLEMENTATION_PLAN.md + PHASE_2_ADMIN_UI_PLAN.md + PHASE_2_MULTITENANCY_PLAN.md are the plan tree. Parked plans are CI-enforced via PARKED_PLANS.json.",
+        "docs/ARCHITECTURE.md — .context/architecture.json + .context/data-model.json + .context/api.json + .context/backend.json + .context/frontend.json cover this richer, auto-regenerated by .context/update.py."
+      ],
+      "notes": [
+        "Standing rules D-01 (additive) and D-04 (fail-closed authz) already matched the project's spirit — ADR-0018 (portable DDL + additive migrations), ADR-0011 (permission matrix), ADR-0013 (scope preflight), ADR-0015 (four-eye grants). The agent files now cite them directly so a new engineer agent inherits them.",
+        "D-02 reversibility (every migration has a tested downgrade): most existing migrations have a downgrade stub, but downgrade coverage isn't test-enforced today. Not addressed here — a follow-up could add an invariant test that asserts downgrade for every revision.",
+        "D-03 isolation (worktree per feature): new rule, formalised in ADR-0021. Not enforced by tooling yet — a `scripts/new-feature.sh` wrapper is the obvious follow-up.",
+        "PCS deferred (ADR-0022) because this project already has two memory layers (.context/changes/ + Claude Code auto-memory) that cover the same need. Revisit when a cross-session memory need surfaces that neither covers."
+      ],
+      "next_step_for_user": "First feature kickoff: copy docs/MASTER_PROMPT_FEATURE_KICKOFF.md, fill the Requirement block, paste into a fresh Claude Code session. The solution-architect agent returns a plan; nothing lands as code until that plan is reviewed."
+    }
+  ]
+}

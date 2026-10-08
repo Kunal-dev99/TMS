@@ -1,0 +1,26 @@
+{
+  "id": "ADR-0022",
+  "date": "2026-10-08",
+  "status": "accepted",
+  "title": "PCS (Project Context System) deferred — memory layer is Claude Code auto-memory + .context/changes/ for now",
+  "context": "Fusion's engineering template calls for PCS, a local-first append-only event log + sqlite index of project activity, to live under .project-memory/. It's not installed on this machine today. The project already has two mechanisms covering the same need from different angles: (1) .context/changes/YYYY-MM-DD.json — append-only, in-repo change log; (2) Claude Code's built-in auto-memory under %USERPROFILE%\\.claude\\projects — persistent cross-session user/feedback/project/reference memory. Combined they cover 'what happened' and 'what the operator prefers' without PCS being installed.",
+  "decision": "Defer PCS install. Record the gap here so a future session knows the memory stack is intentional, not accidental. .project-memory/ is pre-ignored in .gitignore so a later install adds the directory without a committed-event-log accident.",
+  "scope_in": [
+    ".project-memory/ added to repo-root .gitignore proactively.",
+    "No code depends on PCS being present. The agent definitions in .claude/agents/ do not reference it.",
+    "docs/AI_Assisted_Development_Framework.md names 'record decisions' as a flow step but points at .context/decisions/, not PCS."
+  ],
+  "scope_out_deferred": [
+    "Actually installing PCS. Revisit when a cross-session memory need surfaces that the current stack doesn't cover — e.g. 'which features did we start and park?' at a scale that the YAML/JSON change log stops being readable.",
+    "Automating the migration from Claude auto-memory into PCS when it lands. Likely a one-time export script when the time comes."
+  ],
+  "invariants": [
+    ".context/changes/YYYY-MM-DD.json is the authoritative in-repo change log. Append-only — new entries at the bottom, old entries never edited.",
+    "If PCS is installed later, this ADR gets a sibling ADR-00NN flipping its status, not an edit in place."
+  ],
+  "consequences": [
+    ".gitignore (repo root) added, with .project-memory/ pre-ignored.",
+    "Agents do not need to call out to PCS; they read .context/ directly."
+  ],
+  "related": ["ADR-0010"]
+}

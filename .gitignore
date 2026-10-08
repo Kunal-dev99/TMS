@@ -1,0 +1,17 @@
+# Repo-root ignores. backend/.gitignore and frontend/.gitignore handle
+# the per-subproject stuff.
+
+# PCS (Project Context System) — managed outside the repo. Deferred for
+# now (ADR-0022); the directory is ignored proactively so a later install
+# doesn't accidentally commit its event log.
+.project-memory/
+
+# Local-only secrets. Keep these out even if someone sets them at repo root.
+.env
+.env.local
+
+# Editor + OS cruft that neither subproject's ignore covers.
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
