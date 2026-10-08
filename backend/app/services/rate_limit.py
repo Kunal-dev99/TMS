@@ -1,15 +1,13 @@
-"""In-process rate limiter (P0-04).
+"""Rate limiter (P0-04, S1).
 
 Sliding-window token buckets keyed by (bucket_name, actor_key). The
 actor key is the caller's user_id if the request is authenticated,
-otherwise the client IP. Buckets live in a module-level dict — fine
-for a single-process FastAPI on one VM; when we go multi-instance
-we'll swap the store for Redis and keep this API.
+otherwise the client IP.
 
-Every limited endpoint takes a FastAPI Depends(rate_limit(...))
-factory that raises TreasuryError(RATE_LIMITED) on refusal, so the
-error body reaches the client through the same handler as every
-other domain error.
+The store is pluggable via RateLimitStorePort — ``memory`` (default,
+one process) or ``redis`` (shared across instances). This module keeps
+the FastAPI dependency surface and the policy constants; it does none
+of the window arithmetic itself.
 
 Disable in tests with TREASURY_RATE_LIMITS=off. The env var is
 consulted per-request so a conftest monkeypatch flips it on and off
@@ -18,35 +16,30 @@ without a module reload.
 
 from __future__ import annotations
 
-import os
-import threading
-import time
-from collections import deque
 from dataclasses import dataclass
 from typing import Callable
 
 from fastapi import Request
 
+from app.connector import ports, registry
 from app.errors import ErrorCode, TreasuryError
 
 
-_lock = threading.Lock()
-_buckets: dict[tuple[str, str], deque[float]] = {}
-
-
-def _now() -> float:
-    return time.monotonic()
-
-
 def _enabled() -> bool:
-    """Off in the test suite; on everywhere else."""
-    return os.environ.get("TREASURY_RATE_LIMITS", "on").lower() != "off"
+    """Off in the test suite; on everywhere else.
+
+    Reads through SecretsPort so a Vault-bound deployment picks the
+    same config knob up without an env var.
+    """
+    value = (
+        registry.get(ports.SecretsPort).get("TREASURY_RATE_LIMITS", "on") or "on"
+    )
+    return value.lower() != "off"
 
 
 def reset() -> None:
-    """Wipe the in-memory buckets. Used by tests between cases."""
-    with _lock:
-        _buckets.clear()
+    """Wipe the backing store. Used by tests between cases."""
+    registry.get(ports.RateLimitStorePort).clear()
 
 
 @dataclass
@@ -59,10 +52,6 @@ class LimitPolicy:
 
 
 def _client_ip(request: Request) -> str:
-    # Prefer the trusted proxy hint if the deployment sets it; fall
-    # back to the socket. Caddy on the VM strips X-Forwarded-* from
-    # the outside and sets it to the real client — see deployment
-    # story. We don't allow the client to spoof it directly.
     fwd = request.headers.get("x-forwarded-for")
     if fwd:
         return f"ip:{fwd.split(',')[0].strip()}"
@@ -75,32 +64,24 @@ def _consume(policy: LimitPolicy, actor_key: str) -> None:
     """Record a hit; raise if the bucket is full."""
     if not _enabled():
         return
-    now = _now()
-    cutoff = now - policy.window_seconds
-    key = (policy.name, actor_key)
-    with _lock:
-        bucket = _buckets.setdefault(key, deque())
-        # Trim expired hits.
-        while bucket and bucket[0] < cutoff:
-            bucket.popleft()
-        if len(bucket) >= policy.max_requests:
-            retry_after = max(0.0, policy.window_seconds - (now - bucket[0]))
-            raise TreasuryError(
-                ErrorCode.RATE_LIMITED,
-                (
-                    f"Rate limit on '{policy.name}' — "
-                    f"{policy.max_requests} per {int(policy.window_seconds)}s. "
-                    f"Retry in {retry_after:.0f}s."
-                ),
-            )
-        bucket.append(now)
+    key = f"{policy.name}|{actor_key}"
+    store = registry.get(ports.RateLimitStorePort)
+    allowed, retry_after = store.hit(
+        key, policy.max_requests, policy.window_seconds
+    )
+    if not allowed:
+        raise TreasuryError(
+            ErrorCode.RATE_LIMITED,
+            (
+                f"Rate limit on '{policy.name}' — "
+                f"{policy.max_requests} per {int(policy.window_seconds)}s. "
+                f"Retry in {retry_after:.0f}s."
+            ),
+        )
 
 
 def limit_by_ip(policy: LimitPolicy) -> Callable[..., None]:
-    """Dependency factory that keys the bucket by the caller's IP.
-
-    Use on anonymous or pre-auth endpoints — /auth/token, /activate.
-    """
+    """Dependency factory that keys the bucket by the caller's IP."""
 
     def _dep(request: Request) -> None:
         _consume(policy, _client_ip(request))
@@ -111,31 +92,21 @@ def limit_by_ip(policy: LimitPolicy) -> Callable[..., None]:
 def limit_by_user(policy: LimitPolicy) -> Callable[..., None]:
     """Dependency factory that keys the bucket by the authenticated user.
 
-    Must be paired with an endpoint that already resolves `Caller`
-    (via Depends). FastAPI resolves both, and we read the caller
-    from `request.state` set by our own dep on the same request.
-
-    Simplest wiring: read the bearer token, resolve identity via a
-    tiny helper here. Any resolution failure falls back to IP so the
-    limit still protects the endpoint.
+    Falls back to IP when the bearer token is missing or unreadable —
+    the auth dependency further along refuses the request on its own.
     """
 
     def _dep(request: Request) -> None:
-        actor = _actor_from_request(request)
-        _consume(policy, actor)
+        _consume(policy, _actor_from_request(request))
 
     return _dep
 
 
 def _actor_from_request(request: Request) -> str:
-    """Best-effort user id from the bearer token; fall back to IP."""
     auth = request.headers.get("Authorization") or ""
     if not auth.lower().startswith("bearer "):
         return _client_ip(request)
     token = auth.split(" ", 1)[1].strip()
-    # Signed tokens are stateless — read the payload without a DB hit.
-    # A malformed/expired token still gets a per-IP bucket; the auth
-    # dependency further along will refuse the request on its own.
     try:
         from app.security import read_token
 
