@@ -10,14 +10,22 @@ why the two must return identical shapes.
     uvicorn app.main:app --port 8000 --reload
 """
 
+import os
+
 from fastapi import FastAPI, Request
 
 # Imported first so a .env file is read before anything looks at the
 # environment for a signing key or a model.
 from app import config
+from app import logging as app_logging
+from app.middleware.request_context import RequestContextMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
+# JSON structured logs with per-request context (S9). Installed before
+# anything else — a startup error should land in the JSON stream too.
+app_logging.configure(level=os.environ.get("TREASURY_LOG_LEVEL", "INFO"))
 
 from app.api import (
     accounting,
@@ -69,9 +77,14 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
-    expose_headers=["X-Rows-Matching", "X-Rows-Exported"],
+    expose_headers=["X-Rows-Matching", "X-Rows-Exported", "X-Request-Id"],
     max_age=600,
 )
+
+# Runs after CORS (Starlette executes middleware LIFO on request) so
+# preflights still short-circuit; on the request itself this is first
+# and binds request_id + tenant_id into the log context (S9).
+app.add_middleware(RequestContextMiddleware)
 
 
 @app.exception_handler(TreasuryError)
