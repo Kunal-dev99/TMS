@@ -140,16 +140,17 @@ _RATE_CURVE: dict[str, dict[int, int]] = {
 }
 
 
-def _rate_for(rating: str, tenor: int) -> int:
+def _rate_for(session: Session, tenant_id: str, rating: str, tenor: int) -> int:
     """Rate in bp for a given rating and tenor.
 
-    Reads the treasurer-editable rate curve from system_policy if the
-    singleton has diverged from defaults; otherwise uses the built-in
-    table. Interpolates by nearest listed tenor.
+    Reads the treasurer-editable rate curve from system_policy for the
+    given tenant; falls back to the built-in table when neither the
+    override nor the default has the rating. Interpolates by nearest
+    listed tenor.
     """
     from app.services import system_policy
 
-    override = system_policy.get_rate_curve()
+    override = system_policy.get_rate_curve(session, tenant_id)
     curve = override.get(rating) or _RATE_CURVE.get(rating)
     if not curve:
         # Unknown rating; assume A- as a middle-of-the-road placeholder.
@@ -184,7 +185,7 @@ class PlannerService:
     # ------------------------------------------------------------------
 
     def deploy_cash(self) -> DeploymentPlan:
-        settings = get_settings()
+        settings = get_settings(self.session, self.tenant_id)
         # Stashed on the service so every candidate builder honours the
         # same group concentration cap without re-plumbing the signature.
         self._group_cap_pct = settings.group_concentration_cap_pct
@@ -242,7 +243,7 @@ class PlannerService:
             for tenor in {3, max_tenor}:
                 if tenor < 3 or tenor > settings.max_tenor_months:
                     continue
-                rate = _rate_for(row.rating, tenor)
+                rate = _rate_for(self.session, self.tenant_id, row.rating, tenor)
                 # Never propose more than headroom allows, more than there
                 # is cash for, or more than the per-name cap from settings.
                 place = min(headroom, idle, per_name_cap)

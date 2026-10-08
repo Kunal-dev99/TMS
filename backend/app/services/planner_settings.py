@@ -3,20 +3,27 @@
 Anil's feedback on the Sep-7 demo: "nothing should be hardwired,
 everything should be config driven." The four planner strategies, the
 rating floor, the tenor ceiling, and the per-name cap were all hardcoded
-Python; this module holds them as a settings singleton that the settings
+Python; this module holds them as per-tenant settings that the settings
 modal PUTs into, and that PlannerService reads on every run.
 
-In the prototype the singleton lives in memory (dict at module scope),
-seeded with the same defaults the code used to hardcode. On free-tier
-Render the container is recycled between demos, which reseeds the
-defaults — perfectly fine for a prototype and one less thing to migrate.
-Production would persist this to policy_versions with an approval flow.
+Storage: one row per tenant in `tenant_setting` with `key='planner'`.
+Previously this was a module-level singleton seeded with defaults, which
+reset on every process restart and diverged across app instances. The
+restart-safe table is a prerequisite for horizontal scaling and for the
+parked multi-tenancy plan.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from threading import Lock
+from dataclasses import asdict, dataclass, field
 from typing import Any
+
+from sqlalchemy.orm import Session
+
+from app.repo import tenant_settings as settings_repo
+
+
+SETTING_KEY = "planner"
+
 
 # The four built-in archetypes. UI shows these with a checkbox each; the
 # treasurer can also add custom ones (see below), each of which is a
@@ -92,45 +99,15 @@ class CustomStrategy:
 
 @dataclass
 class PlannerSettings:
-    """Everything the treasurer can twist from the settings modal.
+    """Everything the treasurer can twist from the settings modal."""
 
-    Anil's Sep-8 model: the treasurer sets investment principles first
-    (buckets by rating, floor, concentration, headroom), and the planner
-    then computes ONE blended plan that fits those rules — not four
-    or/or/or choices to pick from. The buckets are the primary input.
-    """
-
-    # Rating floor: any counterparty below this is excluded. Default
-    # "BBB-" reproduces the pre-Anil behaviour (no floor).
     min_rating: str = "BBB-"
-
-    # Tenor ceiling in months, capped by the per-band max in the book.
     max_tenor_months: int = 12
-
-    # Cap per counterparty as a % of idle cash. 100 = no cap.
     per_name_cap_pct: int = 100
-
-    # Group concentration cap. Rendered as a policy statement and used
-    # to compute the "tighter concentration" alternative candidate.
     group_concentration_cap_pct: int = 25
-
-    # Allocation buckets — a CAP per rating band (upper limit on the
-    # share of idle cash that can go into that band). Anil's Sep-9
-    # feedback: "pick a limit of each bucket ie 80% AAA and 10% AA and
-    # then have the AI calculate the best spread to get maximum
-    # income." So the planner treats these as ceilings and greedily
-    # fills highest-rate first within them.
-    #
-    # Caps do NOT need to sum to 100: a treasurer can set 80% AAA and
-    # 10% AA (total ceiling 90%), and up to 10% of cash stays
-    # uninvested if no other band is allowed.
-    # Default: up to 50% AAA, 30% AA, 20% A, 0% BBB (safety-heavy).
     buckets: dict[str, int] = field(
         default_factory=lambda: {"AAA": 50, "AA": 30, "A": 20, "BBB": 0}
     )
-
-    # Kept for backwards-compat with the API surface, no longer rendered
-    # in the settings UI (the blended output replaced multi-select).
     enabled_strategies: list[str] = field(
         default_factory=lambda: [s["kind"] for s in BUILTIN_STRATEGIES]
     )
@@ -138,20 +115,77 @@ class PlannerSettings:
 
 
 # ---------------------------------------------------------------------------
-# Module-level singleton. One shared instance per running process.
+# Serialisation helpers — defaults live in the dataclass, DB stores the diff.
 # ---------------------------------------------------------------------------
 
-_lock = Lock()
-_settings = PlannerSettings()
+
+def _defaults_payload() -> dict[str, Any]:
+    s = PlannerSettings()
+    return {
+        "min_rating": s.min_rating,
+        "max_tenor_months": s.max_tenor_months,
+        "per_name_cap_pct": s.per_name_cap_pct,
+        "group_concentration_cap_pct": s.group_concentration_cap_pct,
+        "buckets": dict(s.buckets),
+        "enabled_strategies": list(s.enabled_strategies),
+        "custom_strategies": [],
+    }
 
 
-def get_settings() -> PlannerSettings:
-    with _lock:
-        return _settings
+def _from_payload(payload: dict[str, Any]) -> PlannerSettings:
+    custom = [
+        CustomStrategy(
+            kind=str(c.get("kind", "")),
+            label=str(c.get("label", "")),
+            tagline=str(c.get("tagline", "")),
+            based_on=str(c.get("based_on", "MAX_YIELD")),
+            min_rating=str(c.get("min_rating", "")),
+            max_tenor_months=int(c.get("max_tenor_months", 0)),
+        )
+        for c in payload.get("custom_strategies", []) or []
+    ]
+    return PlannerSettings(
+        min_rating=str(payload.get("min_rating", "BBB-")),
+        max_tenor_months=int(payload.get("max_tenor_months", 12)),
+        per_name_cap_pct=int(payload.get("per_name_cap_pct", 100)),
+        group_concentration_cap_pct=int(payload.get("group_concentration_cap_pct", 25)),
+        buckets={
+            band: int((payload.get("buckets") or {}).get(band, 0))
+            for band in RATING_BANDS
+        },
+        enabled_strategies=list(
+            payload.get("enabled_strategies") or [s["kind"] for s in BUILTIN_STRATEGIES]
+        ),
+        custom_strategies=custom,
+    )
+
+
+def _to_payload(s: PlannerSettings) -> dict[str, Any]:
+    return {
+        "min_rating": s.min_rating,
+        "max_tenor_months": s.max_tenor_months,
+        "per_name_cap_pct": s.per_name_cap_pct,
+        "group_concentration_cap_pct": s.group_concentration_cap_pct,
+        "buckets": {band: int(s.buckets.get(band, 0)) for band in RATING_BANDS},
+        "enabled_strategies": list(s.enabled_strategies),
+        "custom_strategies": [asdict(c) for c in s.custom_strategies],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Public API — all DB-backed, per-tenant.
+# ---------------------------------------------------------------------------
+
+
+def get_settings(session: Session, tenant_id: str) -> PlannerSettings:
+    payload = settings_repo.get_or_default(
+        session, tenant_id, SETTING_KEY, _defaults_payload()
+    )
+    return _from_payload(payload)
 
 
 def as_dict(s: PlannerSettings) -> dict[str, Any]:
-    """Serialize for the API."""
+    """Serialize for the API. Shape unchanged from the pre-DB singleton."""
     return {
         "min_rating": s.min_rating,
         "max_tenor_months": s.max_tenor_months,
@@ -176,81 +210,84 @@ def as_dict(s: PlannerSettings) -> dict[str, Any]:
     }
 
 
-def update_settings(patch: dict[str, Any]) -> PlannerSettings:
-    """Apply a partial update; whatever is missing keeps its current value.
+def update_settings(
+    session: Session,
+    tenant_id: str,
+    patch: dict[str, Any],
+    updated_by_user_id: str | None = None,
+) -> PlannerSettings:
+    """Merge a partial update onto the current row; persist, return the result.
 
     Validates enough to keep the planner from breaking: rating must be
     on the ladder, tenor must be at least 3 months, caps must be percent
     values, every enabled_strategies entry must be a known kind.
     """
-    global _settings
-    with _lock:
-        current = _settings
+    current = get_settings(session, tenant_id)
 
-        # Normalise buckets: strip unknown bands, default missing ones
-        # to 0, keep only integer percentages.
-        raw_buckets = patch.get("buckets", current.buckets)
-        buckets = {
-            band: max(0, min(100, int(raw_buckets.get(band, 0) or 0)))
-            for band in RATING_BANDS
-        }
+    raw_buckets = patch.get("buckets", _to_payload(current)["buckets"])
+    buckets = {
+        band: max(0, min(100, int(raw_buckets.get(band, 0) or 0)))
+        for band in RATING_BANDS
+    }
 
-        new = PlannerSettings(
-            min_rating=str(patch.get("min_rating", current.min_rating)),
-            max_tenor_months=int(patch.get("max_tenor_months", current.max_tenor_months)),
-            per_name_cap_pct=int(patch.get("per_name_cap_pct", current.per_name_cap_pct)),
-            group_concentration_cap_pct=int(
-                patch.get("group_concentration_cap_pct", current.group_concentration_cap_pct)
-            ),
-            buckets=buckets,
-            enabled_strategies=list(
-                patch.get("enabled_strategies", current.enabled_strategies)
-            ),
-            custom_strategies=[
-                CustomStrategy(
-                    kind=str(item["kind"]),
-                    label=str(item.get("label", item["kind"])),
-                    tagline=str(item.get("tagline", "")),
-                    based_on=str(item.get("based_on", "MAX_YIELD")),
-                    min_rating=str(item.get("min_rating", "")),
-                    max_tenor_months=int(item.get("max_tenor_months", 0)),
-                )
-                for item in patch.get(
-                    "custom_strategies",
-                    [
-                        {
-                            "kind": c.kind, "label": c.label, "tagline": c.tagline,
-                            "based_on": c.based_on, "min_rating": c.min_rating,
-                            "max_tenor_months": c.max_tenor_months,
-                        }
-                        for c in current.custom_strategies
-                    ],
-                )
-            ],
-        )
+    new = PlannerSettings(
+        min_rating=str(patch.get("min_rating", current.min_rating)),
+        max_tenor_months=int(patch.get("max_tenor_months", current.max_tenor_months)),
+        per_name_cap_pct=int(patch.get("per_name_cap_pct", current.per_name_cap_pct)),
+        group_concentration_cap_pct=int(
+            patch.get("group_concentration_cap_pct", current.group_concentration_cap_pct)
+        ),
+        buckets=buckets,
+        enabled_strategies=list(
+            patch.get("enabled_strategies", current.enabled_strategies)
+        ),
+        custom_strategies=[
+            CustomStrategy(
+                kind=str(item["kind"]),
+                label=str(item.get("label", item["kind"])),
+                tagline=str(item.get("tagline", "")),
+                based_on=str(item.get("based_on", "MAX_YIELD")),
+                min_rating=str(item.get("min_rating", "")),
+                max_tenor_months=int(item.get("max_tenor_months", 0)),
+            )
+            for item in patch.get(
+                "custom_strategies",
+                [
+                    {
+                        "kind": c.kind, "label": c.label, "tagline": c.tagline,
+                        "based_on": c.based_on, "min_rating": c.min_rating,
+                        "max_tenor_months": c.max_tenor_months,
+                    }
+                    for c in current.custom_strategies
+                ],
+            )
+        ],
+    )
 
-        # Guard rails.
-        if new.min_rating not in RATING_ORDINAL:
-            new.min_rating = "BBB-"
-        new.max_tenor_months = max(3, min(24, new.max_tenor_months))
-        new.per_name_cap_pct = max(10, min(100, new.per_name_cap_pct))
-        new.group_concentration_cap_pct = max(5, min(100, new.group_concentration_cap_pct))
-        builtin_kinds = {s["kind"] for s in BUILTIN_STRATEGIES}
-        new.enabled_strategies = [
-            k for k in new.enabled_strategies if k in builtin_kinds
-        ] or [s["kind"] for s in BUILTIN_STRATEGIES]
+    # Guard rails.
+    if new.min_rating not in RATING_ORDINAL:
+        new.min_rating = "BBB-"
+    new.max_tenor_months = max(3, min(24, new.max_tenor_months))
+    new.per_name_cap_pct = max(10, min(100, new.per_name_cap_pct))
+    new.group_concentration_cap_pct = max(5, min(100, new.group_concentration_cap_pct))
+    builtin_kinds = {s["kind"] for s in BUILTIN_STRATEGIES}
+    new.enabled_strategies = [
+        k for k in new.enabled_strategies if k in builtin_kinds
+    ] or [s["kind"] for s in BUILTIN_STRATEGIES]
 
-        # If buckets sum to zero (all cleared), fall back to 100% AAA so
-        # the planner still returns a plan rather than an empty pane.
-        if sum(new.buckets.values()) == 0:
-            new.buckets = {b: (100 if b == "AAA" else 0) for b in RATING_BANDS}
+    if sum(new.buckets.values()) == 0:
+        new.buckets = {b: (100 if b == "AAA" else 0) for b in RATING_BANDS}
 
-        _settings = new
-        return new
+    settings_repo.upsert(
+        session, tenant_id, SETTING_KEY, _to_payload(new), updated_by_user_id
+    )
+    return new
 
 
-def reset_defaults() -> PlannerSettings:
-    global _settings
-    with _lock:
-        _settings = PlannerSettings()
-        return _settings
+def reset_defaults(
+    session: Session,
+    tenant_id: str,
+    updated_by_user_id: str | None = None,
+) -> PlannerSettings:
+    settings_repo.delete(session, tenant_id, SETTING_KEY)
+    return PlannerSettings()

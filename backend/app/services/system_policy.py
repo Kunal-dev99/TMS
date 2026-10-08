@@ -7,31 +7,27 @@ Four things live here:
   - Rating bands (max limit and max tenor per rating).
   - Rate curve (bp per rating per tenor).
 
-The first three are stored in the DB (PolicyVersion + RatingBand).
-The rate curve lives in an in-memory singleton for the prototype,
-matching the pattern used by planner_settings and accounting_events.
-
-Every field the UI shows also names its source. The "audit trail" for
-the prototype's in-place update is documented; production would
-supersede the current PolicyVersion and create a new one on save.
+All four are DB-backed per tenant: the first three on PolicyVersion +
+RatingBand, the rate curve on tenant_setting (key='rate_curve').
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from threading import Lock
 from typing import Any
 
 from sqlalchemy.orm import Session
 
 from app.models import PolicyVersion, RatingBand
+from app.repo import tenant_settings as settings_repo
 from app.services.planner_settings import RATING_LADDER
 
 
 # --------------------------------------------------------------------- rate curve
 
+RATE_CURVE_KEY = "rate_curve"
+
 # Default rate curve. Mirrors the one in planner_service._RATE_CURVE so
 # on first read the numbers match what the planner uses. Once the
-# treasurer edits and saves, the singleton overrides.
+# treasurer edits and saves, the stored row overrides.
 _DEFAULT_RATE_CURVE: dict[str, dict[int, int]] = {
     "AAA":  {3: 385, 6: 395, 12: 405, 24: 415},
     "AA+":  {3: 390, 6: 400, 12: 410, 24: 420},
@@ -50,51 +46,65 @@ _DEFAULT_RATE_CURVE: dict[str, dict[int, int]] = {
 CURVE_TENORS: list[int] = [3, 6, 12, 24]
 
 
-@dataclass
-class RateCurveSettings:
-    curve: dict[str, dict[int, int]] = field(
-        default_factory=lambda: {r: dict(t) for r, t in _DEFAULT_RATE_CURVE.items()}
+def _defaults_payload() -> dict[str, dict[str, int]]:
+    # JSON keys are strings; the storage shape matches what the UI sends.
+    return {r: {str(t): bp for t, bp in tenors.items()}
+            for r, tenors in _DEFAULT_RATE_CURVE.items()}
+
+
+def _from_payload(payload: dict[str, dict[str, int]]) -> dict[str, dict[int, int]]:
+    out: dict[str, dict[int, int]] = {}
+    for rating, tenors in (payload or {}).items():
+        out[rating] = {int(t): int(bp) for t, bp in (tenors or {}).items()}
+    return out
+
+
+def get_rate_curve(session: Session, tenant_id: str) -> dict[str, dict[int, int]]:
+    """The effective curve for this tenant. Callers get a fresh dict."""
+    payload = settings_repo.get_or_default(
+        session, tenant_id, RATE_CURVE_KEY, _defaults_payload()
     )
+    return _from_payload(payload)
 
 
-_lock = Lock()
-_rate_curve = RateCurveSettings()
-
-
-def get_rate_curve() -> dict[str, dict[int, int]]:
-    """The effective curve. Callers get a deep copy so they don't mutate."""
-    with _lock:
-        return {r: dict(t) for r, t in _rate_curve.curve.items()}
-
-
-def update_rate_curve(patch: dict[str, dict[str, Any]]) -> dict[str, dict[int, int]]:
-    """Merge a partial curve update into the singleton.
+def update_rate_curve(
+    session: Session,
+    tenant_id: str,
+    patch: dict[str, dict[str, Any]],
+    updated_by_user_id: str | None = None,
+) -> dict[str, dict[int, int]]:
+    """Merge a partial curve update onto the stored row.
 
     Accepts the same shape the API sends: {rating: {tenor_str: bp}}.
     """
-    global _rate_curve
-    with _lock:
-        new = {r: dict(t) for r, t in _rate_curve.curve.items()}
-        for rating, tenors in (patch or {}).items():
-            if rating not in RATING_LADDER:
+    current = get_rate_curve(session, tenant_id)
+    for rating, tenors in (patch or {}).items():
+        if rating not in RATING_LADDER:
+            continue
+        existing = current.setdefault(rating, {})
+        for tenor_key, value in (tenors or {}).items():
+            try:
+                tenor = int(tenor_key)
+                bp = max(0, min(2000, int(value)))
+            except (TypeError, ValueError):
                 continue
-            existing = new.setdefault(rating, {})
-            for tenor_key, value in (tenors or {}).items():
-                try:
-                    tenor = int(tenor_key)
-                    bp = max(0, min(2000, int(value)))
-                except (TypeError, ValueError):
-                    continue
-                existing[tenor] = bp
-        _rate_curve = RateCurveSettings(curve=new)
-        return {r: dict(t) for r, t in _rate_curve.curve.items()}
+            existing[tenor] = bp
+
+    serial = {r: {str(t): bp for t, bp in tenors.items()}
+              for r, tenors in current.items()}
+    settings_repo.upsert(
+        session, tenant_id, RATE_CURVE_KEY, serial, updated_by_user_id
+    )
+    return current
 
 
-def reset_rate_curve() -> dict[str, dict[int, int]]:
-    global _rate_curve
-    with _lock:
-        _rate_curve = RateCurveSettings()
-        return {r: dict(t) for r, t in _rate_curve.curve.items()}
+def reset_rate_curve(
+    session: Session,
+    tenant_id: str,
+    updated_by_user_id: str | None = None,
+) -> dict[str, dict[int, int]]:
+    settings_repo.delete(session, tenant_id, RATE_CURVE_KEY)
+    return _from_payload(_defaults_payload())
 
 
 # --------------------------------------------------------------------- read
@@ -102,7 +112,7 @@ def reset_rate_curve() -> dict[str, dict[int, int]]:
 def as_dict(session: Session, tenant_id: str) -> dict[str, Any]:
     policy = _current_policy(session, tenant_id)
     bands = _current_bands(session, tenant_id)
-    curve = get_rate_curve()
+    curve = get_rate_curve(session, tenant_id)
     return {
         "policy": {
             "concentration_cap_bp": policy.concentration_cap_bp,
@@ -170,7 +180,7 @@ def update(
             band.max_tenor_months = max(0, min(60, int(row["max_tenor_months"])))
 
     if "rate_curve" in patch:
-        update_rate_curve(patch["rate_curve"])
+        update_rate_curve(session, tenant_id, patch["rate_curve"])
 
     session.commit()
     return as_dict(session, tenant_id)
@@ -180,7 +190,8 @@ def reset(session: Session, tenant_id: str) -> dict[str, Any]:
     """Reset only the rate curve (policy + bands are DB-backed via
     admin reset). Left to the treasurer to Reset the whole book via
     the header button if they want the DB values back."""
-    reset_rate_curve()
+    reset_rate_curve(session, tenant_id)
+    session.commit()
     return as_dict(session, tenant_id)
 
 

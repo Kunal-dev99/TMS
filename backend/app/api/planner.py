@@ -40,15 +40,29 @@ def deploy_cash(ctx: Ctx, caller: Caller) -> dict:
 
 
 @router.get("/planner/settings")
-def get_planner_settings(caller: Caller) -> dict:
-    return planner_settings.as_dict(planner_settings.get_settings())
+def get_planner_settings(ctx: Ctx, caller: Caller) -> dict:
+    return planner_settings.as_dict(
+        planner_settings.get_settings(ctx.session, ctx.tenant_id)
+    )
 
 
 @router.put("/planner/settings")
-def put_planner_settings(patch: dict[str, Any], caller: Caller) -> dict:
-    return planner_settings.as_dict(planner_settings.update_settings(patch))
+def put_planner_settings(patch: dict[str, Any], ctx: Ctx, caller: Caller) -> dict:
+    result = planner_settings.as_dict(
+        planner_settings.update_settings(
+            ctx.session, ctx.tenant_id, patch, updated_by_user_id=caller.user_id
+        )
+    )
+    ctx.session.commit()
+    return result
 
 
 @router.post("/planner/settings/reset")
-def reset_planner_settings(caller: Caller) -> dict:
-    return planner_settings.as_dict(planner_settings.reset_defaults())
+def reset_planner_settings(ctx: Ctx, caller: Caller) -> dict:
+    result = planner_settings.as_dict(
+        planner_settings.reset_defaults(
+            ctx.session, ctx.tenant_id, updated_by_user_id=caller.user_id
+        )
+    )
+    ctx.session.commit()
+    return result

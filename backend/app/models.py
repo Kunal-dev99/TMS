@@ -1524,6 +1524,381 @@ class AuditEvent(Base):
     __table_args__ = (
         Index("ix_audit_subject", "subject_type", "subject_id"),
         Index("ix_audit_actor", "actor_user_id", "occurred_at"),
+        # P1-05: every compliance query filters by tenant_id and
+        # orders/ranges on occurred_at. Composite index on that pair
+        # turns a scan on a growing table into an index seek.
+        Index("ix_audit_tenant_occurred", "tenant_id", "occurred_at"),
+    )
+
+
+# ==========================================================================
+# Phase 2 substrate tables (ADR-0004 first-party connector).
+#
+# All additive, all nullable where reasonable. Populated only when the
+# corresponding adapter lands; empty in every deployment today. See
+# PHASE_2_IMPLEMENTATION_PLAN.md §3 for the table list and §4 (per port)
+# for what writes to each.
+# ==========================================================================
+
+
+class OracleEntityMapping(Base):
+    """Oracle Fusion Cloud ``BusinessUnit`` name -> our ``legal_entity_id``.
+
+    Per-customer configuration; the ETL fills exposure rows through this
+    mapping (PHASE_2_BLUEPRINT §2.4).
+    """
+
+    __tablename__ = "oracle_entity_mapping"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    business_unit_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    legal_entity_id: Mapped[str] = mapped_column(
+        String(40),
+        ForeignKey("legal_entity.id", name="fk_oem_legal_entity"),
+        nullable=False,
+    )
+    created_at: Mapped[str] = mapped_column(String(30), nullable=False)
+    created_by_user_id: Mapped[str | None] = mapped_column(
+        String(40), ForeignKey("app_user.id", name="fk_oem_created_by")
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id", "business_unit_name", name="ux_oem_bu_per_tenant"
+        ),
+    )
+
+
+class GlAccountMap(Base):
+    """(event_kind, legal_entity_id, currency) -> Oracle account combination.
+
+    Read by the GL poster (PHASE_2_BLUEPRINT §2.11). Debit + credit
+    account strings are stored side by side so a single row covers both
+    legs of an accounting entry.
+    """
+
+    __tablename__ = "gl_account_map"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    event_kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    legal_entity_id: Mapped[str] = mapped_column(
+        String(40),
+        ForeignKey("legal_entity.id", name="fk_gam_legal_entity"),
+        nullable=False,
+    )
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    account_combination_debit: Mapped[str] = mapped_column(String(120), nullable=False)
+    account_combination_credit: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_at: Mapped[str] = mapped_column(String(30), nullable=False)
+    created_by_user_id: Mapped[str | None] = mapped_column(
+        String(40), ForeignKey("app_user.id", name="fk_gam_created_by")
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "event_kind",
+            "legal_entity_id",
+            "currency",
+            name="ux_gam_lookup",
+        ),
+        CheckConstraint(
+            "event_kind in ("
+            "'accrual','settlement_principal','settlement_interest',"
+            "'reversal_accrual','fx_gain','fx_loss')",
+            name="ck_gam_event_kind",
+        ),
+    )
+
+
+class SsoIdentity(Base):
+    """One row per (provider, issuer, subject). Links an IdP account
+    to an ``app_user``. Populated on first successful OIDC sign-in
+    (Stage 4 of PHASE_2_IMPLEMENTATION_PLAN)."""
+
+    __tablename__ = "sso_identity"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    user_id: Mapped[str] = mapped_column(
+        String(40),
+        ForeignKey("app_user.id", name="fk_sso_identity_user"),
+        nullable=False,
+    )
+    provider: Mapped[str] = mapped_column(String(24), nullable=False)
+    issuer: Mapped[str] = mapped_column(String(400), nullable=False)
+    subject: Mapped[str] = mapped_column(String(200), nullable=False)
+    email: Mapped[str | None] = mapped_column(String(200))
+    first_seen_at: Mapped[str] = mapped_column(String(30), nullable=False)
+    last_seen_at: Mapped[str] = mapped_column(String(30), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "provider", "issuer", "subject", name="ux_sso_identity_natural"
+        ),
+        Index("ix_sso_identity_user", "user_id"),
+    )
+
+
+class SsoGroupMap(Base):
+    """IdP group claim -> ``membership.role``.
+
+    A user with claim "Treasury.HeadOfTreasury" gets HEAD_OF_TREASURY.
+    Per-tenant so the same claim can mean different things for
+    different customers.
+    """
+
+    __tablename__ = "sso_group_map"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    group_claim: Mapped[str] = mapped_column(String(200), nullable=False)
+    role: Mapped[str] = mapped_column(String(24), nullable=False)
+    created_at: Mapped[str] = mapped_column(String(30), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id", "group_claim", "role", name="ux_sso_group_map"
+        ),
+    )
+
+
+class AiRun(Base):
+    """Every LLM call. Closes Q-004 in ``open-questions.json``.
+
+    Written unconditionally by the LLMPort adapter — one row per call,
+    fallback or not. Compliance page's AI Activity tab reads it.
+    """
+
+    __tablename__ = "ai_run"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    occurred_at: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+    endpoint: Mapped[str] = mapped_column(String(60), nullable=False)
+    model: Mapped[str] = mapped_column(String(80), nullable=False)
+    prompt_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt_text: Mapped[str | None] = mapped_column(Text)
+    response_text: Mapped[str | None] = mapped_column(Text)
+    response_ms: Mapped[int | None] = mapped_column(Integer)
+    tokens_prompt: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    tokens_completion: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    fallback_used: Mapped[bool] = mapped_column(
+        String(5), nullable=False, default="false"
+    )
+    subject_type: Mapped[str | None] = mapped_column(String(32))
+    subject_id: Mapped[str | None] = mapped_column(String(60))
+    human_decision_id: Mapped[str | None] = mapped_column(String(60))
+    outcome: Mapped[str | None] = mapped_column(String(24))
+
+    __table_args__ = (
+        Index("ix_ai_run_endpoint", "endpoint", "occurred_at"),
+        Index("ix_ai_run_subject", "subject_type", "subject_id"),
+    )
+
+
+class CashBalance(Base):
+    """Daily bank balances per account per currency.
+
+    Fed by the BankPort adapter (bureau or Oracle Cash Management).
+    The planner and settlement flow read here for the real cash
+    constraint (PHASE_2_BLUEPRINT §2.5).
+    """
+
+    __tablename__ = "cash_balance"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    legal_entity_id: Mapped[str] = mapped_column(
+        String(40),
+        ForeignKey("legal_entity.id", name="fk_cash_balance_legal_entity"),
+        nullable=False,
+    )
+    account_id: Mapped[str] = mapped_column(String(60), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    as_of_date: Mapped[str] = mapped_column(String(10), nullable=False)
+    opening_balance_pence: Mapped[int] = mapped_column(Integer, nullable=False)
+    closing_balance_pence: Mapped[int] = mapped_column(Integer, nullable=False)
+    source: Mapped[str] = mapped_column(String(24), nullable=False)
+    received_at: Mapped[str] = mapped_column(String(30), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id", "account_id", "as_of_date", name="ux_cash_balance_daily"
+        ),
+        Index("ix_cash_balance_le_date", "legal_entity_id", "as_of_date"),
+    )
+
+
+class MarketSnapshot(Base):
+    """The rate actually USED by a write, persisted forever.
+
+    A hedge decision made at 09:47 must show the rate that was on the
+    screen at 09:47, not today's rate. Every deal/hedge write inserts
+    one row here linking back to its subject.
+    """
+
+    __tablename__ = "market_snapshot"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    pair: Mapped[str] = mapped_column(String(10), nullable=False)
+    kind: Mapped[str] = mapped_column(String(12), nullable=False)
+    tenor_months: Mapped[int | None] = mapped_column(Integer)
+    # Stored as milli-basis-points for exact integer maths on rate + bp;
+    # a 1.1450 spot lands as 11450000. Adapters convert.
+    rate_micro: Mapped[int] = mapped_column(Integer, nullable=False)
+    source: Mapped[str] = mapped_column(String(40), nullable=False)
+    as_of: Mapped[str] = mapped_column(String(30), nullable=False)
+    used_in_subject_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    used_in_subject_id: Mapped[str] = mapped_column(String(60), nullable=False)
+    created_at: Mapped[str] = mapped_column(String(30), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "kind in ('SPOT','FORWARD','BENCHMARK')", name="ck_market_snapshot_kind"
+        ),
+        Index(
+            "ix_market_snapshot_subject", "used_in_subject_type", "used_in_subject_id"
+        ),
+    )
+
+
+class BankAck(Base):
+    """Outbound payment acknowledgement from the bank.
+
+    Written by the BankPort adapter for every pain.001 / MT202 we
+    submit. The deal moves to INSTRUCTED only when a positive ack lands
+    here.
+    """
+
+    __tablename__ = "bank_ack"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    uetr: Mapped[str] = mapped_column(String(40), nullable=False)
+    deal_instruction_id: Mapped[str | None] = mapped_column(
+        String(40),
+        ForeignKey("oracle_instruction.id", name="fk_bank_ack_instruction"),
+    )
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    bank_reference: Mapped[str | None] = mapped_column(String(120))
+    reason_code: Mapped[str | None] = mapped_column(String(40))
+    reason_text: Mapped[str | None] = mapped_column(Text)
+    received_at: Mapped[str] = mapped_column(String(30), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "uetr", name="ux_bank_ack_uetr"),
+        CheckConstraint(
+            "status in ('ACCEPTED','REJECTED','PENDING')",
+            name="ck_bank_ack_status",
+        ),
+    )
+
+
+class GlPostingAck(Base):
+    """GL journal acknowledgement from the ERP.
+
+    Written by the GL poster (Stage 7) for every ``journalEntries``
+    POST — Oracle's ``JeHeaderId`` lands here, keyed off our
+    ``external_reference`` for idempotency.
+    """
+
+    __tablename__ = "gl_posting_ack"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    external_reference: Mapped[str] = mapped_column(String(120), nullable=False)
+    accrual_id: Mapped[str | None] = mapped_column(
+        String(40), ForeignKey("accrual.id", name="fk_gl_ack_accrual")
+    )
+    settlement_id: Mapped[str | None] = mapped_column(
+        String(40), ForeignKey("settlement.id", name="fk_gl_ack_settlement")
+    )
+    ledger_journal_id: Mapped[str] = mapped_column(String(60), nullable=False)
+    provider: Mapped[str] = mapped_column(String(24), nullable=False)
+    posted_at: Mapped[str] = mapped_column(String(30), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id", "external_reference", name="ux_gl_ack_external_ref"
+        ),
+    )
+
+
+class IntegrationHealth(Base):
+    """Per-adapter status. Fed by every connector call; read by the
+    Integration Health admin page (Stage 9).
+
+    ``tenant_id`` is nullable — some adapters (market data) are
+    cross-tenant.
+    """
+
+    __tablename__ = "integration_health"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str | None] = mapped_column(String(40))
+    port: Mapped[str] = mapped_column(String(24), nullable=False)
+    provider: Mapped[str] = mapped_column(String(40), nullable=False)
+    last_success_at: Mapped[str | None] = mapped_column(String(30))
+    last_error_at: Mapped[str | None] = mapped_column(String(30))
+    last_error_message: Mapped[str | None] = mapped_column(Text)
+    consecutive_failures: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated_at: Mapped[str] = mapped_column(String(30), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id", "port", "provider", name="ux_integration_health_key"
+        ),
+    )
+
+
+class TenantSetting(Base):
+    """Per-tenant JSON-blob config, one row per (tenant, key).
+
+    Backs settings that used to live in in-process singletons
+    (planner knobs, rate curve). The payload is JSON text so a new
+    settings kind doesn't need a schema change.
+    """
+
+    __tablename__ = "tenant_setting"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    key: Mapped[str] = mapped_column(String(40), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[str] = mapped_column(String(30), nullable=False)
+    updated_by_user_id: Mapped[str | None] = mapped_column(
+        String(40), ForeignKey("app_user.id"), nullable=True
+    )
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "key", name="ux_tenant_setting_key"),
+    )
+
+
+class DataSnapshot(Base):
+    """Point-in-time snapshots for compliance replay (P1-06).
+
+    Any entity worth reconstructing 'as of' a past date writes a row
+    here at write time. Compliance queries can then answer 'what did we
+    see on 12 May?' without an offline rebuild.
+    """
+
+    __tablename__ = "data_snapshot"
+
+    id: Mapped[str] = _id()
+    tenant_id: Mapped[str] = _tenant()
+    entity_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    entity_id: Mapped[str] = mapped_column(String(60), nullable=False)
+    as_of: Mapped[str] = mapped_column(String(30), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[str] = mapped_column(String(30), nullable=False)
+
+    __table_args__ = (
+        Index("ix_data_snapshot_entity", "entity_type", "entity_id", "as_of"),
     )
 
 
@@ -1573,4 +1948,17 @@ PHASE_ONE_TABLES = [
     UserEntityScope,
     ActivationToken,
     AccessChangeRequest,
+    # Phase 2 substrate — empty in every deployment today.
+    OracleEntityMapping,
+    GlAccountMap,
+    SsoIdentity,
+    SsoGroupMap,
+    AiRun,
+    CashBalance,
+    MarketSnapshot,
+    BankAck,
+    GlPostingAck,
+    IntegrationHealth,
+    DataSnapshot,
+    TenantSetting,
 ]
