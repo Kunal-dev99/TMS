@@ -147,6 +147,7 @@ class IdentityAssertion:
     email: str
     display_name: str
     groups: tuple[str, ...] = ()
+    mfa_passed: bool = False
     raw_claims: dict[str, Any] = field(default_factory=dict)
 
 

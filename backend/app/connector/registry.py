@@ -100,6 +100,10 @@ def _make_identity() -> ports.IdentityPort:
         from app.connector.adapters.identity.local_password import LocalPasswordIdentity
 
         return LocalPasswordIdentity()
+    if kind == "oidc_stub":
+        from app.connector.adapters.identity.oidc_stub import StubOIDCIdentity
+
+        return StubOIDCIdentity()
     raise ValueError(f"Unknown IDENTITY_PROVIDER: {kind}")
 
 

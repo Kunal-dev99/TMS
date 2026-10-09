@@ -1,0 +1,37 @@
+{
+  "id": "ADR-0023",
+  "date": "2026-10-09",
+  "status": "accepted",
+  "title": "SSO via IdentityPort — per-customer IdP is the target shape; stub adapter for tests",
+  "context": "P0-05 of the roadmap: enterprise buyers (banks, treasuries) expect SSO on the first call and won't accept a password-only app in a security review. The connector substrate (ADR-0004 / Phase 2 Stage 1) already defines IdentityPort with start_login/complete_login signatures and an IdentityAssertion dataclass, but there's no non-password adapter today and no customer picked. We want the code ready so when customer #1 names an IdP it's a new adapter file, not a cross-cutting refactor.",
+  "decision": "SSO flows exclusively through IdentityPort. Each enterprise customer brings their own IdP (Entra, Okta, Google Workspace, Auth0) and we write one adapter per IdP family that implements the port. A StubOIDCIdentity adapter exists for tests and local dev — bindable via IDENTITY_PROVIDER=oidc_stub, in-process, no network — so SSO-shaped tests can be written and run today without a real provider. Default IDENTITY_PROVIDER stays local_password; no caller sees a difference until a real customer binds a real adapter.",
+  "scope_in": [
+    "IdentityPort gains a mfa_passed field on IdentityAssertion so an IdP's own MFA claim surfaces to callers without changing method signatures.",
+    "StubOIDCIdentity adapter (backend/app/connector/adapters/identity/oidc_stub.py) with a test-only issue_code() helper that primes a profile; start_login/complete_login validate state + consume code exactly once (mirrors a real OIDC adapter's CSRF semantics).",
+    "role_mapper service (backend/app/services/role_mapper.py) reads sso_group_map (per-tenant table shipped in Phase 2 Stage 2) and returns the role set for a list of IdP groups. Fail-closed: no mapping = no role.",
+    "Registry factory in backend/app/connector/registry.py learns the oidc_stub branch; refuses unknown IDENTITY_PROVIDER values."
+  ],
+  "scope_out_deferred": [
+    "A real OIDC adapter (EntraOIDCIdentity, Auth0OIDCIdentity, etc.) — writes when customer #1 names their IdP.",
+    "/auth/sso/start and /auth/sso/callback endpoints — the port is ready; the API surface comes with the first real adapter.",
+    "SAML. OIDC is the primary target; SAML goes in only if a customer insists.",
+    "JIT user provisioning on first SSO login — comes with the first real adapter.",
+    "SSO group-mapping admin UI — tracked under PHASE_2_ADMIN_UI_PLAN.md (parked).",
+    "Changing LocalPasswordIdentity. It stays as the default path; SSO is additive."
+  ],
+  "invariants": [
+    "The default IDENTITY_PROVIDER is local_password. A deployment that doesn't set the env var behaves exactly as the pre-SSO code did.",
+    "role_mapper fails closed. An SSO caller whose group has no mapping gets zero roles — not a default role.",
+    "StubOIDCIdentity is for tests and dev. A deployment with IDENTITY_PROVIDER=oidc_stub in prod is a configuration error; nothing in the stub reaches a real IdP.",
+    "The port interface is additive-only going forward. New fields on IdentityAssertion get safe defaults so old adapters keep working."
+  ],
+  "consequences": [
+    "backend/app/connector/ports.py — IdentityAssertion.mfa_passed field added with default False.",
+    "backend/app/connector/adapters/identity/oidc_stub.py — new file, in-process fake.",
+    "backend/app/connector/registry.py — _make_identity() oidc_stub branch.",
+    "backend/app/services/role_mapper.py — new service.",
+    "backend/tests/test_identity_sso_shape.py — 15 tests covering port shape, stub round-trip, registry wiring, role mapper (empty / mapped / case / per-tenant / empty-input).",
+    "No existing endpoint behaviour changes. Full regression stays green."
+  ],
+  "related": ["ADR-0004", "P0-05"]
+}
