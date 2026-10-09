@@ -33,6 +33,7 @@ from app.api import (
     approvals,
     auth,
     admin,
+    admin_mfa,
     admin_users,
     advisory,
     compliance,
@@ -43,6 +44,7 @@ from app.api import (
     deals,
     fx,
     jobs,
+    mfa,
     performance,
     planner,
     rates,
@@ -132,10 +134,12 @@ for router in (
     rates.router,
     system_policy.router,
     admin.router,
+    admin_mfa.router,
     admin_users.router,
     activation.router,
     compliance.router,
     approvals.router,
+    mfa.router,
 ):
     app.include_router(router, prefix="/api/v1")
 

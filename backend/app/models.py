@@ -1855,6 +1855,54 @@ class IntegrationHealth(Base):
     )
 
 
+class UserMfaSecret(Base):
+    """TOTP secret per user — one row per enrolled user.
+
+    secret_encrypted is a Fernet ciphertext of the base32 TOTP secret.
+    The master key is read from SecretsPort 'mfa_master_key' at use
+    time; if it's not set, enroll is refused (fail-closed).
+
+    verified_at populates on the first successful code the user enters
+    after enrollment. Until then the user is 'enrolled but not yet
+    verified' — the policy layer (Phase 4) treats these as un-enrolled
+    for enforcement purposes.
+    """
+
+    __tablename__ = "user_mfa_secret"
+
+    user_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("app_user.id"), primary_key=True
+    )
+    secret_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    verified_at: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    created_at: Mapped[str] = mapped_column(String(30), nullable=False)
+    last_used_at: Mapped[str | None] = mapped_column(String(30), nullable=True)
+
+
+class MfaRecoveryCode(Base):
+    """One-shot recovery codes issued at MFA enrollment.
+
+    Stored as a hash (same scheme as any other credential — never
+    plain). Ten codes per user by default; consumed_at populates when
+    one is spent. A user can re-issue a fresh set which supersedes the
+    old (old codes get consumed_at = re-issuance timestamp).
+    """
+
+    __tablename__ = "mfa_recovery_code"
+
+    id: Mapped[str] = _id()
+    user_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("app_user.id"), nullable=False, index=True
+    )
+    code_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[str] = mapped_column(String(30), nullable=False)
+    consumed_at: Mapped[str | None] = mapped_column(String(30), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "code_hash", name="ux_mfa_recovery_code"),
+    )
+
+
 class TenantSetting(Base):
     """Per-tenant JSON-blob config, one row per (tenant, key).
 
@@ -1961,4 +2009,6 @@ PHASE_ONE_TABLES = [
     IntegrationHealth,
     DataSnapshot,
     TenantSetting,
+    UserMfaSecret,
+    MfaRecoveryCode,
 ]

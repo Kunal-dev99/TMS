@@ -1,0 +1,35 @@
+{
+  "id": "ADR-0024",
+  "date": "2026-10-09",
+  "status": "accepted",
+  "title": "MFA — TOTP secret storage, encryption at rest, recovery codes",
+  "context": "Phase 2 of the AuthN substrate ships TOTP MFA as a user-facing feature (opt-in today, enforceable per-tenant in Phase 4). Three decisions have to be nailed down: (1) where the TOTP secret lives and how it's protected, (2) how recovery codes work, (3) what the clock-skew window is. We agreed one key for the whole app, read via SecretsPort — simpler than per-tenant encryption, fits the existing pattern, deferred the per-tenant key split until the multi-tenancy plan unparks.",
+  "decision": "TOTP secrets are stored in the user_mfa_secret table (one row per enrolled user), encrypted with Fernet symmetric encryption. The master key lives in SecretsPort under the name 'mfa_master_key' — EnvVarSecrets today, Azure Key Vault later (ADR-0020). A deployment that has not configured the key cannot enroll or verify; the API returns 503 with an actionable message. Recovery codes are 10 per enrollment, formatted XXXX-XXXX-XXXX from an unambiguous alphabet (no I/L/O/0/1), hashed with sha256 at rest, consumed once. TOTP verification accepts the previous/current/next 30-second window (valid_window=1) to handle clock skew.",
+  "scope_in": [
+    "backend/app/models.py — UserMfaSecret (PK user_id, secret_encrypted, verified_at, created_at, last_used_at) + MfaRecoveryCode (id, user_id, code_hash, created_at, consumed_at) with UNIQUE(user_id, code_hash) + index on user_id.",
+    "backend/alembic/versions/d3e1b728c04a_mfa_tables.py — portable migration + downgrade.",
+    "backend/app/services/mfa_service.py — generate_secret / verify_code / issue_recovery_codes / consume_recovery_code / is_enrolled / enrollment_status + reset_enrollment (operator helper).",
+    "backend/app/api/mfa.py — POST /auth/mfa/enroll, POST /auth/mfa/verify, POST /auth/mfa/recovery/reissue, GET /auth/mfa/status. Rate-limited (MFA_VERIFY 10/min, MFA_ENROLL 5/min).",
+    "backend/requirements.txt — pyotp==2.9.0, cryptography>=42."
+  ],
+  "scope_out_deferred": [
+    "Per-tenant encryption keys. Deferred until PHASE_2_MULTITENANCY_PLAN.md unparks; today's one-key-for-the-app matches the current single-tenant posture and is the simplest fit.",
+    "Enforcement: no endpoint today requires MFA. Phase 3 adds the require_mfa dependency; Phase 4 adds the per-tenant policy that switches it on.",
+    "Admin reset flow (admin resets a user's MFA because they lost their device). The service method reset_enrollment() exists; the admin API wrapper + four-eye flow come in Phase 5.",
+    "WebAuthn / passkeys. Explicitly out — TOTP is the floor, passkeys optional later.",
+    "SMS second factor. Explicitly out — SIM-swap risk.",
+    "Replay protection within a window. A TOTP code is valid for one 30s window plus the +/-1 skew; a code can technically be reused within its window. Phase 3's /auth/mfa/consume adds a short-TTL last-consumed guard (mfa_last_consumed_at)."
+  ],
+  "invariants": [
+    "SecretsPort.get('mfa_master_key') is the only source of the encryption key. A deployment without the key cannot enroll — the API fails 503, loud and actionable, rather than inventing a default.",
+    "Recovery codes are shown ONCE at issuance and stored as sha256 hashes. The service never returns a hash; the only time plaintext is in a response is the enrollment/verify + reissue payload.",
+    "Fail-closed on all unknown states: unknown recovery code → False, no master key → raise, missing enrollment → raise.",
+    "verified_at is one-way until reset. A user who flips verified_at by verifying their first code cannot be set back to unverified except by reset_enrollment()."
+  ],
+  "consequences": [
+    "20 tests in backend/tests/test_mfa.py cover service + endpoints + the behaviour-neutrality guarantee (sign-in still works without MFA).",
+    "Full suite stayed green — no existing test broke; nothing user-visible changed on an endpoint that was there before.",
+    "Operational doc owed: how an operator provisions the mfa_master_key (Fernet.generate_key() → vault)."
+  ],
+  "related": ["ADR-0020", "P0-05", "PHASE_2_MULTITENANCY_PLAN.md"]
+}
