@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-10-08T13:30:29+00:00",
+  "generated_at": "2026-10-09T07:06:30+00:00",
   "source": "app.models.Base.metadata",
-  "table_count": 53,
+  "table_count": 55,
   "tables": {
     "access_change_request": {
       "columns": [
@@ -135,23 +135,23 @@
       "constraints": [
         {
           "kind": "ForeignKeyConstraint",
-          "name": null,
+          "name": "fk_access_req_reviewer",
           "sqltext": ""
         },
         {
-          "kind": "CheckConstraint",
-          "name": "ck_access_req_status",
-          "sqltext": "status in ('PENDING','APPROVED','REJECTED','WITHDRAWN')"
-        },
-        {
           "kind": "ForeignKeyConstraint",
-          "name": "fk_access_req_reviewer",
+          "name": null,
           "sqltext": ""
         },
         {
           "kind": "ForeignKeyConstraint",
           "name": "fk_access_req_requester",
           "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_access_req_status",
+          "sqltext": "status in ('PENDING','APPROVED','REJECTED','WITHDRAWN')"
         }
       ],
       "indices": [
@@ -281,21 +281,6 @@
       "indices": [
         {
           "columns": [
-            "deal_id",
-            "accrual_date"
-          ],
-          "name": "ux_accrual_day",
-          "unique": true
-        },
-        {
-          "columns": [
-            "deal_id"
-          ],
-          "name": "ix_accrual_deal_id",
-          "unique": false
-        },
-        {
-          "columns": [
             "tenant_id",
             "accrual_date"
           ],
@@ -307,6 +292,21 @@
             "tenant_id"
           ],
           "name": "ix_accrual_tenant_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "deal_id",
+            "accrual_date"
+          ],
+          "name": "ux_accrual_day",
+          "unique": true
+        },
+        {
+          "columns": [
+            "deal_id"
+          ],
+          "name": "ix_accrual_deal_id",
           "unique": false
         }
       ]
@@ -392,6 +392,11 @@
       ],
       "constraints": [
         {
+          "kind": "CheckConstraint",
+          "name": "ck_activation_purpose",
+          "sqltext": "purpose in ('INVITE','RESET')"
+        },
+        {
           "kind": "ForeignKeyConstraint",
           "name": "fk_activation_user",
           "sqltext": ""
@@ -400,11 +405,6 @@
           "kind": "ForeignKeyConstraint",
           "name": null,
           "sqltext": ""
-        },
-        {
-          "kind": "CheckConstraint",
-          "name": "ck_activation_purpose",
-          "sqltext": "purpose in ('INVITE','RESET')"
         }
       ],
       "indices": [
@@ -545,8 +545,8 @@
       "constraints": [
         {
           "kind": "CheckConstraint",
-          "name": "ck_run_outcome",
-          "sqltext": "outcome in ('NO_GAP','MODEL_ACCEPTED','MODEL_REJECTED_FALLBACK','RULE_ONLY','NO_CANDIDATES')"
+          "name": "ck_run_gap_type",
+          "sqltext": "gap_type in ('CASH_SURPLUS','CASH_SHORTFALL','LADDER_GAP','CURRENCY_UNCOVERED','NONE')"
         },
         {
           "kind": "ForeignKeyConstraint",
@@ -555,8 +555,8 @@
         },
         {
           "kind": "CheckConstraint",
-          "name": "ck_run_gap_type",
-          "sqltext": "gap_type in ('CASH_SURPLUS','CASH_SHORTFALL','LADDER_GAP','CURRENCY_UNCOVERED','NONE')"
+          "name": "ck_run_outcome",
+          "sqltext": "outcome in ('NO_GAP','MODEL_ACCEPTED','MODEL_REJECTED_FALLBACK','RULE_ONLY','NO_CANDIDATES')"
         },
         {
           "kind": "ForeignKeyConstraint",
@@ -567,17 +567,17 @@
       "indices": [
         {
           "columns": [
-            "tenant_id",
-            "as_of"
+            "tenant_id"
           ],
-          "name": "ix_advisory_run_asof",
+          "name": "ix_advisory_run_tenant_id",
           "unique": false
         },
         {
           "columns": [
-            "tenant_id"
+            "tenant_id",
+            "as_of"
           ],
-          "name": "ix_advisory_run_tenant_id",
+          "name": "ix_advisory_run_asof",
           "unique": false
         }
       ]
@@ -725,21 +725,6 @@
       "indices": [
         {
           "columns": [
-            "tenant_id"
-          ],
-          "name": "ix_ai_run_tenant_id",
-          "unique": false
-        },
-        {
-          "columns": [
-            "subject_type",
-            "subject_id"
-          ],
-          "name": "ix_ai_run_subject",
-          "unique": false
-        },
-        {
-          "columns": [
             "occurred_at"
           ],
           "name": "ix_ai_run_occurred_at",
@@ -751,6 +736,21 @@
             "occurred_at"
           ],
           "name": "ix_ai_run_endpoint",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_ai_run_tenant_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "subject_type",
+            "subject_id"
+          ],
+          "name": "ix_ai_run_subject",
           "unique": false
         }
       ]
@@ -884,22 +884,22 @@
         },
         {
           "kind": "CheckConstraint",
-          "name": "ck_amendment_status",
-          "sqltext": "status in ('RAISED','APPLIED','REJECTED')"
-        },
-        {
-          "kind": "CheckConstraint",
           "name": "ck_amendment_type",
           "sqltext": "type in ('BREAK','ROLL','PARTIAL_DRAWDOWN','CORRECTION')"
         },
         {
           "kind": "ForeignKeyConstraint",
-          "name": "fk_amendment_raised_by",
+          "name": null,
           "sqltext": ""
         },
         {
+          "kind": "CheckConstraint",
+          "name": "ck_amendment_status",
+          "sqltext": "status in ('RAISED','APPLIED','REJECTED')"
+        },
+        {
           "kind": "ForeignKeyConstraint",
-          "name": null,
+          "name": "fk_amendment_raised_by",
           "sqltext": ""
         }
       ],
@@ -1015,13 +1015,13 @@
       ],
       "constraints": [
         {
-          "kind": "UniqueConstraint",
-          "name": "ux_user_email",
+          "kind": "ForeignKeyConstraint",
+          "name": null,
           "sqltext": ""
         },
         {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
+          "kind": "UniqueConstraint",
+          "name": "ux_user_email",
           "sqltext": ""
         },
         {
@@ -1142,21 +1142,6 @@
       "indices": [
         {
           "columns": [
-            "subject_type",
-            "subject_id"
-          ],
-          "name": "ix_audit_subject",
-          "unique": false
-        },
-        {
-          "columns": [
-            "tenant_id"
-          ],
-          "name": "ix_audit_event_tenant_id",
-          "unique": false
-        },
-        {
-          "columns": [
             "actor_user_id",
             "occurred_at"
           ],
@@ -1176,6 +1161,21 @@
             "occurred_at"
           ],
           "name": "ix_audit_tenant_occurred",
+          "unique": false
+        },
+        {
+          "columns": [
+            "subject_type",
+            "subject_id"
+          ],
+          "name": "ix_audit_subject",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_audit_event_tenant_id",
           "unique": false
         }
       ]
@@ -1266,14 +1266,14 @@
           "sqltext": ""
         },
         {
-          "kind": "CheckConstraint",
-          "name": "ck_bank_ack_status",
-          "sqltext": "status in ('ACCEPTED','REJECTED','PENDING')"
-        },
-        {
           "kind": "UniqueConstraint",
           "name": "ux_bank_ack_uetr",
           "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_bank_ack_status",
+          "sqltext": "status in ('ACCEPTED','REJECTED','PENDING')"
         },
         {
           "kind": "ForeignKeyConstraint",
@@ -1523,32 +1523,12 @@
       "constraints": [
         {
           "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
           "name": "fk_breach_responded_by_user",
-          "sqltext": ""
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
-        },
-        {
-          "kind": "CheckConstraint",
-          "name": "ck_breach_type",
-          "sqltext": "type in ('AMOUNT','TENOR','GROUP','CONCENTRATION','RATING')"
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
           "sqltext": ""
         },
         {
@@ -1565,16 +1545,29 @@
           "kind": "CheckConstraint",
           "name": "ck_breach_status",
           "sqltext": "status in ('OPEN','RESPONDED')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_breach_type",
+          "sqltext": "type in ('AMOUNT','TENOR','GROUP','CONCENTRATION','RATING')"
         }
       ],
       "indices": [
-        {
-          "columns": [
-            "tenant_id"
-          ],
-          "name": "ix_breach_tenant_id",
-          "unique": false
-        },
         {
           "columns": [
             "counterparty_id"
@@ -1587,6 +1580,13 @@
             "deal_id"
           ],
           "name": "ix_breach_deal_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_breach_tenant_id",
           "unique": false
         }
       ]
@@ -1688,14 +1688,14 @@
       ],
       "constraints": [
         {
-          "kind": "CheckConstraint",
-          "name": "ck_candidate_excluded",
-          "sqltext": "excluded in (0,1)"
-        },
-        {
           "kind": "ForeignKeyConstraint",
           "name": null,
           "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_candidate_excluded",
+          "sqltext": "excluded in (0,1)"
         },
         {
           "kind": "ForeignKeyConstraint",
@@ -1804,6 +1804,11 @@
       ],
       "constraints": [
         {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
           "kind": "UniqueConstraint",
           "name": "ux_cash_balance_daily",
           "sqltext": ""
@@ -1811,11 +1816,6 @@
         {
           "kind": "ForeignKeyConstraint",
           "name": "fk_cash_balance_legal_entity",
-          "sqltext": ""
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
           "sqltext": ""
         }
       ],
@@ -2041,13 +2041,6 @@
       "indices": [
         {
           "columns": [
-            "tenant_id"
-          ],
-          "name": "ix_check_run_tenant_id",
-          "unique": false
-        },
-        {
-          "columns": [
             "counterparty_id"
           ],
           "name": "ix_check_run_counterparty_id",
@@ -2058,6 +2051,13 @@
             "deal_id"
           ],
           "name": "ix_check_run_deal_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_check_run_tenant_id",
           "unique": false
         }
       ]
@@ -2193,11 +2193,6 @@
       ],
       "constraints": [
         {
-          "kind": "CheckConstraint",
-          "name": "ck_confirmation_message_type",
-          "sqltext": "message_type in ('MT300','MT320','MT535','MT536','BROKER_NOTE','DOCUMENT')"
-        },
-        {
           "kind": "ForeignKeyConstraint",
           "name": null,
           "sqltext": ""
@@ -2209,34 +2204,39 @@
         },
         {
           "kind": "CheckConstraint",
+          "name": "ck_confirmation_message_type",
+          "sqltext": "message_type in ('MT300','MT320','MT535','MT536','BROKER_NOTE','DOCUMENT')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
           "name": "ck_confirmation_match_status",
           "sqltext": "match_status in ('UNMATCHED','MATCHED','MISMATCHED','DISPUTED')"
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
         }
       ],
       "indices": [
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_confirmation_tenant_id",
+          "unique": false
+        },
         {
           "columns": [
             "tenant_id",
             "match_status"
           ],
           "name": "ix_confirmation_unmatched",
-          "unique": false
-        },
-        {
-          "columns": [
-            "tenant_id"
-          ],
-          "name": "ix_confirmation_tenant_id",
           "unique": false
         }
       ]
@@ -2407,12 +2407,7 @@
       "constraints": [
         {
           "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": "fk_counterparty_activated_by_user",
+          "name": "fk_counterparty_created_by_user",
           "sqltext": ""
         },
         {
@@ -2422,12 +2417,17 @@
         },
         {
           "kind": "ForeignKeyConstraint",
+          "name": "fk_counterparty_activated_by_user",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
           "name": null,
           "sqltext": ""
         },
         {
           "kind": "ForeignKeyConstraint",
-          "name": "fk_counterparty_created_by_user",
+          "name": null,
           "sqltext": ""
         },
         {
@@ -2439,16 +2439,16 @@
       "indices": [
         {
           "columns": [
-            "group_id"
+            "tenant_id"
           ],
-          "name": "ix_counterparty_group_id",
+          "name": "ix_counterparty_tenant_id",
           "unique": false
         },
         {
           "columns": [
-            "tenant_id"
+            "group_id"
           ],
-          "name": "ix_counterparty_tenant_id",
+          "name": "ix_counterparty_group_id",
           "unique": false
         }
       ]
@@ -2738,29 +2738,29 @@
           "sqltext": ""
         },
         {
-          "kind": "CheckConstraint",
-          "name": "ck_limit_source",
-          "sqltext": "source in ('BAND','MANUAL')"
-        },
-        {
           "kind": "ForeignKeyConstraint",
           "name": "fk_cp_limit_approved_by_user",
           "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_limit_source",
+          "sqltext": "source in ('BAND','MANUAL')"
         }
       ],
       "indices": [
         {
           "columns": [
-            "tenant_id"
+            "counterparty_id"
           ],
-          "name": "ix_cp_limit_tenant_id",
+          "name": "ix_cp_limit_counterparty_id",
           "unique": false
         },
         {
           "columns": [
-            "counterparty_id"
+            "tenant_id"
           ],
-          "name": "ix_cp_limit_counterparty_id",
+          "name": "ix_cp_limit_tenant_id",
           "unique": false
         },
         {
@@ -2945,8 +2945,8 @@
         },
         {
           "kind": "CheckConstraint",
-          "name": "ck_currency_source",
-          "sqltext": "source in ('CONTRACT','PURCHASE_ORDER','INVOICE','FORECAST')"
+          "name": "ck_currency_status",
+          "sqltext": "status in ('IDENTIFIED','PARTIALLY_COVERED','COVERED','SETTLED')"
         },
         {
           "kind": "ForeignKeyConstraint",
@@ -2960,8 +2960,8 @@
         },
         {
           "kind": "CheckConstraint",
-          "name": "ck_currency_status",
-          "sqltext": "status in ('IDENTIFIED','PARTIALLY_COVERED','COVERED','SETTLED')"
+          "name": "ck_currency_source",
+          "sqltext": "source in ('CONTRACT','PURCHASE_ORDER','INVOICE','FORECAST')"
         }
       ],
       "indices": [
@@ -3309,12 +3309,12 @@
         },
         {
           "kind": "ForeignKeyConstraint",
-          "name": "fk_deal_created_by_user",
+          "name": null,
           "sqltext": ""
         },
         {
           "kind": "ForeignKeyConstraint",
-          "name": null,
+          "name": "fk_deal_created_by_user",
           "sqltext": ""
         },
         {
@@ -3323,9 +3323,9 @@
           "sqltext": "capture_source in ('KEYED','FROM_CONFIRMATION')"
         },
         {
-          "kind": "CheckConstraint",
-          "name": "ck_deal_instrument",
-          "sqltext": "instrument in ('DEPOSIT','FX_FORWARD','MMF','GILT')"
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
         },
         {
           "kind": "ForeignKeyConstraint",
@@ -3338,14 +3338,14 @@
           "sqltext": ""
         },
         {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
-        },
-        {
           "kind": "CheckConstraint",
           "name": "ck_deal_status",
           "sqltext": "status in ('PROPOSED','BLOCKED','ACTIVE','MATURED','CLOSED','CANCELLED')"
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_deal_instrument",
+          "sqltext": "instrument in ('DEPOSIT','FX_FORWARD','MMF','GILT')"
         }
       ],
       "indices": [
@@ -3524,13 +3524,13 @@
       ],
       "constraints": [
         {
-          "kind": "ForeignKeyConstraint",
-          "name": "fk_exception_resolved_by_user",
-          "sqltext": ""
+          "kind": "CheckConstraint",
+          "name": "ck_exception_status",
+          "sqltext": "status in ('OPEN','RESOLVED')"
         },
         {
           "kind": "ForeignKeyConstraint",
-          "name": null,
+          "name": "fk_exception_resolved_by_user",
           "sqltext": ""
         },
         {
@@ -3544,6 +3544,11 @@
           "sqltext": "cause in ('LIMIT_FAILURE','CONFIRMATION_MISMATCH')"
         },
         {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
           "kind": "CheckConstraint",
           "name": "ck_exception_resolution",
           "sqltext": "resolution is null or resolution in ('RESIZED','REROUTED','OVERRIDDEN','CANCELLED','CORRECTED','CHALLENGED')"
@@ -3552,11 +3557,6 @@
           "kind": "ForeignKeyConstraint",
           "name": null,
           "sqltext": ""
-        },
-        {
-          "kind": "CheckConstraint",
-          "name": "ck_exception_status",
-          "sqltext": "status in ('OPEN','RESOLVED')"
         },
         {
           "kind": "ForeignKeyConstraint",
@@ -3669,17 +3669,17 @@
       "indices": [
         {
           "columns": [
-            "tenant_id",
-            "forecast_date"
+            "tenant_id"
           ],
-          "name": "ix_forecast_window",
+          "name": "ix_forecast_line_tenant_id",
           "unique": false
         },
         {
           "columns": [
-            "tenant_id"
+            "tenant_id",
+            "forecast_date"
           ],
-          "name": "ix_forecast_line_tenant_id",
+          "name": "ix_forecast_window",
           "unique": false
         }
       ]
@@ -3739,13 +3739,13 @@
       ],
       "constraints": [
         {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
+          "kind": "UniqueConstraint",
+          "name": "ux_fx_rate_day",
           "sqltext": ""
         },
         {
-          "kind": "UniqueConstraint",
-          "name": "ux_fx_rate_day",
+          "kind": "ForeignKeyConstraint",
+          "name": null,
           "sqltext": ""
         }
       ],
@@ -3842,18 +3842,13 @@
       ],
       "constraints": [
         {
-          "kind": "ForeignKeyConstraint",
-          "name": "fk_gam_legal_entity",
+          "kind": "UniqueConstraint",
+          "name": "ux_gam_lookup",
           "sqltext": ""
         },
         {
-          "kind": "CheckConstraint",
-          "name": "ck_gam_event_kind",
-          "sqltext": "event_kind in ('accrual','settlement_principal','settlement_interest','reversal_accrual','fx_gain','fx_loss')"
-        },
-        {
-          "kind": "UniqueConstraint",
-          "name": "ux_gam_lookup",
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_gam_legal_entity",
           "sqltext": ""
         },
         {
@@ -3865,6 +3860,11 @@
           "kind": "ForeignKeyConstraint",
           "name": null,
           "sqltext": ""
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_gam_event_kind",
+          "sqltext": "event_kind in ('accrual','settlement_principal','settlement_interest','reversal_accrual','fx_gain','fx_loss')"
         }
       ],
       "indices": [
@@ -3962,13 +3962,13 @@
           "sqltext": ""
         },
         {
-          "kind": "ForeignKeyConstraint",
-          "name": "fk_gl_ack_accrual",
+          "kind": "UniqueConstraint",
+          "name": "ux_gl_ack_external_ref",
           "sqltext": ""
         },
         {
-          "kind": "UniqueConstraint",
-          "name": "ux_gl_ack_external_ref",
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_gl_ack_accrual",
           "sqltext": ""
         }
       ],
@@ -4303,15 +4303,15 @@
           "columns": [
             "tenant_id"
           ],
-          "name": "ux_investment_policy_current",
-          "unique": true
+          "name": "ix_investment_policy_tenant_id",
+          "unique": false
         },
         {
           "columns": [
             "tenant_id"
           ],
-          "name": "ix_investment_policy_tenant_id",
-          "unique": false
+          "name": "ux_investment_policy_current",
+          "unique": true
         }
       ]
     },
@@ -4436,13 +4436,8 @@
         },
         {
           "kind": "CheckConstraint",
-          "name": "ck_journal_type",
-          "sqltext": "type in ('ACCRUAL','SETTLEMENT','REVALUATION','REVERSAL')"
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
+          "name": "ck_journal_status",
+          "sqltext": "status in ('BUILT','POSTED','FAILED')"
         },
         {
           "kind": "ForeignKeyConstraint",
@@ -4451,18 +4446,16 @@
         },
         {
           "kind": "CheckConstraint",
-          "name": "ck_journal_status",
-          "sqltext": "status in ('BUILT','POSTED','FAILED')"
+          "name": "ck_journal_type",
+          "sqltext": "type in ('ACCRUAL','SETTLEMENT','REVALUATION','REVERSAL')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
         }
       ],
       "indices": [
-        {
-          "columns": [
-            "deal_id"
-          ],
-          "name": "ix_journal_deal_id",
-          "unique": false
-        },
         {
           "columns": [
             "tenant_id",
@@ -4477,6 +4470,13 @@
             "tenant_id"
           ],
           "name": "ix_journal_tenant_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "deal_id"
+          ],
+          "name": "ix_journal_deal_id",
           "unique": false
         }
       ]
@@ -4520,14 +4520,14 @@
       ],
       "constraints": [
         {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
-        },
-        {
           "kind": "CheckConstraint",
           "name": "ck_ladder_bucket",
           "sqltext": "bucket in ('0_3M','3_6M','6_12M','OVER_12M')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
         }
       ],
       "indices": []
@@ -4603,9 +4603,9 @@
       ],
       "constraints": [
         {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
+          "kind": "CheckConstraint",
+          "name": "ck_legal_entity_status",
+          "sqltext": "status in ('ACTIVE','ARCHIVED')"
         },
         {
           "kind": "UniqueConstraint",
@@ -4613,9 +4613,9 @@
           "sqltext": ""
         },
         {
-          "kind": "CheckConstraint",
-          "name": "ck_legal_entity_status",
-          "sqltext": "status in ('ACTIVE','ARCHIVED')"
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
         }
       ],
       "indices": [
@@ -4736,17 +4736,17 @@
       "indices": [
         {
           "columns": [
-            "tenant_id"
-          ],
-          "name": "ix_market_snapshot_tenant_id",
-          "unique": false
-        },
-        {
-          "columns": [
             "used_in_subject_type",
             "used_in_subject_id"
           ],
           "name": "ix_market_snapshot_subject",
+          "unique": false
+        },
+        {
+          "columns": [
+            "tenant_id"
+          ],
+          "name": "ix_market_snapshot_tenant_id",
           "unique": false
         }
       ]
@@ -4918,6 +4918,73 @@
         }
       ]
     },
+    "mfa_recovery_code": {
+      "columns": [
+        {
+          "default": null,
+          "fk": null,
+          "name": "id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "user_id",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "code_hash",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "consumed_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "UniqueConstraint",
+          "name": "ux_mfa_recovery_code",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": [
+        {
+          "columns": [
+            "user_id"
+          ],
+          "name": "ix_mfa_recovery_code_user_id",
+          "unique": false
+        }
+      ]
+    },
     "news_item": {
       "columns": [
         {
@@ -5004,16 +5071,16 @@
       "indices": [
         {
           "columns": [
-            "counterparty_id"
+            "tenant_id"
           ],
-          "name": "ix_news_item_counterparty_id",
+          "name": "ix_news_item_tenant_id",
           "unique": false
         },
         {
           "columns": [
-            "tenant_id"
+            "counterparty_id"
           ],
-          "name": "ix_news_item_tenant_id",
+          "name": "ix_news_item_counterparty_id",
           "unique": false
         }
       ]
@@ -5160,6 +5227,11 @@
           "sqltext": ""
         },
         {
+          "kind": "UniqueConstraint",
+          "name": "ux_oem_bu_per_tenant",
+          "sqltext": ""
+        },
+        {
           "kind": "ForeignKeyConstraint",
           "name": "fk_oem_created_by",
           "sqltext": ""
@@ -5167,11 +5239,6 @@
         {
           "kind": "ForeignKeyConstraint",
           "name": null,
-          "sqltext": ""
-        },
-        {
-          "kind": "UniqueConstraint",
-          "name": "ux_oem_bu_per_tenant",
           "sqltext": ""
         }
       ],
@@ -5309,11 +5376,6 @@
       "constraints": [
         {
           "kind": "ForeignKeyConstraint",
-          "name": "fk_instruction_created_by_user",
-          "sqltext": ""
-        },
-        {
-          "kind": "ForeignKeyConstraint",
           "name": null,
           "sqltext": ""
         },
@@ -5326,6 +5388,11 @@
           "kind": "CheckConstraint",
           "name": "ck_instruction_status",
           "sqltext": "status in ('PENDING','SENT','ACKNOWLEDGED','FAILED')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_instruction_created_by_user",
+          "sqltext": ""
         },
         {
           "kind": "ForeignKeyConstraint",
@@ -5731,34 +5798,34 @@
           "sqltext": ""
         },
         {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        },
+        {
           "kind": "CheckConstraint",
           "name": "ck_rating_action",
           "sqltext": "action in ('UPGRADE','DOWNGRADE','WATCH','AFFIRM')"
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
         }
       ],
       "indices": [
         {
           "columns": [
-            "counterparty_id"
+            "tenant_id"
           ],
-          "name": "ix_rating_event_counterparty_id",
+          "name": "ix_rating_event_tenant_id",
           "unique": false
         },
         {
           "columns": [
-            "tenant_id"
+            "counterparty_id"
           ],
-          "name": "ix_rating_event_tenant_id",
+          "name": "ix_rating_event_counterparty_id",
           "unique": false
         }
       ]
@@ -5872,23 +5939,8 @@
       ],
       "constraints": [
         {
-          "kind": "CheckConstraint",
-          "name": "ck_rec_decision",
-          "sqltext": "decision is null or decision in ('ACCEPTED','EDITED','REJECTED','EXPIRED')"
-        },
-        {
           "kind": "ForeignKeyConstraint",
           "name": null,
-          "sqltext": ""
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
-          "sqltext": ""
-        },
-        {
-          "kind": "ForeignKeyConstraint",
-          "name": "fk_recommendation_decided_by",
           "sqltext": ""
         },
         {
@@ -5900,6 +5952,21 @@
           "kind": "CheckConstraint",
           "name": "ck_rec_source",
           "sqltext": "source in ('MODEL','RULE_FALLBACK')"
+        },
+        {
+          "kind": "CheckConstraint",
+          "name": "ck_rec_decision",
+          "sqltext": "decision is null or decision in ('ACCEPTED','EDITED','REJECTED','EXPIRED')"
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": "fk_recommendation_decided_by",
+          "sqltext": ""
+        },
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
         }
       ],
       "indices": []
@@ -6108,13 +6175,13 @@
       ],
       "constraints": [
         {
-          "kind": "ForeignKeyConstraint",
-          "name": null,
+          "kind": "UniqueConstraint",
+          "name": "ux_sso_group_map",
           "sqltext": ""
         },
         {
-          "kind": "UniqueConstraint",
-          "name": "ux_sso_group_map",
+          "kind": "ForeignKeyConstraint",
+          "name": null,
           "sqltext": ""
         }
       ],
@@ -6209,6 +6276,11 @@
       ],
       "constraints": [
         {
+          "kind": "UniqueConstraint",
+          "name": "ux_sso_identity_natural",
+          "sqltext": ""
+        },
+        {
           "kind": "ForeignKeyConstraint",
           "name": "fk_sso_identity_user",
           "sqltext": ""
@@ -6216,11 +6288,6 @@
         {
           "kind": "ForeignKeyConstraint",
           "name": null,
-          "sqltext": ""
-        },
-        {
-          "kind": "UniqueConstraint",
-          "name": "ux_sso_identity_natural",
           "sqltext": ""
         }
       ],
@@ -6459,12 +6526,12 @@
       "constraints": [
         {
           "kind": "ForeignKeyConstraint",
-          "name": null,
+          "name": "fk_scope_entity",
           "sqltext": ""
         },
         {
           "kind": "ForeignKeyConstraint",
-          "name": "fk_scope_entity",
+          "name": null,
           "sqltext": ""
         },
         {
@@ -6476,11 +6543,10 @@
       "indices": [
         {
           "columns": [
-            "user_id",
-            "legal_entity_id"
+            "tenant_id"
           ],
-          "name": "ux_scope_live",
-          "unique": true
+          "name": "ix_user_entity_scope_tenant_id",
+          "unique": false
         },
         {
           "columns": [
@@ -6491,12 +6557,67 @@
         },
         {
           "columns": [
-            "tenant_id"
+            "user_id",
+            "legal_entity_id"
           ],
-          "name": "ix_user_entity_scope_tenant_id",
-          "unique": false
+          "name": "ux_scope_live",
+          "unique": true
         }
       ]
+    },
+    "user_mfa_secret": {
+      "columns": [
+        {
+          "default": null,
+          "fk": [
+            "app_user.id"
+          ],
+          "name": "user_id",
+          "nullable": false,
+          "pk": true,
+          "type": "VARCHAR(40)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "secret_encrypted",
+          "nullable": false,
+          "pk": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "verified_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "created_at",
+          "nullable": false,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "fk": null,
+          "name": "last_used_at",
+          "nullable": true,
+          "pk": false,
+          "type": "VARCHAR(30)"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "ForeignKeyConstraint",
+          "name": null,
+          "sqltext": ""
+        }
+      ],
+      "indices": []
     },
     "validation_result": {
       "columns": [
@@ -6551,13 +6672,13 @@
         },
         {
           "kind": "CheckConstraint",
-          "name": "ck_validation_test",
-          "sqltext": "test in ('ID_IS_REAL','CHECKS_RERUN_CLEAN','FIGURES_AGREE')"
+          "name": "ck_validation_passed",
+          "sqltext": "passed in (0,1)"
         },
         {
           "kind": "CheckConstraint",
-          "name": "ck_validation_passed",
-          "sqltext": "passed in (0,1)"
+          "name": "ck_validation_test",
+          "sqltext": "test in ('ID_IS_REAL','CHECKS_RERUN_CLEAN','FIGURES_AGREE')"
         }
       ],
       "indices": []

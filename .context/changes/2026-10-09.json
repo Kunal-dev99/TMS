@@ -1,0 +1,209 @@
+{
+  "date": "2026-10-09",
+  "entries": [
+    {
+      "time": "morning",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "AuthN substrate Phase 1 — SSO port shape (BE-1.1..1.5). No behaviour change; opt-in via env var only.",
+      "feature_kickoff": "docs/prompts/kickoffs/2026-10-09-authn-mfa-sso-shape.md",
+      "worktree": "../tms-authn (branch authn-feature) — D-03 isolation, main checkout untouched",
+      "backend": {
+        "changed": [
+          "backend/app/connector/ports.py — IdentityAssertion gains mfa_passed: bool = False (additive, backward compatible)",
+          "backend/app/connector/registry.py — _make_identity() learns 'oidc_stub' branch; default stays 'local_password'"
+        ],
+        "new_files": [
+          "backend/app/connector/adapters/identity/oidc_stub.py — StubOIDCIdentity. In-process fake OIDC. issue_code() helper primes a profile; start_login/complete_login validate state + consume code exactly once (mirrors real OIDC CSRF semantics). verify_bearer still goes through the local HMAC token.",
+          "backend/app/services/role_mapper.py — roles_for_groups(session, tenant_id, groups) reads sso_group_map (per-tenant, case-sensitive, fail-closed). Empty mapping = empty role set.",
+          "backend/tests/test_identity_sso_shape.py — 15 tests (BE-1.4): IdentityAssertion.mfa_passed round-trip, stub round-trip, state/code reuse refusal, factory binds local_password by default and oidc_stub when env set, role_mapper covering empty/mapped/case-sensitivity/per-tenant/empty-input."
+        ]
+      },
+      "new_adrs": [
+        ".context/decisions/0023-sso-via-identity-port.json — ADR-0023 recording the SSO-via-port decision + stub adapter rationale."
+      ],
+      "test_state": {
+        "new": 15,
+        "changed": 0,
+        "removed": 0,
+        "full_suite_after": "pending full-suite confirmation"
+      },
+      "done_when_verification": {
+        "phase_1_done_when": "IDENTITY_PROVIDER=oidc_stub tests green AND default (unset) runs exactly as today.",
+        "verified": "15 Phase 1 tests pass; default-provider binding + unknown-provider refusal both tested. Full-suite regression running."
+      },
+      "reversibility": [
+        "No migration — no schema change in Phase 1.",
+        "No existing file semantically changed. IdentityAssertion.mfa_passed has a safe default of False, so any existing adapter + any existing caller continues to work.",
+        "A git revert of the Phase 1 commit fully restores the prior behaviour. Dev + test flows are untouched while IDENTITY_PROVIDER is unset."
+      ],
+      "parked_check": "Confirmed — Phase 1 does not touch any file/symbol/route forbidden by PARKED_PLANS.json. SSO is a parked topic in the Admin UI plan but only for the UI; backend port shape is unparked.",
+      "next_phase": "Phase 2 (BE-2.1..2.8) — TOTP MFA storage + enrollment. Independent of SSO; blocked only on your sign-off of Phase 1."
+    },
+    {
+      "time": "late-morning",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "AuthN substrate Phase 2 — TOTP MFA storage + enrollment (BE-2.1..2.8). Opt-in; no enforcement; local-password flow unchanged.",
+      "feature_kickoff": "docs/prompts/kickoffs/2026-10-09-authn-mfa-sso-shape.md",
+      "worktree": "../tms-authn (branch authn-feature) — D-03 isolation, main checkout untouched",
+      "backend": {
+        "changed": [
+          "backend/requirements.txt — pyotp==2.9.0, cryptography>=42",
+          "backend/app/models.py — UserMfaSecret + MfaRecoveryCode classes, registered in PHASE_ONE_TABLES",
+          "backend/app/main.py — mfa router imported + registered (unauthenticated flow unchanged)"
+        ],
+        "new_files": [
+          "backend/alembic/versions/d3e1b728c04a_mfa_tables.py — portable migration + downgrade for user_mfa_secret + mfa_recovery_code (index on user_id, UNIQUE(user_id, code_hash))",
+          "backend/app/services/mfa_service.py — generate_secret (idempotent-ish for unverified rows), verify_code (one-way flip of verified_at on first success), issue_recovery_codes (XXXX-XXXX-XXXX, unambiguous alphabet, 10 per enrollment, superseding), consume_recovery_code (one-shot, sha256-hashed), is_enrolled, enrollment_status, reset_enrollment (operator helper). Fernet encryption via SecretsPort 'mfa_master_key'; fail-closed with MfaKeyUnavailable when key is missing or malformed.",
+          "backend/app/api/mfa.py — four endpoints (enroll/verify/recovery-reissue/status) all behind the existing bearer-token auth. Rate limits MFA_ENROLL 5/min, MFA_VERIFY 10/min. 503 on missing master key, 400 on bad input, standard 200 on success.",
+          "backend/tests/test_mfa.py — 20 tests: service unit (fail-closed, enroll/verify round-trip, re-enroll before/after verify, wrong code, no key, malformed key), recovery codes (format, one-shot, supersession, unknown-code), endpoints (requires auth, round-trip, wrong-code 400, missing enrollment 400, status pre/post verify, reissue, 503 without key), behaviour-neutrality (/auth/token sign-in still works unchanged)."
+        ]
+      },
+      "new_adrs": [
+        ".context/decisions/0024-mfa-storage-and-crypto.json — ADR-0024: TOTP secret storage, Fernet encryption via SecretsPort, recovery-code format + lifecycle, clock-skew window = 1."
+      ],
+      "test_state": {
+        "new": 20,
+        "changed": 0,
+        "removed": 0,
+        "full_suite_after": "pending full-suite confirmation"
+      },
+      "done_when_verification": {
+        "phase_2_done_when": "A signed-in user can POST /auth/mfa/enroll, scan QR, POST /auth/mfa/verify with first code, and user_mfa_secret.verified_at is populated. 300+ existing tests still pass.",
+        "verified": "20/20 Phase 2 tests pass. End-to-end enrollment round-trip exercised (test_enroll_then_verify_endpoint_flow). Full-suite regression running."
+      },
+      "reversibility": [
+        "Downgrade on d3e1b728c04a drops mfa_recovery_code (and its index) then user_mfa_secret, in dependency order.",
+        "No existing endpoint changed shape. /auth/token still returns the same body; adding mfa_passed/mfa_required_at claims is deferred to Phase 3.",
+        "A deployment with no mfa_master_key in SecretsPort: enrollment refuses with 503, nothing in the DB changes. Users who never hit /auth/mfa/* see no difference whatsoever.",
+        "git revert of the Phase 2 commit (plus the migration downgrade) fully restores Phase 1 state."
+      ],
+      "parked_check": "Confirmed — Phase 2 touches no file/symbol/route forbidden by PARKED_PLANS.json. UserMfaSecret + MfaRecoveryCode are new models not in any parked plan's forbidden-symbols list.",
+      "next_phase": "Phase 3 (BE-3.1..3.5) — MFA consumption + JWT claims. Adds mfa_passed/mfa_required_at to tokens, /auth/mfa/consume endpoint, require_mfa dependency (defined but not applied to any endpoint). Still default-off, no behaviour change."
+    },
+    {
+      "time": "midday",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "AuthN substrate Phase 3 — MFA consumption + JWT mfa_passed claim (BE-3.1..3.5). require_mfa dependency defined; not applied to any endpoint yet (that's Phase 4).",
+      "feature_kickoff": "docs/prompts/kickoffs/2026-10-09-authn-mfa-sso-shape.md",
+      "worktree": "../tms-authn (branch authn-feature) — D-03 isolation, main checkout untouched",
+      "backend": {
+        "changed": [
+          "backend/app/security.py — issue_token() grows kwargs mfa_passed=False + mfa_required_at=None. Claim 'mfa' is always written; 'mfa_req_at' only when set. Backward-compatible: an old token without the claims still decodes; read_token.get('mfa', False) returns False.",
+          "backend/app/services/identity_service.py — Principal gains mfa_passed: bool = False (frozen dataclass, additive). IdentityService.from_token reads payload['mfa'] and threads it into _principal. sign_in-issued tokens still default mfa=False.",
+          "backend/app/errors.py — new ErrorCode.MFA_REQUIRED (403); IDENTITY_CODES count bumped from 4 to 5 to match the catalogue invariant.",
+          "backend/app/api/deps.py — require_mfa() dependency factory added. Not applied anywhere; Phase 4 wires it to sensitive endpoints under the per-tenant policy.",
+          "backend/app/api/mfa.py — new POST /auth/mfa/consume (rate-limited MFA_CONSUME=10/min). Accepts a TOTP code OR a recovery code (shape-sniffed, both tried on mismatch). On success reissues the bearer with mfa=True."
+        ],
+        "new_files": [
+          "backend/tests/test_mfa_consume.py — 13 tests: token claim round-trip (mfa_passed default/true, mfa_required_at round-trip + omitted-by-default), consume via TOTP + recovery code, consume wrong code / no enrollment / missing code, require_mfa dependency behaviour (refuses pre-consume, allows post-consume) via a scratch probe endpoint added+removed per-test, invariant test asserting NO endpoint in main.py wears require_mfa yet (Phase 4's responsibility)."
+        ]
+      },
+      "test_state": {
+        "new": 13,
+        "changed": 0,
+        "removed": 0,
+        "full_suite_after": "pending full-suite confirmation"
+      },
+      "done_when_verification": {
+        "phase_3_done_when": "Token round-trip test shows mfa_passed present and require_mfa refuses a token without it. No existing endpoint behaves differently (no caller wears require_mfa yet).",
+        "verified": "13/13 Phase 3 tests pass. test_no_existing_endpoint_wears_require_mfa_yet enumerates every route in app.router.routes and refuses any route whose Depends dependency chain names require_mfa — hard-enforced tripwire."
+      },
+      "reversibility": [
+        "No migration (no schema change).",
+        "JWT claim additions are backward-compatible — old tokens issued without 'mfa' decode cleanly, mfa_passed defaults to False, require_mfa refuses them (which is the safe default).",
+        "A caller using an old client that doesn't call /auth/mfa/consume continues working for every endpoint today — require_mfa is applied to zero of them.",
+        "git revert of Phase 3 restores Phase 2 state. errors.py IDENTITY_CODES revert from 5 to 4 is one line."
+      ],
+      "parked_check": "Confirmed — Phase 3 touches no file/symbol/route forbidden by PARKED_PLANS.json. New /auth/mfa/consume endpoint + require_mfa helper + MFA_REQUIRED code are new territory.",
+      "next_phase": "Phase 4 (BE-4.1..4.5) — Per-tenant MFA policy + 7-day grace. tenant_setting key='mfa_policy' (default off), mfa_policy_service computes 'required now?' with grace arithmetic, require_mfa wired into sensitive endpoints, /auth/me returns mfa_required_by for the nag banner. Default policy stays 'off' — the demo tenant unchanged until an admin flips it."
+    },
+    {
+      "time": "early-afternoon",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "AuthN substrate Phase 4 — per-tenant MFA policy + 7-day grace + enforcement on sensitive endpoints (BE-4.1..4.5). Default policy stays 'off'; dev + test flows unchanged on the demo tenant.",
+      "feature_kickoff": "docs/prompts/kickoffs/2026-10-09-authn-mfa-sso-shape.md",
+      "worktree": "../tms-authn (branch authn-feature) — D-03 isolation, main checkout untouched",
+      "backend": {
+        "new_files": [
+          "backend/app/services/mfa_policy_service.py — reads/writes tenant_setting[key='mfa_policy']. Payload {mode: off|optional|required_for_sensitive_roles|required_for_all, grace_days: 7, activated_at: iso}. get_policy() returns well-formed defaults for any tenant. set_policy() stamps activated_at when flipping from off; preserves it when tightening (sensitive->all); clears it on flip-to-off (next flip-on restarts grace). is_mfa_required(session, tenant, roles, now=None) handles grace arithmetic + sensitive-role matching. required_by() returns the ISO deadline for the nag banner (None when policy is off/optional/role-exempt). SENSITIVE_ROLES = {CFO, HEAD_OF_TREASURY, ADMIN, COMPLIANCE_OFFICER}.",
+          "backend/tests/test_mfa_policy.py — 19 tests: policy defaults, activated_at stamping/preservation/clearing, is_mfa_required across every mode + grace window + role, required_by() nag deadline, /deals/{id}/approve enforcement toggle (default-off unchanged / policy-on refused / after /auth/mfa/consume allowed), /auth/me surfaces (mfa.policy_mode + mfa.required_by + mfa.passed_this_session + mfa.enrolled)."
+        ],
+        "changed": [
+          "backend/app/api/deps.py — require_mfa() rewritten as policy-aware. Reads mfa_policy_service.is_mfa_required(ctx.session, caller.tenant_id, caller.roles) at request time. When the policy says MFA is NOT required for this caller, the dep is a no-op. When it IS required, refuses with 403 MFA_REQUIRED unless caller.mfa_passed is True. Default-off policy means endpoints wearing require_mfa behave identically to pre-Phase-4 on the demo tenant.",
+          "backend/app/api/deals.py — POST /deals/{deal_id}/approve now wears require_mfa().",
+          "backend/app/api/admin_users.py — POST /admin/access-changes/{request_id}/approve now wears require_mfa().",
+          "backend/app/api/auth.py — GET /auth/me now (a) uses ctx.session instead of a fresh SessionLocal (fixes a worktree/test bug the old code hid behind a prod treasury.db), and (b) adds an 'mfa' block to the response: {enrolled, verified_at, passed_this_session, required_by, policy_mode}. The required_by field is the ISO deadline the client reads for the nag banner.",
+          "backend/tests/test_mfa_consume.py — Phase 3 tripwire test ('no endpoint wears require_mfa yet') replaced with a precise allow-list test ('require_mfa is wired to exactly these 2 endpoints') that fails loudly on any drift. Three Phase 3 tests updated for new policy-aware semantics (policy-off = allowed; policy-on + grace-elapsed + mfa_passed=false = refused)."
+        ]
+      },
+      "test_state": {
+        "new": 19,
+        "changed": 3,
+        "removed": 0,
+        "full_suite_after": "pending full-suite confirmation"
+      },
+      "done_when_verification": {
+        "phase_4_done_when": "Flipping the demo tenant to required_for_all makes /deals/{id}/approve return 403 MFA_REQUIRED for an unenrolled user; flipping back to off restores today's behaviour exactly.",
+        "verified": "test_approve_deal_refuses_without_mfa_when_policy_on exercises exactly that round-trip (set policy, collapse grace, expect 403; flip off, expect business logic to run). test_approve_deal_default_off_unchanged proves the pre-flip baseline. test_approve_deal_allowed_after_mfa_consume proves the enroll->verify->consume path produces a bearer that satisfies require_mfa even under enforce-all."
+      },
+      "reversibility": [
+        "Policy default is 'off'. A tenant that never calls set_policy() sees exactly today's behaviour on every endpoint — including the two now wearing require_mfa.",
+        "Flipping policy to 'off' is a one-call revert; activated_at clears so a later flip-on restarts the 7-day grace.",
+        "Removing the require_mfa dep from a specific endpoint is a one-line change (deals.py or admin_users.py).",
+        "git revert of Phase 4 restores Phase 3 wiring. The allow-list test in test_mfa_consume.py will then need its expected set emptied."
+      ],
+      "parked_check": "Confirmed — Phase 4 touches no file/symbol/route forbidden by PARKED_PLANS.json. tenant_setting is the general-purpose per-tenant store added in S2 — new 'mfa_policy' key is additive.",
+      "operational_followups": [
+        "Admin UI tab for policy mode is deferred to Phase 5 (backend) + a frontend FE-x task. No way to flip the policy from the UI today — only via direct DB writes or a future admin endpoint.",
+        "Phase 5 (BE-5.1..5.5) adds the admin endpoints that write mfa_policy with the four-eye pattern (ADR-0015), plus /admin/mfa/status (per-user enrollment table), plus audit_event per policy change."
+      ],
+      "next_phase": "Phase 5 (BE-5.1..5.5) — admin endpoints: GET /admin/mfa/status (table of users), GET+PUT /admin/mfa/policy (four-eye gated), audit event per policy change, full regression + ADR touch-ups + MANIFEST."
+    },
+    {
+      "time": "afternoon",
+      "author": "assistant",
+      "kind": "feature",
+      "summary": "AuthN substrate Phase 5 — admin MFA surface (status + four-eye policy change). Backend only; frontend admin tab deferred to a separate FE-x kickoff.",
+      "feature_kickoff": "docs/prompts/kickoffs/2026-10-09-authn-mfa-sso-shape.md",
+      "worktree": "../tms-authn (branch authn-feature) — D-03 isolation, main checkout untouched",
+      "backend": {
+        "new_files": [
+          "backend/app/api/admin_mfa.py — three endpoints under /admin: GET /mfa/status (per-user enrollment table), GET /mfa/policy (current tenant policy), POST /mfa/policy/request (queue a change for a different admin to approve via the four-eye flow). All three MANAGE_USERS-gated; reads require nothing more, the policy-change request still requires another admin to approve.",
+          "backend/tests/test_admin_mfa.py — 11 tests: status requires MANAGE_USERS, status lists users with enrollment state, policy default-off, request queues without applying, reject bad mode / short reason / non-admin caller, approve applies policy, four-eye blocks self-approval, request writes an audit event."
+        ],
+        "changed": [
+          "backend/app/services/access_change_service.py — new create_mfa_policy_change_request() factory (validates mode + grace_days at queue-time). approve() dispatch learns a new change_type branch 'mfa_policy.set' that calls mfa_policy_service.set_policy(). Role-grant path untouched.",
+          "backend/app/api/admin_users.py — approve_access_change endpoint response generalised: returns the updated UserRow when the change was about a user (role.grant) and a generic ack dict for non-user subjects (mfa_policy.set). Dropped the fixed response_model=UserRow because the endpoint now covers multiple change_types. require_mfa still wears the endpoint (Phase 4 wiring preserved).",
+          "backend/app/main.py — admin_mfa router imported + registered."
+        ]
+      },
+      "test_state": {
+        "new": 11,
+        "changed": 0,
+        "removed": 0,
+        "full_suite_after": "pending full-suite confirmation"
+      },
+      "done_when_verification": {
+        "phase_5_done_when": "Full pytest suite green AND an admin can read the current policy. Frontend admin tab deferred.",
+        "verified": "11/11 Phase 5 tests pass including the end-to-end four-eye round-trip (CFO requests → admin approves → policy flips) and the self-approval refusal (CFO cannot approve their own request). Full-suite regression running."
+      },
+      "reversibility": [
+        "No migration (no new tables; the policy still lives in tenant_setting from Phase 4).",
+        "Removing the admin_mfa router from main.py restores pre-Phase-5 endpoint surface; no caller depends on it today (frontend tab not built).",
+        "approve_access_change's response is a superset of its old UserRow shape when the change_type is role.grant — the old-shaped response is preserved for role-grant callers.",
+        "git revert of Phase 5 restores Phase 4 cleanly."
+      ],
+      "parked_check": "Confirmed — Phase 5 touches no file/symbol/route forbidden by PARKED_PLANS.json. The admin_mfa router is new; it does not overlap PHASE_2_ADMIN_UI_PLAN.md's forbidden surfaces (which are oracle/sso-mapping/integration-health specific).",
+      "operational_followups": [
+        "Frontend admin tab for MFA status + policy is deferred to a dedicated FE-x kickoff. The backend contract is stable; the FE kickoff just needs to drive the three endpoints.",
+        "Reject-reason surface for the policy change — today's /admin/access-changes/{id}/reject endpoint already covers it, no new work needed.",
+        "A follow-up could add 'cancel my own pending policy change' for the requester — Phase 5 doesn't ship it; a bad request can be rejected by another admin."
+      ],
+      "next_phase": "AuthN substrate feature complete at Phase 5. The next kickoff is either (a) a real OIDC adapter when customer #1 names their IdP (new backend file + /auth/sso/* endpoints), or (b) a frontend FE-x kickoff for the admin tab + the user profile MFA enrollment flow."
+    }
+  ]
+}

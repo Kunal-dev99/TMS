@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 
-from app.api.deps import Caller, Ctx, require_role
+from app.api.deps import Caller, Ctx, require_mfa, require_role
 from app.errors import ErrorCode, TreasuryError
 from app.ids import new_id, now
 from app.models import AppUser, LegalEntity, Membership, Tenant, UserEntityScope
@@ -554,10 +554,21 @@ def list_access_changes(ctx: Ctx, _: AdminGuard) -> list[AccessChangeView]:
     ]
 
 
-@router.post("/access-changes/{request_id}/approve", response_model=UserRow)
+@router.post(
+    "/access-changes/{request_id}/approve",
+    dependencies=[Depends(require_mfa())],
+)
 def approve_access_change(
     request_id: str, body: ReviewRequest, ctx: Ctx, caller: Caller, _: AdminGuard
-) -> UserRow:
+) -> dict:
+    """Approve a pending access-change request and apply it.
+
+    Returns the updated UserRow when the change was about a user
+    (role.grant); returns a generic ack otherwise (e.g.
+    mfa_policy.set). Dropping the fixed response_model lets this
+    endpoint grow to cover new change_types without breaking the
+    per-type callers.
+    """
     req = access_change_service.approve(
         ctx.session,
         tenant_id=ctx.tenant_id,
@@ -581,8 +592,18 @@ def approve_access_change(
         },
     )
     ctx.session.commit()
-    subject = ctx.session.get(AppUser, req.subject_id)
-    return _row(ctx.session, subject)
+    if req.subject_type == "user":
+        subject = ctx.session.get(AppUser, req.subject_id)
+        if subject is not None:
+            return _row(ctx.session, subject).model_dump()
+    return {
+        "ok": True,
+        "request_id": req.id,
+        "change_type": req.change_type,
+        "subject_type": req.subject_type,
+        "subject_id": req.subject_id,
+        "status": req.status,
+    }
 
 
 @router.post("/access-changes/{request_id}/reject", response_model=AccessChangeView)

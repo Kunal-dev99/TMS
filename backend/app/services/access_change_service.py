@@ -47,6 +47,48 @@ def is_sensitive(role: str) -> bool:
     return role in SENSITIVE_ROLES
 
 
+def create_mfa_policy_change_request(
+    session: Session,
+    *,
+    tenant_id: str,
+    mode: str,
+    grace_days: int,
+    requester,
+    reason: str | None = None,
+) -> AccessChangeRequest:
+    """Queue an MFA policy change for another admin to approve.
+
+    Validates mode + grace eagerly so a bad request never sits in the
+    queue waiting to blow up on approve.
+    """
+    from app.services import mfa_policy_service
+
+    if mode not in mfa_policy_service.VALID_MODES:
+        raise ValueError(
+            f"Unknown MFA mode: {mode!r}. One of {mfa_policy_service.VALID_MODES}."
+        )
+    if grace_days < 0:
+        raise ValueError("grace_days must be >= 0.")
+
+    req = AccessChangeRequest(
+        id=new_id("acr"),
+        tenant_id=tenant_id,
+        subject_type="mfa_policy",
+        # Tenant id as the subject so the audit trail joins on it.
+        subject_id=tenant_id,
+        change_type="mfa_policy.set",
+        payload_json=json.dumps({"mode": mode, "grace_days": grace_days}),
+        reason=reason,
+        status="PENDING",
+        requested_by_user_id=requester.user_id,
+        requested_by_display=requester.display_name,
+        requested_at=now(),
+    )
+    session.add(req)
+    session.flush()
+    return req
+
+
 def create_role_grant_request(
     session: Session,
     *,
@@ -147,9 +189,9 @@ def approve(
             "You cannot approve an access change you requested. A different admin must review.",
         )
 
-    # Apply the change. change_type is a discriminant — today only
-    # role.grant is supported. New types can be added without touching
-    # the endpoint layer.
+    # Apply the change. change_type is a discriminant — today
+    # role.grant + mfa_policy.set are supported. New types can be
+    # added without touching the endpoint layer.
     if req.change_type == "role.grant":
         payload = json.loads(req.payload_json)
         role = payload["role"]
@@ -172,6 +214,18 @@ def approve(
                     granted_at=now(),
                 )
             )
+    elif req.change_type == "mfa_policy.set":
+        # Payload: {"mode": "...", "grace_days": 7}
+        from app.services import mfa_policy_service
+
+        payload = json.loads(req.payload_json)
+        mfa_policy_service.set_policy(
+            session,
+            tenant_id,
+            mode=payload["mode"],
+            grace_days=int(payload.get("grace_days", 7)),
+            updated_by_user_id=reviewer.user_id,
+        )
     else:
         raise TreasuryError(
             ErrorCode.QUEUE_ITEM_NOT_FOUND,
