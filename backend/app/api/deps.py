@@ -144,3 +144,35 @@ def require_role(*roles: str):
         return caller
 
     return _guard
+
+
+def require_mfa():
+    """Dependency: policy-aware second-factor gate (Phase 3 + Phase 4).
+
+    Consults the per-tenant ``mfa_policy`` setting at request time.
+    When the tenant's policy says MFA is required for this caller
+    (right now, considering the grace window), the dep refuses the
+    request with 403 MFA_REQUIRED unless the caller's token carries
+    mfa_passed=True.
+
+    Default policy is 'off' — endpoints wearing this dep behave
+    exactly as if it weren't there until an admin flips the policy.
+    This is how the dev + test flow stays identical for the demo
+    tenant while sensitive endpoints are nonetheless gated.
+    """
+    from app.services import mfa_policy_service
+
+    def _guard(ctx: Ctx, caller: Caller) -> Principal:
+        required = mfa_policy_service.is_mfa_required(
+            ctx.session, caller.tenant_id, caller.roles
+        )
+        if not required:
+            return caller
+        if caller.mfa_passed:
+            return caller
+        raise TreasuryError(
+            ErrorCode.MFA_REQUIRED,
+            "This action needs a second-factor code first.",
+        )
+
+    return _guard

@@ -27,6 +27,11 @@ class Principal:
     display_name: str
     email: str
     roles: list[str] = field(default_factory=list)
+    #: Did this bearer token's holder prove possession of a second
+    #: factor during the current session (Phase 3). Default False —
+    #: the require_mfa dependency refuses endpoints gated on it until
+    #: the user POSTs /auth/mfa/consume with a valid code.
+    mfa_passed: bool = False
 
     def holds(self, role: str) -> bool:
         return role in self.roles
@@ -110,13 +115,16 @@ class IdentityService:
             raise TreasuryError(
                 ErrorCode.NOT_AUTHENTICATED, "That account is no longer active."
             )
-        return self._principal(user)
+        # mfa_passed defaults False on tokens issued before Phase 3 — the
+        # claim is absent on legacy tokens, so .get(...) returns False.
+        return self._principal(user, mfa_passed=bool(payload.get("mfa", False)))
 
-    def _principal(self, user) -> Principal:
+    def _principal(self, user, *, mfa_passed: bool = False) -> Principal:
         return Principal(
             user_id=user.id,
             tenant_id=user.tenant_id,
             display_name=user.display_name,
             email=user.email,
             roles=user_repo.roles(self.session, user.id),
+            mfa_passed=mfa_passed,
         )

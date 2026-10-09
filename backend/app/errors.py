@@ -82,6 +82,8 @@ class ErrorCode(str, Enum):
     SEGREGATION_OF_DUTIES = "SEGREGATION_OF_DUTIES"
     # P0-04. Not in document 2 either.
     RATE_LIMITED = "RATE_LIMITED"
+    # Phase 3 AuthN substrate — gates endpoints that need a second-factor proof.
+    MFA_REQUIRED = "MFA_REQUIRED"
 
 
 #: Status and default message per code. The message is a fallback; a service
@@ -216,14 +218,19 @@ CATALOGUE: dict[ErrorCode, tuple[int, str]] = {
         429,
         "Too many requests. Wait a moment and try again.",
     ),
+    ErrorCode.MFA_REQUIRED: (
+        403,
+        "This action needs a second-factor code. Call /auth/mfa/consume with your authenticator code first.",
+    ),
 }
 
 #: Thirty-eight from document 2, plus the three identity codes added in
 #: phase 1.5. The documents describe a system with no identity, so those
 #: three have no entry to reconcile against.
 DOCUMENTED_CODES = 38
-# Identity codes + RATE_LIMITED (P0-04): all outside document 2.
-IDENTITY_CODES = 4
+# Identity codes + RATE_LIMITED (P0-04) + MFA_REQUIRED (Phase 3 AuthN
+# substrate): all outside document 2.
+IDENTITY_CODES = 5
 
 #: Two more, for the amendment gate. Document 2 has no code for an amendment
 #: that fails the checks because the documents do not gate an amendment at

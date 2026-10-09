@@ -77,12 +77,34 @@ def _unb64(value: str) -> bytes:
     return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
 
 
-def issue_token(user_id: str, tenant_id: str, ttl_seconds: int = TOKEN_TTL_SECONDS) -> str:
-    payload = {
+def issue_token(
+    user_id: str,
+    tenant_id: str,
+    ttl_seconds: int = TOKEN_TTL_SECONDS,
+    *,
+    mfa_passed: bool = False,
+    mfa_required_at: int | None = None,
+) -> str:
+    """Issue a signed bearer token.
+
+    mfa_passed: True once the user has supplied a valid TOTP code via
+    /auth/mfa/consume (BE-3.2). A fresh /auth/token sign-in defaults
+    to False; the require_mfa dependency (BE-3.3) refuses endpoints
+    that are gated on it until the caller re-authenticates with their
+    second factor.
+
+    mfa_required_at: optional unix timestamp. When set, the client can
+    show a nag banner starting from that time (Phase 4 uses it for the
+    7-day grace countdown). Omitted on tokens issued today.
+    """
+    payload: dict = {
         "sub": user_id,
         "ten": tenant_id,
         "exp": int(time.time()) + ttl_seconds,
+        "mfa": bool(mfa_passed),
     }
+    if mfa_required_at is not None:
+        payload["mfa_req_at"] = int(mfa_required_at)
     body = _b64(json.dumps(payload, separators=(",", ":")).encode())
     signature = hmac.new(SECRET.encode(), body.encode(), hashlib.sha256).digest()
     return f"{body}.{_b64(signature)}"
