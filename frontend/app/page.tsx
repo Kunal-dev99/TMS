@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { UserPlus } from "lucide-react";
+import { Check, FileText, Loader2, Play, RotateCcw, UserPlus } from "lucide-react";
 
 import { Blotter } from "@/components/Blotter";
 import { Book } from "@/components/Book";
 import { CheckPanel } from "@/components/CheckPanel";
-import { Header } from "@/components/Header";
-import { PersonaNav } from "@/components/PersonaNav";
+import { AppShell } from "@/components/shell/AppShell";
+import { ContextStrip, TopbarAction } from "@/components/shell/Topbar";
 import { PanelShell, EmptyState } from "@/components/PanelShell";
 import { SignIn } from "@/components/SignIn";
 import { Strip } from "@/components/Strip";
@@ -40,11 +40,14 @@ import {
   getQueue,
   getState,
   recordDeal,
+  resetBook,
+  runNightly,
+  signOut,
   whenSessionEnds,
   whoAmI,
 } from "@/lib/api";
 import { currentToken, endSession, type SignedInUser } from "@/lib/session";
-import { approverLabel } from "@/lib/format";
+import { approverLabel, shortDate } from "@/lib/format";
 import type { BreachView, CheckResult, QueueItem, StateResponse } from "@/lib/types";
 
 /**
@@ -232,22 +235,39 @@ export default function Surface() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
-      <PersonaNav />
-      <Header
-        state={state}
-        user={user}
-        onReset={() => load()}
-        onSignedOut={() => {
-          setUser(null);
-          setState(null);
-        }}
-        onParseConfirmation={() => setParseOpen(true)}
-      />
+    <AppShell
+      actions={
+        <TreasurerTopbarActions
+          onReset={() => load()}
+          onParseConfirmation={() => setParseOpen(true)}
+        />
+      }
+    >
+      <ContextStrip>
+        <span className="inline-flex items-center rounded border border-amber-400/60 bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+          Prototype
+        </span>
+        {state?.tenant_name ? (
+          <span className="inline-flex items-center">{state.tenant_name}</span>
+        ) : null}
+        {state?.as_of_date ? (
+          <span>
+            Today <strong className="font-medium text-foreground">{shortDate(state.as_of_date)}</strong>
+          </span>
+        ) : null}
+        {state?.enforcement ? (
+          <span>
+            Enforcement{" "}
+            <strong className="font-medium text-foreground">
+              {state.enforcement === "WARN_WITH_OVERRIDE" ? "warn with override" : "hard block"}
+            </strong>
+          </span>
+        ) : null}
+      </ContextStrip>
 
       {state === null ? (
         /* One quiet skeleton, not eleven spinners. */
-        <div className="flex flex-1 items-center justify-center">
+        <div className="flex min-h-[400px] flex-1 items-center justify-center">
           <p className="text-xs text-muted-foreground">
             {error ?? "Reading the book."}
           </p>
@@ -614,6 +634,102 @@ export default function Surface() {
         onClose={() => setAccountingEventsOpen(false)}
         onSaved={() => setToast("Accounting-event catalogue saved.")}
       />
-    </div>
+    </AppShell>
+  );
+}
+
+/** Treasurer-specific action buttons for the Topbar.
+ *  Pulls the three dense buttons out of the old Header. */
+function TreasurerTopbarActions({
+  onReset,
+  onParseConfirmation,
+}: {
+  onReset: () => void;
+  onParseConfirmation: () => void;
+}) {
+  const [nightlyBusy, setNightlyBusy] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
+  const [nightlyResult, setNightlyResult] = useState<string | null>(null);
+
+  const doNightly = async () => {
+    setNightlyBusy(true);
+    setNightlyResult(null);
+    try {
+      const outcome = (await runNightly()) as {
+        accrual_rows_written?: number;
+        journals_built?: number;
+      };
+      setNightlyResult(
+        `${outcome.accrual_rows_written ?? 0} accruals, ${outcome.journals_built ?? 0} journals`,
+      );
+      onReset();
+    } catch (cause: unknown) {
+      setNightlyResult(cause instanceof Error ? cause.message : "That was refused.");
+    } finally {
+      setNightlyBusy(false);
+    }
+  };
+
+  const doReset = async () => {
+    if (resetBusy) return;
+    setResetBusy(true);
+    setResetDone(false);
+    try {
+      await resetBook();
+      onReset();
+      setResetDone(true);
+      window.setTimeout(() => setResetDone(false), 1200);
+    } finally {
+      setResetBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <TopbarAction onClick={doNightly}>
+        {nightlyBusy ? (
+          <>
+            <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+            Running…
+          </>
+        ) : (
+          <>
+            <Play className="mr-1.5 h-3 w-3" />
+            Nightly
+          </>
+        )}
+      </TopbarAction>
+      {nightlyResult ? (
+        <span
+          className="hidden xl:inline max-w-[200px] truncate text-[10px] text-muted-foreground"
+          title={nightlyResult}
+        >
+          {nightlyResult}
+        </span>
+      ) : null}
+      <TopbarAction onClick={onParseConfirmation}>
+        <FileText className="mr-1.5 h-3 w-3" />
+        Paste
+      </TopbarAction>
+      <TopbarAction onClick={doReset}>
+        {resetBusy ? (
+          <>
+            <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+            Resetting…
+          </>
+        ) : resetDone ? (
+          <>
+            <Check className="mr-1.5 h-3 w-3" />
+            Reset
+          </>
+        ) : (
+          <>
+            <RotateCcw className="mr-1.5 h-3 w-3" />
+            Reset
+          </>
+        )}
+      </TopbarAction>
+    </>
   );
 }
