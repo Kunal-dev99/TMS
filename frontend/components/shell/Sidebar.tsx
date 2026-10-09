@@ -25,13 +25,19 @@ import {
   PenLine,
   Settings,
   ShieldCheck,
+  ShieldHalf,
   User,
   type LucideIcon,
 } from "lucide-react";
 
 import { whoAmI } from "@/lib/api";
 import { currentUser, type SignedInUser } from "@/lib/session";
-import { NAV, groupForPath, type NavGroup } from "@/lib/nav-config";
+import {
+  NAV,
+  groupForPath,
+  type NavEntry,
+  type NavGroupExpandable,
+} from "@/lib/nav-config";
 import {
   readExpandedGroups,
   readSidebarCollapsed,
@@ -44,6 +50,7 @@ const ICONS: Record<string, LucideIcon> = {
   "arrows-left-right": ArrowLeftRight,
   "pen-line": PenLine,
   "shield-check": ShieldCheck,
+  "shield-lock": ShieldHalf,
   settings: Settings,
   cog: Cog,
   user: User,
@@ -155,18 +162,73 @@ export function Sidebar() {
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-2 text-[13px]">
-        {visibleGroups.map((group) => (
-          <SidebarGroup
-            key={group.id}
-            group={group}
-            collapsed={collapsed}
-            expanded={expanded.has(group.id)}
-            onToggle={() => toggleGroup(group.id)}
-            activePath={pathname}
-          />
-        ))}
+        {visibleGroups.map((entry) =>
+          entry.kind === "link" ? (
+            <SidebarLink
+              key={entry.id}
+              entry={entry}
+              collapsed={collapsed}
+              activePath={pathname}
+            />
+          ) : (
+            <SidebarGroup
+              key={entry.id}
+              group={entry}
+              collapsed={collapsed}
+              expanded={expanded.has(entry.id)}
+              onToggle={() => toggleGroup(entry.id)}
+              activePath={pathname}
+            />
+          ),
+        )}
       </nav>
     </aside>
+  );
+}
+
+function SidebarLink({
+  entry,
+  collapsed,
+  activePath,
+}: {
+  entry: Extract<NavEntry, { kind: "link" }>;
+  collapsed: boolean;
+  activePath: string;
+}) {
+  const Icon = ICONS[entry.icon] ?? ArrowLeftRight;
+  const base = entry.href.split("?")[0].split("#")[0];
+  const active =
+    base === "/" ? activePath === "/" : activePath === base || activePath.startsWith(base + "/");
+
+  if (collapsed) {
+    return (
+      <Link
+        href={entry.href}
+        title={entry.label}
+        aria-label={entry.label}
+        className={cn(
+          "flex h-9 items-center justify-center rounded-md text-muted-foreground hover:bg-surface-2 hover:text-foreground",
+          active ? "bg-primary/10 text-primary" : "",
+        )}
+      >
+        <Icon className="h-4 w-4" />
+      </Link>
+    );
+  }
+
+  return (
+    <Link
+      href={entry.href}
+      className={cn(
+        "flex items-center gap-2 rounded-md px-2 py-1.5",
+        active
+          ? "bg-primary/15 text-primary font-medium"
+          : "text-muted-foreground hover:bg-surface-2 hover:text-foreground",
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      <span className="truncate">{entry.label}</span>
+    </Link>
   );
 }
 
@@ -177,7 +239,7 @@ function SidebarGroup({
   onToggle,
   activePath,
 }: {
-  group: NavGroup;
+  group: NavGroupExpandable;
   collapsed: boolean;
   expanded: boolean;
   onToggle: () => void;
@@ -186,8 +248,7 @@ function SidebarGroup({
   const Icon = ICONS[group.icon] ?? ArrowLeftRight;
 
   // Collapsed sidebar: show icon only; clicking jumps to the group's
-  // first child. No expansion possible since there's no room for
-  // children in a 56px rail.
+  // first child.
   if (collapsed) {
     const first = group.children[0];
     return (

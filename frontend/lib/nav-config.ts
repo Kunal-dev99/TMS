@@ -24,38 +24,53 @@ export interface NavItem {
   badge?: string;
 }
 
-export interface NavGroup {
+/** A single top-level nav item with its own href. Renders as a plain
+ *  link (no chevron, no expand/collapse). Use when the destination
+ *  is one page. */
+export interface NavLink {
+  kind: "link";
   id: string;
   label: string;
-  /** Icon name — resolved to a lucide component in Sidebar.tsx. */
   icon: string;
-  /** Role gate — the group only renders if the signed-in user holds
-   *  ANY of these roles. Omit to show to everyone. */
+  href: string;
   requiresAnyRole?: string[];
-  /** Optional role gate per item inside the group; otherwise inherits
-   *  from the group. */
+}
+
+/** A grouped nav entry with children. Renders with a chevron that
+ *  expands to reveal its children. Use when there are 2+ real routes
+ *  under the same umbrella. */
+export interface NavGroupExpandable {
+  kind: "group";
+  id: string;
+  label: string;
+  icon: string;
+  requiresAnyRole?: string[];
   children: NavItem[];
 }
 
-export const NAV: NavGroup[] = [
+export type NavEntry = NavLink | NavGroupExpandable;
+
+/** Back-compat alias so callers that typed against NavGroup still
+ *  type-check. New code should prefer NavEntry. */
+export type NavGroup = NavEntry;
+
+export const NAV: NavEntry[] = [
   {
+    kind: "link",
     id: "treasurer",
     label: "Treasurer",
     icon: "arrows-left-right",
-    children: [
-      { href: "/", label: "Deals and book" },
-      { href: "/#planner", label: "Planner" },
-      { href: "/#hedging", label: "Hedging" },
-      { href: "/#exposure", label: "Exposure" },
-    ],
+    href: "/",
   },
   {
+    kind: "link",
     id: "approvals",
     label: "Approvals",
     icon: "pen-line",
-    children: [{ href: "/approvals", label: "Queue" }],
+    href: "/approvals",
   },
   {
+    kind: "group",
     id: "compliance",
     label: "Compliance",
     icon: "shield-check",
@@ -70,35 +85,44 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
+    kind: "link",
     id: "admin",
     label: "Admin",
     icon: "settings",
     requiresAnyRole: ["ADMIN"],
-    children: [
-      { href: "/admin", label: "Overview" },
-      { href: "/admin/users", label: "Users and roles" },
-      { href: "/admin/system-policy", label: "Policy and bands" },
-    ],
+    href: "/admin",
   },
   {
+    kind: "link",
     id: "profile",
-    label: "Profile",
-    icon: "user",
-    children: [
-      { href: "/profile/mfa", label: "Two-factor authentication" },
-    ],
+    label: "Two-factor authentication",
+    icon: "shield-lock",
+    href: "/profile/mfa",
   },
 ];
 
-/** The sidebar group whose children contain `pathname`, or null. Used
- *  by SidebarGroup to auto-expand the group the user is currently in. */
-export function groupForPath(pathname: string): NavGroup | null {
-  for (const group of NAV) {
-    for (const item of group.children) {
-      const base = item.href.split("?")[0].split("#")[0];
-      if (base === pathname) return group;
-      if (base !== "/" && pathname.startsWith(base)) return group;
+/** The sidebar entry that owns `pathname`, or null. For a link, that's
+ *  the link itself; for a group, it's the group whose child matches.
+ *  Used by Topbar's breadcrumb + Sidebar's auto-expansion. */
+export function groupForPath(pathname: string): NavEntry | null {
+  for (const entry of NAV) {
+    if (entry.kind === "link") {
+      const base = entry.href.split("?")[0].split("#")[0];
+      if (base === pathname) return entry;
+      if (base !== "/" && pathname.startsWith(base)) return entry;
+    } else {
+      for (const item of entry.children) {
+        const base = item.href.split("?")[0].split("#")[0];
+        if (base === pathname) return entry;
+        if (base !== "/" && pathname.startsWith(base)) return entry;
+      }
     }
   }
   return null;
+}
+
+/** For a given NavEntry, return its primary href (the link's own href,
+ *  or the first child's href for a group). */
+export function primaryHref(entry: NavEntry): string {
+  return entry.kind === "link" ? entry.href : entry.children[0]?.href ?? "/";
 }

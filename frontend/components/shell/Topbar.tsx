@@ -139,22 +139,29 @@ interface Crumb {
 }
 
 function buildCrumbs(pathname: string): Crumb[] {
-  // Start with the group label, then the item label, then any sub
-  // path segments. Keeps the trail short + navigable.
-  const group = groupForPath(pathname);
-  if (!group) return [{ label: "Treasury Register" }];
+  const entry = groupForPath(pathname);
+  if (!entry) return [{ label: "Treasury Register" }];
 
+  // Flat link: breadcrumb is just the entry label.
+  if (entry.kind === "link") {
+    return [{ label: entry.label }];
+  }
+
+  // Grouped entry: group label (linkable to first child) + the matched
+  // child's label.
   const item =
-    group.children.find((c) => {
+    entry.children.find((c) => {
       const base = c.href.split("?")[0].split("#")[0];
       return base === pathname;
     }) ??
-    group.children.find((c) => {
+    entry.children.find((c) => {
       const base = c.href.split("?")[0].split("#")[0];
       return base !== "/" && pathname.startsWith(base);
     });
 
-  const crumbs: Crumb[] = [{ label: group.label, href: group.children[0]?.href }];
+  const crumbs: Crumb[] = [
+    { label: entry.label, href: entry.children[0]?.href },
+  ];
   if (item) crumbs.push({ label: item.label });
   return crumbs;
 }
