@@ -1,0 +1,43 @@
+{
+  "id": "ADR-0025",
+  "date": "2026-10-09",
+  "status": "accepted",
+  "supersedes": ["ADR-0009"],
+  "title": "Shell v2 — collapsible sidebar + config-driven nav. Supersedes PersonaNav.",
+  "context": "The product has grown past what a top-nav + dense Header can carry cleanly. Phase 1 shipped four persona pages (treasurer / admin / compliance / approvals); the AuthN substrate added a profile MFA page; the parked PHASE_2_ADMIN_UI_PLAN adds oracle mappings + SSO group map + integration health; the parked Admin MFA tab, upcoming notifications, upcoming activity feeds. A horizontal persona tab-bar + a dense treasurer-only Header cannot carry this surface without becoming cluttered — a user review flagged it explicitly before any new feature work landed. The user's requirement: 'a menu thing that will open up and reveal children, everything configurable.'",
+  "decision": "A single sidebar + topbar shell wraps every signed-in page. Groups in the sidebar expand to reveal children; the sidebar itself collapses to an icon rail; both prefs are per-user and persist in localStorage. The nav tree is a single lib/nav-config.ts array — adding a page is one entry, hiding something per role is one `requiresAnyRole` field. The topbar carries a breadcrumb + per-page actions slot + user dropdown. Pre-sign-in flows (/activate) opt out — the SHELL_EXEMPT_ROUTES list documents the carve-outs.",
+  "scope_in": [
+    "frontend/components/shell/AppShell.tsx — the outer wrapper every page uses.",
+    "frontend/components/shell/Sidebar.tsx — collapsible groups + rail-collapse + Ctrl/Cmd+\\ keyboard shortcut + role gating.",
+    "frontend/components/shell/Topbar.tsx — breadcrumb + per-page actions + dropdown menu with Security + Sign out. Also exports ContextStrip for pages that want the dense status row.",
+    "frontend/components/shell/PageHeader.tsx — in-content title/description/icon block that pages render themselves (not provided by AppShell).",
+    "frontend/lib/nav-config.ts — the single source of truth for nav entries.",
+    "frontend/lib/ui-prefs.ts — localStorage-backed per-user preference reader/writer, try/catch-wrapped against private windows.",
+    "frontend/lib/session.ts — new setUser() export so whoAmI() can rehydrate the in-memory user without touching the token.",
+    "frontend/lib/api.ts — whoAmI() now calls setUser() on success. Side-effect, backward-compatible.",
+    "Migrated pages: /, /compliance, /admin, /approvals — all wrap in <AppShell>."
+  ],
+  "scope_out_deferred": [
+    "Admin-configurable nav. User-only prefs today. If a tenant wants to hide groups the admin UI around tenant_setting can land later.",
+    "Mobile layout. The sidebar auto-collapses on narrow viewports but a proper slide-out drawer is a separate kickoff.",
+    "Keyboard command palette (Ctrl/Cmd+K). Complementary to the sidebar; not in scope.",
+    "Rebase feature/mfa-ui onto this shell. Parked on its own branch; separate follow-up.",
+    "Admin page split into /admin/users + /admin/system-policy sub-routes. Nav-config lists them but the backend still serves /admin as one page; those links 404 until the split lands."
+  ],
+  "invariants": [
+    "Every signed-in page wraps in <AppShell>. A new page added without the wrapper looks like a bug (missing sidebar + topbar).",
+    "Nav entries live in nav-config.ts. Adding a page by hand-editing the Sidebar component means you missed the config.",
+    "Role gating uses requiresAnyRole on NavGroup. Changing a role requirement = one config edit, no component edit.",
+    "Shell-exempt routes stay in SHELL_EXEMPT_ROUTES (PageHeader.tsx). Adding one without the list entry is a documentation lapse."
+  ],
+  "consequences": [
+    "frontend/components/PersonaNav.tsx — DELETED. Supersedes ADR-0009's role-gated top-nav rule.",
+    "frontend/components/PageShell.tsx — DELETED. Pages wrap themselves in AppShell + PageHeader.",
+    "frontend/components/Header.tsx — DELETED. The dense treasurer-only chrome moved to ContextStrip + Topbar actions.",
+    "frontend/app/page.tsx — migrated to AppShell. TreasurerTopbarActions component inlined for the Nightly/Paste/Reset buttons.",
+    "frontend/app/{compliance,admin,approvals}/page.tsx — migrated to AppShell + PageHeader.",
+    "ADR-0009 superseded — persona pages still sit behind role nav, but the nav is now the sidebar.",
+    "ADR-0001 (one surface, one panel) and ADR-0016 (compliance tab shell) unchanged — those rules operate inside the page body, which the shell doesn't touch."
+  ],
+  "related": ["ADR-0009", "ADR-0001", "ADR-0016"]
+}

@@ -204,6 +204,57 @@
         "A follow-up could add 'cancel my own pending policy change' for the requester — Phase 5 doesn't ship it; a bad request can be rejected by another admin."
       ],
       "next_phase": "AuthN substrate feature complete at Phase 5. The next kickoff is either (a) a real OIDC adapter when customer #1 names their IdP (new backend file + /auth/sso/* endpoints), or (b) a frontend FE-x kickoff for the admin tab + the user profile MFA enrollment flow."
+    },
+    {
+      "time": "evening",
+      "author": "assistant",
+      "kind": "refactor",
+      "summary": "FE shell v2 — collapsible sidebar + config-driven nav replaces PersonaNav + dense Header. Supersedes ADR-0009.",
+      "feature_kickoff": "docs/prompts/kickoffs/2026-10-09-fe-shell-v2.md",
+      "worktree": "../tms-shell (branch feature/shell-v2) — D-03 isolation, main checkout untouched",
+      "frontend": {
+        "new_files": [
+          "frontend/lib/nav-config.ts — single source of truth for the sidebar. 5 groups × their children, role-gated. Adding a page = 1 entry.",
+          "frontend/lib/ui-prefs.ts — localStorage reader/writer for sidebar-collapsed + expanded-groups prefs. All try/catch-wrapped against private windows.",
+          "frontend/components/shell/Sidebar.tsx — collapsible rail (220px ↔ 56px), per-group expand with CSS grid-rows animation, Ctrl/Cmd+\\ keyboard shortcut, auto-expand of current-route group on first visit, role gating + state-based user hydration.",
+          "frontend/components/shell/Topbar.tsx — breadcrumb (derived from nav-config + pathname) + per-page actions slot + Security link + user dropdown. Also exports ContextStrip + TopbarAction helpers.",
+          "frontend/components/shell/AppShell.tsx — 25-line wrapper: <Sidebar/> + <Topbar actions/> + <main>{children}</main>.",
+          "frontend/components/shell/PageHeader.tsx — in-content title/description/icon block pages render themselves. SHELL_EXEMPT_ROUTES list documents the pre-sign-in carve-outs."
+        ],
+        "changed": [
+          "frontend/lib/session.ts — new setUser() export. Updates the in-memory user without touching the token.",
+          "frontend/lib/api.ts — whoAmI() now calls setUser() on success. Fixes a long-standing session-rehydration bug: a hard page navigation reset the in-memory user to null even though the token was still in sessionStorage, so can()/hasRole() silently refused legitimate users. Backward-compatible.",
+          "frontend/app/page.tsx — treasurer home wraps in <AppShell>. Dense Header's three buttons (Nightly / Paste / Reset) moved into TreasurerTopbarActions passed to AppShell's actions slot. Status chips (Prototype / tenant / today / enforcement) moved into <ContextStrip>. Main 58/42 grid + all panels + bottom Strip bar + modals preserved.",
+          "frontend/app/compliance/page.tsx — PageShell → AppShell + PageHeader. Tab shell inside preserved (ADR-0016 holds).",
+          "frontend/app/admin/page.tsx — same pattern.",
+          "frontend/app/approvals/page.tsx — same pattern."
+        ],
+        "deleted": [
+          "frontend/components/PersonaNav.tsx — superseded by Sidebar.",
+          "frontend/components/PageShell.tsx — pages wrap themselves in AppShell + PageHeader now.",
+          "frontend/components/Header.tsx — dense treasurer-only chrome moved to Topbar + ContextStrip.",
+          "frontend/app/shell-preview/ — temporary preview URL from Phase 2, served its purpose."
+        ]
+      },
+      "new_adrs": [
+        ".context/decisions/0025-shell-v2-sidebar.json — ADR-0025. Supersedes ADR-0009."
+      ],
+      "verification": "tsc --noEmit clean across every phase boundary. Live smoke tests on /, /compliance, /admin, /approvals under both r.sethi (ADMIN+CFO+COMPLIANCE_OFFICER) and a.whitfield (ANALYST only) — role gating hides groups correctly, breadcrumb reflects path, keyboard shortcut toggles sidebar, group expansion persists across reload.",
+      "reversibility": [
+        "Every phase is a working app at the boundary.",
+        "Phase 5's deletions are reversible from git — the components still live in history on master.",
+        "Each page's AppShell migration is a 3-edit import swap; one-page revert is one-file.",
+        "whoAmI() setUser() side-effect is additive — callers that ignore it still work."
+      ],
+      "parked_check": "Confirmed — no file/symbol/route forbidden by PARKED_PLANS.json touched. The shell is persona-agnostic; parked plans' admin surfaces will slot into nav-config as new entries when they unpark.",
+      "operational_followups": [
+        "Rebase feature/mfa-ui onto feature/shell-v2 — the profile MFA page needs restyling to the new shell + Phase 3 of the FE-MFA kickoff (nag banner + consume prompt) hooks naturally into the Topbar. ~1 day.",
+        "Admin page should be split into /admin/users + /admin/system-policy sub-routes so the nav-config entries work; backend serves them as sections of /admin today — low-priority split.",
+        "Compliance tab query-string hrefs (?tab=audit etc.) in nav-config don't yet drive the tab state; one-line read of useSearchParams() would wire them up.",
+        "Breadcrumb wrapping on narrow viewports — add whitespace-nowrap on each crumb if desktop viewports ever get narrow enough to show it.",
+        "P3-05 frontend tests kickoff — zero tests cover the new shell; Vitest + Playwright golden-path e2e land as a separate kickoff."
+      ],
+      "next_phase": "Shell v2 feature complete. Merge to master, then rebase feature/mfa-ui on top. New feature kickoffs welcome."
     }
   ]
 }

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-09T07:06:30+00:00",
+  "generated_at": "2026-10-09T10:09:40+00:00",
   "source": "app.models.Base.metadata",
   "table_count": 55,
   "tables": {
@@ -1020,14 +1020,14 @@
           "sqltext": ""
         },
         {
-          "kind": "UniqueConstraint",
-          "name": "ux_user_email",
-          "sqltext": ""
-        },
-        {
           "kind": "CheckConstraint",
           "name": "ck_user_status",
           "sqltext": "status in ('ACTIVE','DISABLED')"
+        },
+        {
+          "kind": "UniqueConstraint",
+          "name": "ux_user_email",
+          "sqltext": ""
         }
       ],
       "indices": [

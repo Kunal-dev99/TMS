@@ -28,196 +28,202 @@
     "0021-feature-isolation-via-worktree",
     "0022-pcs-deferred",
     "0023-sso-via-identity-port",
-    "0024-mfa-storage-and-crypto"
+    "0024-mfa-storage-and-crypto",
+    "0025-shell-v2-sidebar"
   ],
   "files": {
     "ai.json": {
       "bytes": 4369,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "bff6eefe2f70"
     },
     "api.json": {
       "bytes": 34212,
-      "mtime": "2026-10-09T07:06:30+00:00",
-      "sha": "93488e3da4ac"
+      "mtime": "2026-10-09T10:09:40+00:00",
+      "sha": "37ee15a49704"
     },
     "architecture.json": {
       "bytes": 3408,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "a18518c3a4dd"
     },
     "backend.json": {
       "bytes": 7142,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "52186080eef9"
     },
     "changes/2026-09-18.json": {
       "bytes": 46924,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "8923265b372b"
     },
     "changes/2026-09-23.json": {
       "bytes": 11078,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "74e00e9b729d"
     },
     "changes/2026-10-08.json": {
       "bytes": 17120,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "02a8e3b08294"
     },
     "changes/2026-10-09.json": {
-      "bytes": 20494,
-      "mtime": "2026-10-09T07:06:21+00:00",
-      "sha": "7ff12b15916e"
+      "bytes": 25905,
+      "mtime": "2026-10-09T10:09:30+00:00",
+      "sha": "f75c02b7c7af"
     },
     "conventions.json": {
       "bytes": 2902,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "818a69843f92"
     },
     "data-model.json": {
       "bytes": 158792,
-      "mtime": "2026-10-09T07:06:30+00:00",
-      "sha": "445645a596db"
+      "mtime": "2026-10-09T10:09:40+00:00",
+      "sha": "fa22c5e53d1c"
     },
     "decisions/0001-one-surface-one-panel.json": {
       "bytes": 1076,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "2491cdc87fa1"
     },
     "decisions/0002-every-path-runs-the-six-checks.json": {
       "bytes": 1249,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "7430f7a6c8c6"
     },
     "decisions/0003-buckets-are-caps-not-targets.json": {
       "bytes": 1455,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "92a2780d65b4"
     },
     "decisions/0004-connector-is-first-party.json": {
       "bytes": 1078,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "a96e18d7ddcd"
     },
     "decisions/0005-ai-proposes-deterministic-disposes.json": {
       "bytes": 1591,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "1bdd7b7c0902"
     },
     "decisions/0006-counterparty-and-currency-exposure-are-separate.json": {
       "bytes": 1058,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "fc87e56202cf"
     },
     "decisions/0007-hedging-cards-sort-by-policy-gap.json": {
       "bytes": 1152,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "21b943425ba7"
     },
     "decisions/0008-fx-hedge-advisor-is-governance-not-market.json": {
       "bytes": 1427,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "8d2ae0996c77"
     },
     "decisions/0009-persona-pages-behind-role-nav.json": {
       "bytes": 1206,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "9baaccbb7ba7"
     },
     "decisions/0010-project-context-matrix.json": {
       "bytes": 1797,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "12b7a872bb14"
     },
     "decisions/0011-permission-matrix-separates-admin-from-financial-authority.json": {
       "bytes": 3855,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "0c1d78448cea"
     },
     "decisions/0012-legal-entity-scope-per-user.json": {
       "bytes": 3061,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "146a64976ca2"
     },
     "decisions/0013-scope-preflight-guards-writes.json": {
       "bytes": 2993,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "b919dbca1dae"
     },
     "decisions/0014-activation-links-replace-temp-passwords.json": {
       "bytes": 4218,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "5e78faf9158a"
     },
     "decisions/0015-four-eye-control-on-sensitive-access-grants.json": {
       "bytes": 4008,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "1cfb6f47d2f5"
     },
     "decisions/0016-compliance-and-approvals-pages.json": {
       "bytes": 2911,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "bb8c4cf6cbbd"
     },
     "decisions/0017-policy-history-change-metadata.json": {
       "bytes": 3233,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "624c8b54b82e"
     },
     "decisions/0018-postgres-migration-ready.json": {
       "bytes": 3316,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "c1af23aff6f3"
     },
     "decisions/0020-postgres-in-production.json": {
       "bytes": 3678,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "520402efb311"
     },
     "decisions/0021-feature-isolation-via-worktree.json": {
       "bytes": 3076,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "62eead6e1ce9"
     },
     "decisions/0022-pcs-deferred.json": {
       "bytes": 2288,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "5a3e3299a762"
     },
     "decisions/0023-sso-via-identity-port.json": {
-      "bytes": 3840,
-      "mtime": "2026-10-09T06:28:12+00:00",
-      "sha": "8748286b2479"
+      "bytes": 3877,
+      "mtime": "2026-10-09T09:48:14+00:00",
+      "sha": "7216992e1a59"
     },
     "decisions/0024-mfa-storage-and-crypto.json": {
-      "bytes": 4223,
-      "mtime": "2026-10-09T06:37:30+00:00",
-      "sha": "b983947ff3cb"
+      "bytes": 4258,
+      "mtime": "2026-10-09T09:48:14+00:00",
+      "sha": "9feba894f553"
+    },
+    "decisions/0025-shell-v2-sidebar.json": {
+      "bytes": 4602,
+      "mtime": "2026-10-09T10:08:20+00:00",
+      "sha": "445876296cc4"
     },
     "frontend.json": {
       "bytes": 3667,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "c52cee06dc47"
     },
     "open-questions.json": {
       "bytes": 2088,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "fb52850b680f"
     },
     "project.json": {
       "bytes": 3061,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "387e00725b48"
     },
     "roadmap.json": {
       "bytes": 10905,
-      "mtime": "2026-10-09T06:24:37+00:00",
+      "mtime": "2026-10-09T09:48:14+00:00",
       "sha": "13fea6d991e1"
     }
   },
-  "generated_at": "2026-10-09T07:06:30+00:00",
+  "generated_at": "2026-10-09T10:09:40+00:00",
   "open_questions_file": "open-questions.json",
   "project": "treasury-register",
   "read_order_for_new_chats": [
