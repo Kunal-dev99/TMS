@@ -1,3 +1,5 @@
 .next/
 node_modules/
 next-env.d.ts
+# tsc incremental build cache — regenerates on every typecheck.
+tsconfig.tsbuildinfo
