@@ -1,6 +1,10 @@
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
-pydantic==2.10.4
+# The [email] extra pulls in email-validator, which pydantic's EmailStr
+# needs at import time. Without it, every file that defines a Pydantic
+# model with EmailStr (admin_users.py, etc.) fails collection on a
+# clean CI env. Locally it's often present as a transitive dep.
+pydantic[email]==2.10.4
 SQLAlchemy==2.0.36
 alembic==1.14.0
 # psycopg 3 binary wheel — no C build needed on any wheel-supported
