@@ -15,7 +15,8 @@ import {
   X,
 } from "lucide-react";
 
-import { PageShell } from "@/components/PageShell";
+import { AppShell } from "@/components/shell/AppShell";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/button";
 import {
   approveAdminAccessChange,
@@ -101,20 +102,25 @@ export default function AdminPage() {
 
   if (checking) {
     return (
-      <PageShell title="Admin" icon={Cog}>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" /> Checking access…
+      <AppShell>
+        <PageHeader title="Admin" icon={Cog} />
+        <div className="mx-auto max-w-[1400px] px-4 py-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> Checking access…
+          </div>
         </div>
-      </PageShell>
+      </AppShell>
     );
   }
 
   return (
-    <PageShell
-      title="Admin"
-      description="Users, roles, and tenant settings for this workspace. Every change is written to the audit trail."
-      icon={Cog}
-    >
+    <AppShell>
+      <PageHeader
+        title="Admin"
+        icon={Cog}
+        description="Users, roles, and tenant settings for this workspace. Every change is written to the audit trail."
+      />
+      <div className="mx-auto max-w-[1400px] px-4 py-4">
       {error ? (
         <div className="mb-4 rounded border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
           {error}
@@ -182,7 +188,8 @@ export default function AdminPage() {
           load();
         }}
       />
-    </PageShell>
+      </div>
+    </AppShell>
   );
 }
 

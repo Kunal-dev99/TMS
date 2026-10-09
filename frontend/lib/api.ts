@@ -19,7 +19,7 @@
  * a claim the client makes in a body.
  */
 
-import { currentToken, endSession, startSession, type SignedInUser } from "./session";
+import { currentToken, endSession, setUser, startSession, type SignedInUser } from "./session";
 import type {
   ApiError,
   BreachView,
@@ -114,7 +114,13 @@ export async function signIn(
 }
 
 export async function whoAmI(): Promise<SignedInUser> {
-  return request<SignedInUser>("/auth/me");
+  const me = await request<SignedInUser>("/auth/me");
+  // Rehydrate the in-memory user so can() / hasRole() work on the
+  // next check without the caller having to pass the result around.
+  // The token survives in sessionStorage; this only backfills the
+  // user object that a hard page navigation reset to null.
+  setUser(me);
+  return me;
 }
 
 export async function signOut(): Promise<void> {

@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, PenLine } from "lucide-react";
 
-import { PageShell } from "@/components/PageShell";
+import { AppShell } from "@/components/shell/AppShell";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/button";
 import {
   approveDeal,
@@ -78,20 +79,25 @@ export default function ApprovalsPage() {
 
   if (checking) {
     return (
-      <PageShell title="Approvals" icon={PenLine}>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" /> Checking access…
+      <AppShell>
+        <PageHeader title="Approvals" icon={PenLine} />
+        <div className="mx-auto max-w-[1400px] px-4 py-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> Checking access…
+          </div>
         </div>
-      </PageShell>
+      </AppShell>
     );
   }
 
   return (
-    <PageShell
-      title="Approvals"
-      description="Deals proposed and awaiting a signer. You can only sign rows your role qualifies you for and that you did not propose."
-      icon={PenLine}
-    >
+    <AppShell>
+      <PageHeader
+        title="Approvals"
+        icon={PenLine}
+        description="Deals proposed and awaiting a signer. You can only sign rows your role qualifies you for and that you did not propose."
+      />
+      <div className="mx-auto max-w-[1400px] px-4 py-4">
       {error ? (
         <div className="mb-4 rounded border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
           {error}
@@ -202,7 +208,8 @@ export default function ApprovalsPage() {
           </table>
         </div>
       )}
-    </PageShell>
+      </div>
+    </AppShell>
   );
 }
 

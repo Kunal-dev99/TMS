@@ -86,6 +86,15 @@ export function startSession(nextToken: string, nextUser: SignedInUser): void {
   }
 }
 
+/** Update the in-memory user without touching the token. Used by the
+ *  whoAmI() rehydrator: a hard page navigation reset the in-memory
+ *  user to null even though the token is still in sessionStorage;
+ *  calling whoAmI reads /auth/me, and the result wires back here so
+ *  hasRole() and can() work on the next check. */
+export function setUser(nextUser: SignedInUser): void {
+  user = nextUser;
+}
+
 export function endSession(): void {
   token = null;
   user = null;
