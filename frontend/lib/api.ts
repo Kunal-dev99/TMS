@@ -131,6 +131,70 @@ export async function signOut(): Promise<void> {
   }
 }
 
+// -- MFA (Phase 4 AuthN substrate) ----------------------------------------
+
+/** Compact status for the user's own profile page. Shape matches
+ *  backend/app/services/mfa_service.enrollment_status(). */
+export interface MfaStatus {
+  enrolled: boolean;
+  verified_at: string | null;
+  last_used_at?: string | null;
+  has_recovery_codes?: boolean;
+}
+
+/** The one-shot payload /auth/mfa/enroll returns. The secret is for
+ *  the authenticator app only — never persist it client-side beyond
+ *  the current enrollment flow. qr_data_url may be null if the
+ *  backend's `qrcode` lib isn't installed; the UI falls back to
+ *  rendering the provisioning_uri itself. */
+export interface MfaEnrollment {
+  secret: string;
+  provisioning_uri: string;
+  qr_data_url: string | null;
+}
+
+/** /auth/mfa/verify response. recovery_codes is populated ONLY when
+ *  was_first_verification is true — the user sees them exactly once. */
+export interface MfaVerifyResult {
+  verified: boolean;
+  was_first_verification: boolean;
+  recovery_codes: string[];
+}
+
+/** /auth/mfa/consume response — reissued bearer with mfa=True. */
+export interface MfaConsumeResult {
+  token: string;
+  mfa_passed: boolean;
+}
+
+export function getMfaStatus(): Promise<MfaStatus> {
+  return get<MfaStatus>("/auth/mfa/status");
+}
+
+export function enrollMfa(): Promise<MfaEnrollment> {
+  return post<MfaEnrollment>("/auth/mfa/enroll", {});
+}
+
+export function verifyMfaCode(code: string): Promise<MfaVerifyResult> {
+  return post<MfaVerifyResult>("/auth/mfa/verify", { code });
+}
+
+export function consumeMfaCode(code: string): Promise<MfaConsumeResult> {
+  return post<MfaConsumeResult>("/auth/mfa/consume", { code });
+}
+
+export function reissueRecoveryCodes(): Promise<{ recovery_codes: string[] }> {
+  return post<{ recovery_codes: string[] }>("/auth/mfa/recovery/reissue", {});
+}
+
+/** Detect the 403 that require_mfa raises, so the global consume
+ *  prompt can intercept it transparently. Returns true for ANY throw
+ *  whose code is MFA_REQUIRED — RequestFailed instances OR anything
+ *  else that happens to carry the right shape. */
+export function mfaErrorIs(err: unknown): err is RequestFailed {
+  return err instanceof RequestFailed && err.code === "MFA_REQUIRED";
+}
+
 // -- reads -----------------------------------------------------------------
 
 /** Everything the surface needs, in one call. Refetched whole after a write. */

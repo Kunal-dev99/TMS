@@ -20,6 +20,21 @@ export interface SignedInEntity {
   base_currency: string;
 }
 
+export interface MfaBlock {
+  /** True iff the user has a verified TOTP secret on file. */
+  enrolled: boolean;
+  verified_at: string | null;
+  /** True iff this bearer token has already consumed a second-factor
+   *  code in the current session (Phase 3). Sensitive endpoints that
+   *  wear require_mfa gate on this when the tenant policy enforces. */
+  passed_this_session: boolean;
+  /** ISO deadline for the nag banner, or null when the tenant's
+   *  MFA policy is off / optional / this role is exempt. */
+  required_by: string | null;
+  /** off | optional | required_for_sensitive_roles | required_for_all */
+  policy_mode: string;
+}
+
 export interface SignedInUser {
   id: string;
   display_name: string;
@@ -34,6 +49,11 @@ export interface SignedInUser {
     group_wide: boolean;
     entities: SignedInEntity[];
   };
+  /** MFA enrollment + policy state. Added in Phase 4 of the AuthN
+   *  substrate. Optional so older backends (or /auth/token which
+   *  doesn't carry the block) stay compatible — a missing block is
+   *  treated as unenrolled + policy off. */
+  mfa?: MfaBlock;
 }
 
 let token: string | null = null;

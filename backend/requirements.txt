@@ -16,3 +16,8 @@ pyotp==2.9.0
 # transitive dep of several SDKs; pinned here so a leaner install still
 # gets it.
 cryptography>=42
+# QR-code renderer for /auth/mfa/enroll's qr_data_url. [pil] pulls in
+# Pillow so we can return a base64 PNG inline — one less thing for the
+# frontend to render. Fallback is already in the code: if qrcode isn't
+# installed, qr_data_url is null and the client renders the URI itself.
+qrcode[pil]==7.4.2
