@@ -14,7 +14,7 @@ item commit together or not at all.
 
 from fastapi import APIRouter, Depends, Response
 
-from app.api.deps import Caller, Ctx
+from app.api.deps import Caller, Ctx, require_mfa
 from app.services import rate_limit as rl
 from app.errors import ErrorCode, TreasuryError
 from app.repo import counterparties as cp_repo
@@ -109,7 +109,10 @@ def get_deal(deal_id: str, ctx: Ctx, caller: Caller) -> DealDetail:
     return detail
 
 
-@router.post("/deals/{deal_id}/approve")
+@router.post(
+    "/deals/{deal_id}/approve",
+    dependencies=[Depends(require_mfa())],
+)
 def approve_deal(
     deal_id: str, body: rq.ApproveDealRequest, ctx: Ctx, caller: Caller
 ) -> dict:

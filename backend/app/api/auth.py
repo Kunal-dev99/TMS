@@ -45,7 +45,7 @@ def sign_in(body: rq.SignInRequest, ctx: Ctx) -> dict:
 
 
 @router.get("/auth/me")
-def whoami(caller: Caller) -> dict:
+def whoami(ctx: Ctx, caller: Caller) -> dict:
     """Who the token says the caller is, and what they may sign.
 
     The surface reads this on load so it can name the roles held rather than
@@ -57,25 +57,32 @@ def whoami(caller: Caller) -> dict:
     from app.services import scope_service
 
     perms = permissions_for_roles(caller.roles)
-    scope = scope_service.scope_for_user(caller.session, caller.user_id) if hasattr(caller, 'session') else None
-    # Session isn't on the Principal; fetch fresh via the request-scoped session.
-    from app.db import SessionLocal
 
-    with SessionLocal() as sess:
-        scope = scope_service.scope_for_user(sess, caller.user_id)
-        entities = scope_service.list_entities(sess, caller.tenant_id)
-        if scope.group_wide:
-            visible = [
-                {"id": e.id, "code": e.code, "name": e.name, "base_currency": e.base_currency}
-                for e in entities
-            ]
-        else:
-            eset = set(scope.entity_ids)
-            visible = [
-                {"id": e.id, "code": e.code, "name": e.name, "base_currency": e.base_currency}
-                for e in entities
-                if e.id in eset
-            ]
+    # Use the request-scoped session (ctx.session), not a fresh
+    # SessionLocal — otherwise a worktree / test env without a prod
+    # treasury.db hits a missing-table error. The dep-injected
+    # session is also what every other read uses.
+    scope = scope_service.scope_for_user(ctx.session, caller.user_id)
+    entities = scope_service.list_entities(ctx.session, caller.tenant_id)
+    if scope.group_wide:
+        visible = [
+            {"id": e.id, "code": e.code, "name": e.name, "base_currency": e.base_currency}
+            for e in entities
+        ]
+    else:
+        eset = set(scope.entity_ids)
+        visible = [
+            {"id": e.id, "code": e.code, "name": e.name, "base_currency": e.base_currency}
+            for e in entities
+            if e.id in eset
+        ]
+    from app.services import mfa_policy_service, mfa_service
+
+    mfa_status = mfa_service.enrollment_status(ctx.session, caller.user_id)
+    mfa_required_by = mfa_policy_service.required_by(
+        ctx.session, caller.tenant_id, caller.roles
+    )
+
     return {
         "id": caller.user_id,
         "display_name": caller.display_name,
@@ -85,6 +92,20 @@ def whoami(caller: Caller) -> dict:
         "scope": {
             "group_wide": scope.group_wide,
             "entities": visible,
+        },
+        "mfa": {
+            # Current state of the user's enrollment.
+            "enrolled": mfa_status["enrolled"],
+            "verified_at": mfa_status["verified_at"],
+            # Whether this bearer token already proved MFA this session.
+            "passed_this_session": caller.mfa_passed,
+            # ISO deadline for the nag banner. None when MFA is not
+            # relevant for this caller (policy off, or role-exempt).
+            # The client renders a banner when now() < this value AND
+            # not enrolled; after this value, the sensitive endpoints
+            # start refusing until /auth/mfa/consume is called.
+            "required_by": mfa_required_by,
+            "policy_mode": mfa_policy_service.mode(ctx.session, caller.tenant_id),
         },
     }
 
